@@ -22,7 +22,7 @@ const voltarLabel = computed(() =>
 
 const proximoLabel = computed(() => {
   if (props.step !== 'REVISAO') return 'Continuar'
-  return props.criando ? 'Criando reserva...' : 'Criar reserva'
+  return props.criando ? 'Confirmando pedido...' : 'Confirmar pedido'
 })
 
 const secundario =

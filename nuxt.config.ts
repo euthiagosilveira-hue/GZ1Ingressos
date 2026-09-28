@@ -3,6 +3,11 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: false },
   modules: ['@nuxtjs/supabase', '@nuxtjs/tailwindcss'],
+  runtimeConfig: {
+    // Somente backend. Nunca expor em public.
+    mercadoPagoAccessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '',
+    mercadoPagoWebhookSecret: process.env.MERCADO_PAGO_WEBHOOK_SECRET || ''
+  },
   supabase: {
     // Sem tela /login ainda: não redirecionar usuários não autenticados.
     redirect: false,

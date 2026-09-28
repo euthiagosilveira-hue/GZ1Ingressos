@@ -12,11 +12,16 @@ import CheckoutQuantityStep from '~/components/public/checkout/CheckoutQuantityS
 import CheckoutReservationCreated from '~/components/public/checkout/CheckoutReservationCreated.vue'
 import CheckoutReviewStep from '~/components/public/checkout/CheckoutReviewStep.vue'
 import { usePublicCheckout } from '~/composables/usePublicCheckout'
+import type { EventoOrigem } from '~/types/checkout'
 import type { PublicEventDetail } from '~/types/publicEvento'
 
-const props = defineProps<{
-  evento: PublicEventDetail
-}>()
+const props = withDefaults(
+  defineProps<{
+    evento: PublicEventDetail
+    origem?: EventoOrigem
+  }>(),
+  { origem: 'SUPABASE' }
+)
 
 const {
   step,
@@ -25,6 +30,7 @@ const {
   comprador,
   reserva,
   criando,
+  erroReserva,
   errosParticipantes,
   erroCompradorNome,
   erroCompradorTelefone,
@@ -38,7 +44,7 @@ const {
   proximo,
   voltar,
   irPara
-} = usePublicCheckout(props.evento)
+} = usePublicCheckout(props.evento, { origem: props.origem })
 
 const errosComprador = computed(() => ({
   nome: erroCompradorNome.value,
@@ -107,6 +113,7 @@ function aoVoltar() {
           :total="total"
           :participantes="participantes"
           :comprador="comprador"
+          :erro="erroReserva"
           @editar="irPara"
         />
 

@@ -1,0 +1,200 @@
+import type { H3Event } from 'h3'
+
+import type { Gz1PaymentStatus, PixCharge } from './payment-provider'
+import { MercadoPagoProvider } from './mercado-pago/mercado-pago-provider'
+
+export type PaymentServiceErrorCode =
+  | 'PAGAMENTO_INDISPONIVEL'
+  | 'CHECKOUT_INVALIDO'
+  | 'PROVIDER_CONFLITO'
+  | 'DADOS_INVALIDOS'
+  | 'ERRO_INESPERADO'
+
+export class PaymentServiceError extends Error {
+  code: PaymentServiceErrorCode
+  status: number
+
+  constructor(code: PaymentServiceErrorCode, message: string, status = 400) {
+    super(message)
+    this.name = 'PaymentServiceError'
+    this.code = code
+    this.status = status
+  }
+}
+
+interface CheckoutBackend {
+  pedido_id: string
+  codigo_pedido: string
+  comprador_email: string | null
+  valor_total: number | string
+  pedido_status: string
+  reserva_expira_em: string
+  pagamento_id: string | null
+  provedor: string | null
+  pagamento_status: string | null
+  transacao_id: string | null
+  cobranca_id: string | null
+  referencia_externa: string | null
+  pix_copia_cola: string | null
+  pix_qr_code: string | null
+  expira_em: string | null
+}
+
+export interface PixResponse {
+  paymentId: string
+  provider: 'MERCADO_PAGO'
+  status: Gz1PaymentStatus
+  pixCopyPaste: string | null
+  pixQrCode: string | null
+  expiresAt: string | null
+}
+
+export function ehUuid(valor: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor)
+}
+
+async function obterCheckoutBackend(event: H3Event, token: string): Promise<CheckoutBackend | null> {
+  // serverSupabaseServiceRole e auto-importado pelo @nuxtjs/supabase
+  const client = serverSupabaseServiceRole(event)
+  const { data, error } = await client.rpc('obter_checkout_pagamento_backend', { p_token: token })
+  if (error) throw new PaymentServiceError('ERRO_INESPERADO', error.message, 500)
+  return (data as CheckoutBackend | null) ?? null
+}
+
+async function garantirPagamentoLogico(
+  event: H3Event,
+  token: string,
+  checkout: CheckoutBackend
+): Promise<CheckoutBackend> {
+  if (checkout.pagamento_id) {
+    if (checkout.provedor !== 'MERCADO_PAGO') {
+      throw new PaymentServiceError(
+        'PROVIDER_CONFLITO',
+        'Este pedido possui um pagamento iniciado com outro provedor.',
+        409
+      )
+    }
+    return checkout
+  }
+
+  const client = serverSupabaseServiceRole(event)
+  const { error } = await client.rpc('criar_pagamento_pendente_por_token', {
+    p_token: token,
+    p_provider: 'MERCADO_PAGO',
+    p_transaction_id: null,
+    p_charge_id: null,
+    p_referencia_externa: null
+  })
+  if (error) {
+    if (error.message?.includes('ja possui pagamento')) {
+      throw new PaymentServiceError('PROVIDER_CONFLITO', 'Este pedido já possui pagamento.', 409)
+    }
+    throw new PaymentServiceError('ERRO_INESPERADO', error.message, 500)
+  }
+
+  const atualizado = await obterCheckoutBackend(event, token)
+  if (!atualizado || !atualizado.pagamento_id) {
+    throw new PaymentServiceError('ERRO_INESPERADO', 'Falha ao preparar o pagamento.', 500)
+  }
+  return atualizado
+}
+
+function minutosAte(iso: string): number {
+  const alvo = Date.parse(iso)
+  if (Number.isNaN(alvo)) return 30
+  return Math.ceil((alvo - Date.now()) / 60000)
+}
+
+export async function criarPix(
+  event: H3Event,
+  checkoutToken: string,
+  accessToken: string
+): Promise<PixResponse> {
+  let checkout = await obterCheckoutBackend(event, checkoutToken)
+  if (!checkout) {
+    throw new PaymentServiceError('CHECKOUT_INVALIDO', 'Checkout não encontrado.', 404)
+  }
+
+  if (checkout.pedido_status === 'EXPIRADO' || checkout.pedido_status === 'CANCELADO') {
+    throw new PaymentServiceError('DADOS_INVALIDOS', 'Este pedido não está disponível para pagamento.', 409)
+  }
+
+  checkout = await garantirPagamentoLogico(event, checkoutToken, checkout)
+
+  if (checkout.pagamento_status === 'APROVADO') {
+    return {
+      paymentId: checkout.pagamento_id as string,
+      provider: 'MERCADO_PAGO',
+      status: 'APROVADO',
+      pixCopyPaste: checkout.pix_copia_cola,
+      pixQrCode: checkout.pix_qr_code,
+      expiresAt: checkout.expira_em
+    }
+  }
+
+  // Reaproveita cobranca ja registrada (idempotencia / refresh)
+  if (checkout.cobranca_id && checkout.pix_copia_cola) {
+    return {
+      paymentId: checkout.pagamento_id as string,
+      provider: 'MERCADO_PAGO',
+      status: (checkout.pagamento_status as Gz1PaymentStatus) ?? 'PENDENTE',
+      pixCopyPaste: checkout.pix_copia_cola,
+      pixQrCode: checkout.pix_qr_code,
+      expiresAt: checkout.expira_em
+    }
+  }
+
+  const email = (checkout.comprador_email ?? '').trim()
+  if (!email) {
+    throw new PaymentServiceError('DADOS_INVALIDOS', 'E-mail do comprador ausente.', 422)
+  }
+
+  const provider = new MercadoPagoProvider(accessToken)
+  const charge: PixCharge = await provider.createPixCharge({
+    amount: Number(checkout.valor_total),
+    externalReference: checkout.pagamento_id as string,
+    payerEmail: email,
+    expirationMinutes: minutosAte(checkout.reserva_expira_em),
+    idempotencyKey: checkout.pagamento_id as string
+  })
+
+  const client = serverSupabaseServiceRole(event)
+  const { error } = await client.rpc('registrar_cobranca_externa', {
+    p_pagamento_id: checkout.pagamento_id,
+    p_provider: 'MERCADO_PAGO',
+    p_transacao_id: charge.transactionId,
+    p_cobranca_id: charge.chargeId,
+    p_referencia_externa: charge.externalReference,
+    p_pix_copia_cola: charge.pixCopyPaste,
+    p_pix_qr_code: charge.pixQrCode
+  })
+  if (error) throw new PaymentServiceError('ERRO_INESPERADO', error.message, 500)
+
+  return {
+    paymentId: checkout.pagamento_id as string,
+    provider: 'MERCADO_PAGO',
+    status: charge.status,
+    pixCopyPaste: charge.pixCopyPaste,
+    pixQrCode: charge.pixQrCode,
+    expiresAt: checkout.expira_em
+  }
+}
+
+export async function consultarStatus(
+  event: H3Event,
+  checkoutToken: string,
+  accessToken: string
+): Promise<{ status: Gz1PaymentStatus }> {
+  const checkout = await obterCheckoutBackend(event, checkoutToken)
+  if (!checkout) {
+    throw new PaymentServiceError('CHECKOUT_INVALIDO', 'Checkout não encontrado.', 404)
+  }
+
+  if (checkout.cobranca_id && accessToken) {
+    const provider = new MercadoPagoProvider(accessToken)
+    const charge = await provider.getCharge(checkout.cobranca_id)
+    return { status: charge.status }
+  }
+
+  return { status: (checkout.pagamento_status as Gz1PaymentStatus) ?? 'PENDENTE' }
+}

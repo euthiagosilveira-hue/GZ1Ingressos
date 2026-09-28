@@ -1,10 +1,13 @@
 import { computed, reactive, ref, watch } from 'vue'
 
+import { criarReserva as criarReservaSupabase, ReservaError } from '~/services/public/reservas'
 import type {
   CheckoutBuyer,
+  CheckoutDraft,
   CheckoutParticipant,
-  CheckoutReservationMock,
-  CheckoutStep
+  CheckoutReservation,
+  CheckoutStep,
+  EventoOrigem
 } from '~/types/checkout'
 import type { PublicEventDetail } from '~/types/publicEvento'
 import {
@@ -12,19 +15,26 @@ import {
   criarReservaMock,
   emailValido,
   limiteQuantidade,
+  mensagemErroReserva,
   nomeValido,
   telefoneValido
 } from '~/utils/checkout'
 
-export function usePublicCheckout(evento: PublicEventDetail) {
+export function usePublicCheckout(
+  evento: PublicEventDetail,
+  options: { origem?: EventoOrigem } = {}
+) {
+  const origem: EventoOrigem = options.origem ?? 'SUPABASE'
+
   const step = ref<CheckoutStep>('QUANTIDADE')
 
   const quantidade = ref(CHECKOUT_MIN)
   const participantes = ref<CheckoutParticipant[]>([{ nome: '' }])
   const comprador = reactive<CheckoutBuyer>({ nome: '', telefone: '', email: '' })
 
-  const reserva = ref<CheckoutReservationMock | null>(null)
+  const reserva = ref<CheckoutReservation | null>(null)
   const criando = ref(false)
+  const erroReserva = ref('')
 
   const errosParticipantes = ref<string[]>([])
   const erroCompradorNome = ref('')
@@ -80,11 +90,22 @@ export function usePublicCheckout(evento: PublicEventDetail) {
     erroCompradorTelefone.value = telefoneValido(comprador.telefone)
       ? ''
       : 'Informe um telefone válido com DDD.'
-    erroCompradorEmail.value =
-      comprador.email.trim() === '' || emailValido(comprador.email)
-        ? ''
-        : 'Informe um e-mail válido.'
+    if (comprador.email.trim() === '') {
+      erroCompradorEmail.value = 'E-mail é obrigatório.'
+    } else if (!emailValido(comprador.email)) {
+      erroCompradorEmail.value = 'Informe um e-mail válido.'
+    } else {
+      erroCompradorEmail.value = ''
+    }
     return !erroCompradorNome.value && !erroCompradorTelefone.value && !erroCompradorEmail.value
+  }
+
+  function montarDraft(): CheckoutDraft {
+    return {
+      quantidade: quantidade.value,
+      participantes: participantes.value.map((participante) => ({ ...participante })),
+      comprador: { ...comprador }
+    }
   }
 
   function proximo() {
@@ -120,25 +141,35 @@ export function usePublicCheckout(evento: PublicEventDetail) {
 
   async function criarReserva() {
     if (criando.value) return
+    erroReserva.value = ''
     criando.value = true
-    // Simulacao de transicao. Futuro: supabase.rpc('criar_reserva', ...)
-    await new Promise((resolve) => setTimeout(resolve, 600))
-    reserva.value = criarReservaMock(evento, {
-      quantidade: quantidade.value,
-      participantes: participantes.value,
-      comprador: { ...comprador }
-    })
-    criando.value = false
-    step.value = 'RESERVA_CRIADA'
+    try {
+      const draft = montarDraft()
+      // Reserva mock apenas em desenvolvimento e para eventos de demonstracao.
+      if (import.meta.dev && origem === 'MOCK') {
+        await new Promise((resolve) => setTimeout(resolve, 600))
+        reserva.value = criarReservaMock(evento, draft)
+      } else {
+        reserva.value = await criarReservaSupabase(evento.eventoId, draft)
+      }
+      step.value = 'RESERVA_CRIADA'
+    } catch (erro) {
+      const codigo = erro instanceof ReservaError ? erro.code : 'ERRO_INESPERADO'
+      erroReserva.value = mensagemErroReserva(codigo)
+    } finally {
+      criando.value = false
+    }
   }
 
   return {
+    origem,
     step,
     quantidade,
     participantes,
     comprador,
     reserva,
     criando,
+    erroReserva,
     errosParticipantes,
     erroCompradorNome,
     erroCompradorTelefone,

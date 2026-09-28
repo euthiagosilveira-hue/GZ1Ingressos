@@ -6,10 +6,15 @@ function publico(base: Omit<PublicEventDetail, 'situacaoVenda'>): PublicEventDet
 }
 
 /**
- * Mocks da pagina publica. Derivados conceitualmente do catalogo publico,
- * com dois eventos complementares para cobrir ESGOTADO e VENDAS_ENCERRADAS.
- * Slugs de eventos RASCUNHO (festival-verao, techno-night) existem apenas
- * para validar que a resolucao publica os trata como nao encontrados.
+ * FALLBACK DE DESENVOLVIMENTO (temporario).
+ *
+ * A fonte principal do catalogo publico e o Supabase
+ * (RPCs public.listar_eventos_publicos / public.obter_evento_publico).
+ * Estes mocks sao usados SOMENTE em desenvolvimento (import.meta.dev) quando
+ * o banco esta vazio ou a RPC falha, via useCatalogoPublico.
+ *
+ * TODO: remover este arquivo quando houver eventos reais persistidos e o
+ * fluxo publico validado ponta a ponta.
  */
 export const eventosPublicosMock: PublicEventDetail[] = [
   publico({

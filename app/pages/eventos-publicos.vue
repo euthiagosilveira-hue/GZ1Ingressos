@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { CalendarDaysIcon, MapPinIcon } from '@heroicons/vue/24/outline'
 
+import PublicCatalogError from '~/components/public/PublicCatalogError.vue'
+import PublicCatalogLoading from '~/components/public/PublicCatalogLoading.vue'
 import PublicEventStatusBadge from '~/components/public/eventos/PublicEventStatusBadge.vue'
-import { listarEventosPublicos } from '~/data/eventosPublicos'
+import { useCatalogoPublico } from '~/composables/useCatalogoPublico'
 import { formatData, formatHora, formatMoeda } from '~/utils/format'
 
 definePageMeta({
@@ -14,15 +17,41 @@ useSeoMeta({
   description: 'Confira a agenda de eventos da Galeria Zero 1.'
 })
 
-const eventos = listarEventosPublicos()
+const { listar } = useCatalogoPublico()
+
+const { data, pending, error, refresh } = await useAsyncData('eventos-publicos', async () => {
+  const { eventos, fallback } = await listar()
+  return { eventos, fallback }
+})
+
+const eventos = computed(() => data.value?.eventos ?? [])
+const fallbackDev = computed(() => import.meta.dev && Boolean(data.value?.fallback))
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+  <PublicCatalogLoading v-if="pending" />
+
+  <PublicCatalogError v-else-if="error" @retry="refresh" />
+
+  <div v-else class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
     <h1 class="text-3xl font-bold text-white">Eventos</h1>
     <p class="mt-2 text-sm text-zinc-400">Confira a agenda e garanta seu ingresso.</p>
 
-    <div class="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <p
+      v-if="fallbackDev"
+      class="mt-4 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-300"
+    >
+      Modo desenvolvimento: exibindo dados de demonstração.
+    </p>
+
+    <p
+      v-if="eventos.length === 0"
+      class="mt-8 rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/40 px-6 py-16 text-center text-sm text-zinc-500"
+    >
+      Nenhum evento disponível no momento.
+    </p>
+
+    <div v-else class="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       <NuxtLink
         v-for="evento in eventos"
         :key="evento.slug"

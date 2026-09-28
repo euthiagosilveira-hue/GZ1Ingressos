@@ -42,7 +42,7 @@ function aoTelefone(valor: string) {
       />
     </FormField>
 
-    <FormField label="E-mail (opcional)" :error="props.erros.email">
+    <FormField label="E-mail" required :error="props.erros.email">
       <BaseInput
         :model-value="props.comprador.email"
         autocomplete="email"

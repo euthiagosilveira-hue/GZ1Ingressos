@@ -206,12 +206,21 @@ end $$;
 -- T12) ACL: checkout publico x callback de sistema ----------------------------
 do $$
 begin
+  -- Checkout publico agora e por token (criar_pagamento_pendente por pedido foi fechada).
   if not has_function_privilege(
+    'anon',
+    'public.criar_pagamento_pendente_por_token(uuid, public.provedor_pagamento, text, text, text)',
+    'EXECUTE'
+  ) then
+    raise exception 'T12: anon deveria poder criar pagamento pendente por token (checkout)';
+  end if;
+
+  if has_function_privilege(
     'anon',
     'public.criar_pagamento_pendente(uuid, public.provedor_pagamento, text, text, text)',
     'EXECUTE'
   ) then
-    raise exception 'T12: anon deveria poder criar pagamento pendente (checkout)';
+    raise exception 'T12: anon NAO pode executar criar_pagamento_pendente(pedido_id)';
   end if;
 
   if has_function_privilege(

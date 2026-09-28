@@ -32,7 +32,12 @@ export interface PublicEventDetail {
   loteNome: string | null
   preco: number | null
 
-  /** Derivado apenas para UI mock; a futura RPC publica informara a disponibilidade. */
+  /**
+   * Quantidade disponivel.
+   * - Mocks de desenvolvimento: preenchido.
+   * - RPC publica real: retorna null (nao expoe estoque).
+   * A validacao real de estoque sera responsabilidade de `criar_reserva`.
+   */
   disponiveis: number | null
 
   situacaoVenda: PublicVendaSituacao

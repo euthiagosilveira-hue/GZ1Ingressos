@@ -6,8 +6,12 @@ type DadosSituacao = Pick<
 >
 
 /**
- * Regra unica de derivacao da situacao de venda (fora dos templates).
- * Ordem de prioridade alinhada ao dominio publico do GZ1.
+ * Utilitarios de apresentacao do dominio publico.
+ *
+ * `resolverSituacaoVenda` e usado SOMENTE pelos mocks de desenvolvimento.
+ * Para eventos reais, a situacao de venda vem pronta do banco
+ * (`calcular_situacao_venda` -> coluna `situacao_venda` das RPCs publicas)
+ * e NAO deve ser recalculada no frontend.
  */
 export function resolverSituacaoVenda(evento: DadosSituacao): PublicVendaSituacao {
   if (evento.status === 'CANCELADO') return 'CANCELADO'

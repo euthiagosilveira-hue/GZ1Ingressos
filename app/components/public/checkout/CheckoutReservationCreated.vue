@@ -2,11 +2,11 @@
 import { CheckCircleIcon } from '@heroicons/vue/24/outline'
 
 import { formatHora, formatMoeda } from '~/utils/format'
-import type { CheckoutReservationMock } from '~/types/checkout'
+import type { CheckoutReservation } from '~/types/checkout'
 import type { PublicEventDetail } from '~/types/publicEvento'
 
 const props = defineProps<{
-  reserva: CheckoutReservationMock
+  reserva: CheckoutReservation
   evento: PublicEventDetail
 }>()
 </script>
@@ -22,7 +22,7 @@ const props = defineProps<{
       <div>
         <p class="text-lg font-bold uppercase tracking-wide text-green-300">Reserva criada</p>
         <p class="text-sm text-zinc-400">
-          Seus ingressos estão reservados por 15 minutos.
+          Seus ingressos estão reservados por 30 minutos.
         </p>
       </div>
     </div>
@@ -30,7 +30,7 @@ const props = defineProps<{
     <dl class="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm">
       <div class="flex items-center justify-between gap-3">
         <dt class="text-zinc-500">Código do pedido</dt>
-        <dd class="font-semibold text-white">{{ props.reserva.codigo }}</dd>
+        <dd class="font-semibold text-white">{{ props.reserva.codigoPedido }}</dd>
       </div>
       <div class="flex items-center justify-between gap-3">
         <dt class="text-zinc-500">Evento</dt>
@@ -46,18 +46,27 @@ const props = defineProps<{
       </div>
       <div class="flex items-center justify-between gap-3 border-t border-zinc-800 pt-2">
         <dt class="text-zinc-500">Reserva válida até</dt>
-        <dd class="font-semibold text-zinc-100">{{ formatHora(props.reserva.expiraEm) }}</dd>
+        <dd class="font-semibold text-zinc-100">{{ formatHora(props.reserva.reservaExpiraEm) }}</dd>
       </div>
     </dl>
 
     <p class="text-sm text-zinc-400">Na próxima etapa você fará o pagamento via Pix.</p>
 
+    <NuxtLink
+      v-if="props.reserva.checkoutToken"
+      :to="`/eventos/${props.evento.slug}/comprar/pagamento?token=${props.reserva.checkoutToken}`"
+      class="flex w-full items-center justify-center rounded-xl bg-amber-400 px-6 py-4 text-sm font-bold uppercase tracking-wide text-zinc-950 transition-colors duration-150 hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+    >
+      Continuar para pagamento
+    </NuxtLink>
+
     <button
+      v-else
       type="button"
       disabled
       class="flex w-full cursor-not-allowed items-center justify-center rounded-xl border border-zinc-700 px-6 py-4 text-sm font-bold uppercase tracking-wide text-zinc-500 opacity-70"
     >
-      Pagamento Pix — próxima etapa
+      Pagamento disponível apenas com dados reais
     </button>
   </section>
 </template>

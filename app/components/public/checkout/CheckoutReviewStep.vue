@@ -3,14 +3,18 @@ import { formatData, formatHora, formatMoeda } from '~/utils/format'
 import type { CheckoutBuyer, CheckoutParticipant, CheckoutStep } from '~/types/checkout'
 import type { PublicEventDetail } from '~/types/publicEvento'
 
-const props = defineProps<{
-  evento: PublicEventDetail
-  quantidade: number
-  preco: number | null
-  total: number
-  participantes: CheckoutParticipant[]
-  comprador: CheckoutBuyer
-}>()
+const props = withDefaults(
+  defineProps<{
+    evento: PublicEventDetail
+    quantidade: number
+    preco: number | null
+    total: number
+    participantes: CheckoutParticipant[]
+    comprador: CheckoutBuyer
+    erro?: string
+  }>(),
+  { erro: '' }
+)
 
 const emit = defineEmits<{
   editar: [step: CheckoutStep]
@@ -68,7 +72,7 @@ const acaoEditar =
         <div class="mt-2 space-y-1 text-sm text-zinc-200">
           <p>{{ props.comprador.nome }}</p>
           <p>{{ props.comprador.telefone }}</p>
-          <p v-if="props.comprador.email">{{ props.comprador.email }}</p>
+          <p>{{ props.comprador.email }}</p>
         </div>
       </div>
 
@@ -87,6 +91,14 @@ const acaoEditar =
 
     <p class="border-t border-zinc-800 pt-4 text-xs text-zinc-500">
       Após a confirmação do pagamento, os nomes dos participantes não poderão ser alterados.
+    </p>
+
+    <p
+      v-if="props.erro"
+      role="alert"
+      class="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200"
+    >
+      {{ props.erro }}
     </p>
   </section>
 </template>
