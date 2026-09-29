@@ -1,4 +1,22 @@
-import type { EventFiltersState, EventListItem } from '~/types/evento'
+import type { AdminEventListItem, EventFiltersState, EventListItem } from '~/types/evento'
+
+/** Adapta o item administrativo real para o shape usado pelos cards. */
+export function mapearEventoAdminParaListItem(evento: AdminEventListItem): EventListItem {
+  return {
+    id: evento.eventoId,
+    nome: evento.nome,
+    slug: evento.slug,
+    imagemUrl: null,
+    inicioEm: evento.inicioEm,
+    local: evento.local,
+    status: evento.status,
+    vendasStatus: evento.vendasStatus,
+    publicacaoStatus: evento.publicacaoStatus,
+    loteAtual: null,
+    vendidos: evento.ingressosCount,
+    disponiveis: 0
+  }
+}
 
 export function filtrarEventos(
   eventos: EventListItem[],

@@ -81,3 +81,21 @@ export interface EventPayload {
 }
 
 export type EventFormMode = 'create' | 'edit'
+
+/** Item da listagem administrativa (public.listar_eventos_admin_filtrado). */
+export interface AdminEventListItem {
+  eventoId: string
+  nome: string
+  slug: string
+  inicioEm: string
+  local: string
+  status: EventStatus
+  vendasStatus: SalesStatus
+  publicacaoStatus: PublicationStatus
+  capacidadeTotal: number
+  estoqueAntecipado: number
+  publicadoEm: string | null
+  lotesCount: number
+  pedidosCount: number
+  ingressosCount: number
+}
