@@ -3,8 +3,11 @@ import assert from 'node:assert/strict'
 
 import {
   LeituraLock,
+  descricaoResultadoEntrada,
   mapearResultadoEntradaRpc,
   mascararToken,
+  mensagemDominioSegura,
+  normalizarMensagemEntrada,
   qrTokenPlausivel,
   rotuloResultadoEntrada,
   uuidValido
@@ -92,4 +95,66 @@ test('rotuloResultadoEntrada marca sucesso apenas para LIBERADO', () => {
   assert.equal(rotuloResultadoEntrada('EVENTO_INCORRETO').sucesso, false)
   assert.equal(rotuloResultadoEntrada('CANCELADO').sucesso, false)
   assert.equal(rotuloResultadoEntrada('INVALIDO').sucesso, false)
+})
+
+// --- motivo real da RPC na descricao -----------------------------------------
+
+test('INVALIDO + EVENTO_NAO_INICIADO usa a mensagem real normalizada', () => {
+  assert.equal(
+    descricaoResultadoEntrada('INVALIDO', 'Evento ainda nao iniciado'),
+    'Evento ainda não iniciado.'
+  )
+  assert.equal(rotuloResultadoEntrada('INVALIDO').titulo, 'Ingresso inválido')
+})
+
+test('INVALIDO + evento realizado usa a mensagem real', () => {
+  assert.equal(
+    descricaoResultadoEntrada('INVALIDO', 'Evento ja realizado'),
+    'Evento já realizado.'
+  )
+})
+
+test('INVALIDO sem mensagem cai no texto generico', () => {
+  assert.equal(
+    descricaoResultadoEntrada('INVALIDO', null),
+    'Este ingresso não pode ser utilizado.'
+  )
+  assert.equal(
+    descricaoResultadoEntrada('INVALIDO'),
+    'Este ingresso não pode ser utilizado.'
+  )
+})
+
+test('JA_UTILIZADO usa mensagem real quando disponivel', () => {
+  assert.equal(
+    descricaoResultadoEntrada('JA_UTILIZADO', 'Ingresso ja utilizado'),
+    'Ingresso já utilizado.'
+  )
+})
+
+test('CANCELADO usa mensagem real quando disponivel', () => {
+  assert.equal(
+    descricaoResultadoEntrada('CANCELADO', 'Ingresso cancelado'),
+    'Ingresso cancelado.'
+  )
+})
+
+test('LIBERADO mantem descricao de sucesso (ignora mensagem crua)', () => {
+  assert.equal(descricaoResultadoEntrada('LIBERADO', 'Entrada liberada'), 'Entrada registrada com sucesso.')
+})
+
+test('mensagem tecnica/ID nunca é exibida (fallback generico)', () => {
+  assert.equal(mensagemDominioSegura('erro 0ba5ced9-ce32-4935-b44a-577acfe160fe'), false)
+  assert.equal(mensagemDominioSegura('SQLSTATE 42501 exception'), false)
+  assert.equal(mensagemDominioSegura('ok'), true)
+  assert.equal(
+    descricaoResultadoEntrada('INVALIDO', 'erro 0ba5ced9-ce32-4935-b44a-577acfe160fe'),
+    'Este ingresso não pode ser utilizado.'
+  )
+})
+
+test('normalizarMensagemEntrada cobre conhecidas e adiciona ponto', () => {
+  assert.equal(normalizarMensagemEntrada('Ingresso ja utilizado'), 'Ingresso já utilizado.')
+  assert.equal(normalizarMensagemEntrada('Mensagem nova sem ponto'), 'Mensagem nova sem ponto.')
+  assert.equal(normalizarMensagemEntrada('Ja com ponto.'), 'Ja com ponto.')
 })

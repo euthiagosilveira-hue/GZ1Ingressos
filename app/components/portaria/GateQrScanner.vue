@@ -12,7 +12,7 @@ import BaseCard from '~/components/BaseCard.vue'
 import { useGateScanner } from '~/composables/useGateScanner'
 import type { GateScanErroCode } from '~/types/gate'
 import { formatDataHoraCompleta } from '~/utils/format'
-import { rotuloResultadoEntrada, uuidValido } from '~/utils/gate'
+import { descricaoResultadoEntrada, rotuloResultadoEntrada, uuidValido } from '~/utils/gate'
 
 const props = defineProps<{
   eventoId: string
@@ -54,6 +54,12 @@ const rotulo = computed(() =>
   resultado.value ? rotuloResultadoEntrada(resultado.value.resultado) : null
 )
 
+const descricaoResultado = computed(() =>
+  resultado.value
+    ? descricaoResultadoEntrada(resultado.value.resultado, resultado.value.mensagem)
+    : ''
+)
+
 const cameraFallback = computed(() =>
   ['NEGADA', 'INDISPONIVEL', 'SEM_SUPORTE', 'ERRO'].includes(cameraStatus.value)
 )
@@ -90,7 +96,7 @@ function lerProximo() {
             {{ rotulo ? rotulo.titulo : 'Não foi possível validar' }}
           </p>
           <p class="text-sm text-zinc-400">
-            {{ erro ? MENSAGENS_ERRO[erro] : rotulo?.descricao }}
+            {{ erro ? MENSAGENS_ERRO[erro] : descricaoResultado }}
           </p>
         </div>
       </div>

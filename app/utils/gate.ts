@@ -93,3 +93,56 @@ export function rotuloResultadoEntrada(resultado: GateRpcResultado): ResultadoEn
   }
   return mapa[resultado]
 }
+
+/** Mensagens de dominio conhecidas (a RPC retorna texto sem acento historico). */
+const MENSAGENS_CONHECIDAS: Record<string, string> = {
+  'evento ainda nao iniciado': 'Evento ainda não iniciado.',
+  'evento ja realizado': 'Evento já realizado.',
+  'evento cancelado': 'Evento cancelado.',
+  'ingresso nao esta valido': 'Ingresso não está válido.',
+  'ingresso ainda nao pago': 'Ingresso ainda não pago.',
+  'ingresso cancelado': 'Ingresso cancelado.',
+  'ingresso expirado': 'Ingresso expirado.',
+  'ingresso ja utilizado': 'Ingresso já utilizado.',
+  'ingresso nao encontrado': 'Ingresso não encontrado.',
+  'ingresso pertence a outro evento': 'Ingresso pertence a outro evento.',
+  'entrada liberada': 'Entrada liberada.',
+  'qr nao informado': 'QR Code não informado.',
+  'qr nao encontrado': 'QR Code não encontrado.'
+}
+
+/**
+ * Só aceita mensagem de dominio segura da RPC.
+ * Nunca exibe stack/SQLSTATE/exception/ids/qr_token.
+ */
+export function mensagemDominioSegura(mensagem?: string | null): boolean {
+  if (typeof mensagem !== 'string') return false
+  const m = mensagem.trim()
+  if (m.length === 0 || m.length > 120) return false
+  if (/[\u0000-\u001f]/.test(m)) return false
+  if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}/i.test(m)) return false
+  if (/sqlstate|exception|duplicate|constraint|violat|select |insert |update /i.test(m)) return false
+  return true
+}
+
+/** Normaliza acentuacao/pontuacao das mensagens conhecidas. */
+export function normalizarMensagemEntrada(mensagem: string): string {
+  const chave = mensagem.trim().toLowerCase().replace(/\s+/g, ' ')
+  if (MENSAGENS_CONHECIDAS[chave]) return MENSAGENS_CONHECIDAS[chave]
+  const base = mensagem.trim()
+  return /[.!?]$/.test(base) ? base : `${base}.`
+}
+
+/**
+ * Descricao exibida: preserva o titulo por resultado e usa a mensagem real da
+ * RPC quando for segura; caso contrario, cai no texto generico atual.
+ */
+export function descricaoResultadoEntrada(
+  resultado: GateRpcResultado,
+  mensagem?: string | null
+): string {
+  const rotulo = rotuloResultadoEntrada(resultado)
+  if (resultado === 'LIBERADO') return rotulo.descricao
+  if (mensagemDominioSegura(mensagem)) return normalizarMensagemEntrada(mensagem as string)
+  return rotulo.descricao
+}
