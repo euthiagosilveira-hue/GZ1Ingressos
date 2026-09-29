@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import type { Component } from 'vue'
 import {
   ArrowRightOnRectangleIcon,
@@ -18,6 +18,7 @@ import {
 import { useRoute } from '#imports'
 
 import SidebarItem from '~/components/SidebarItem.vue'
+import { useOperatorAuth } from '~/composables/useOperatorAuth'
 
 const props = withDefaults(
   defineProps<{
@@ -39,6 +40,19 @@ interface NavItem {
 }
 
 const route = useRoute()
+
+const { user, operador, carregarOperador, logout } = useOperatorAuth()
+
+onMounted(() => {
+  if (user.value && !operador.value) {
+    void carregarOperador()
+  }
+})
+
+async function sair() {
+  await logout()
+  await navigateTo('/login')
+}
 
 const activeLabel = computed(() => {
   const meta = route.meta.sidebarActive
@@ -93,6 +107,24 @@ const raizClasses = computed(() =>
         @click="emit('navigate')"
       />
     </nav>
+
+    <div v-if="operador" class="mt-5 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+      <p class="truncate text-sm font-semibold text-white">{{ operador.nome }}</p>
+      <p class="truncate text-xs text-zinc-500">{{ operador.email }}</p>
+      <span
+        class="mt-2 inline-flex items-center rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300"
+      >
+        {{ operador.perfil }}
+      </span>
+      <button
+        type="button"
+        class="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition-colors duration-150 hover:border-zinc-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+        @click="sair"
+      >
+        <ArrowRightOnRectangleIcon class="h-4 w-4" />
+        Sair
+      </button>
+    </div>
 
     <div class="mt-5 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
       <div class="flex items-center gap-2.5 text-amber-400">

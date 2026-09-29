@@ -12,7 +12,7 @@ import BaseCard from '~/components/BaseCard.vue'
 import { useGateScanner } from '~/composables/useGateScanner'
 import type { GateScanErroCode } from '~/types/gate'
 import { formatDataHoraCompleta } from '~/utils/format'
-import { rotuloResultadoEntrada } from '~/utils/gate'
+import { rotuloResultadoEntrada, uuidValido } from '~/utils/gate'
 
 const props = defineProps<{
   eventoId: string
@@ -33,6 +33,7 @@ const {
 
 const cameraAtiva = computed(() => cameraStatus.value === 'ATIVA')
 const mostraResultado = computed(() => Boolean(resultado.value) || Boolean(erro.value))
+const temEvento = computed(() => uuidValido(props.eventoId))
 
 const MENSAGENS_CAMERA: Record<string, string> = {
   SOLICITANDO: 'Solicitando acesso à câmera...',
@@ -113,6 +114,15 @@ function lerProximo() {
       </dl>
 
       <AppButton variant="primary" size="lg" block @click="lerProximo">Ler próximo</AppButton>
+    </div>
+
+    <!-- Sem evento selecionado: scanner bloqueado -->
+    <div
+      v-else-if="!temEvento"
+      class="rounded-2xl border border-dashed border-zinc-700 bg-zinc-950 p-6 text-center"
+    >
+      <CameraIcon class="mx-auto h-12 w-12 text-zinc-700" />
+      <p class="mt-3 text-sm text-zinc-400">Selecione um evento para iniciar a leitura.</p>
     </div>
 
     <!-- Camera -->

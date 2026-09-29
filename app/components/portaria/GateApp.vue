@@ -68,6 +68,11 @@ const {
         </template>
 
         <template v-else>
+          <p
+            class="rounded-xl border border-dashed border-zinc-700 bg-zinc-950 p-3 text-center text-xs text-zinc-500"
+          >
+            Busca por nome em simulação — integração real pendente.
+          </p>
           <GateNameSearch :model-value="busca" @update:model-value="atualizarBusca" />
           <GateSearchResults
             :resultados="resultadosBusca"

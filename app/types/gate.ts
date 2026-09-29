@@ -30,3 +30,12 @@ export type GateCameraStatus =
   | 'INDISPONIVEL'
   | 'SEM_SUPORTE'
   | 'ERRO'
+
+/** Evento operacional listado para a portaria (public.listar_eventos_portaria). */
+export interface EventoPortaria {
+  eventoId: string
+  nome: string
+  inicioEm: string
+  local: string
+  status: string
+}
