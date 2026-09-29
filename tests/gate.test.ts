@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {
   LeituraLock,
   descricaoResultadoEntrada,
+  ingressoRegistravel,
   mapearResultadoEntradaRpc,
   mascararToken,
   mensagemDominioSegura,
@@ -166,4 +167,12 @@ test('nomeBuscaValido exige nome com pelo menos 2 caracteres', () => {
   assert.equal(nomeBuscaValido('a'), false)
   assert.equal(nomeBuscaValido('ab'), true)
   assert.equal(nomeBuscaValido('  João Silva  '), true)
+})
+
+test('ingressoRegistravel: somente VALIDO e registravel (UTILIZADO visivel mas nao registra)', () => {
+  assert.equal(ingressoRegistravel('VALIDO'), true)
+  assert.equal(ingressoRegistravel('UTILIZADO'), false)
+  assert.equal(ingressoRegistravel('CANCELADO'), false)
+  assert.equal(ingressoRegistravel('EXPIRADO'), false)
+  assert.equal(ingressoRegistravel('RESERVADO'), false)
 })

@@ -10,9 +10,9 @@ import {
 import AppButton from '~/components/AppButton.vue'
 import BaseCard from '~/components/BaseCard.vue'
 import { useGateNameSearch } from '~/composables/useGateNameSearch'
-import type { GateScanErroCode, IngressoBuscaNome } from '~/types/gate'
+import type { GateScanErroCode } from '~/types/gate'
 import { formatDataHoraCompleta } from '~/utils/format'
-import { descricaoResultadoEntrada, rotuloResultadoEntrada, uuidValido } from '~/utils/gate'
+import { descricaoResultadoEntrada, ingressoRegistravel, rotuloResultadoEntrada, uuidValido } from '~/utils/gate'
 
 const props = defineProps<{
   eventoId: string
@@ -61,10 +61,6 @@ const ROTULOS_STATUS: Record<string, string> = {
 
 function rotuloStatus(status: string): string {
   return ROTULOS_STATUS[status] ?? status
-}
-
-function elegivel(ingresso: IngressoBuscaNome): boolean {
-  return ingresso.status === 'VALIDO'
 }
 </script>
 
@@ -176,7 +172,7 @@ function elegivel(ingresso: IngressoBuscaNome): boolean {
               </span>
             </div>
             <AppButton
-              v-if="elegivel(ingresso)"
+              v-if="ingressoRegistravel(ingresso.status)"
               variant="primary"
               :disabled="registrando"
               @click="registrar(ingresso)"
@@ -184,6 +180,14 @@ function elegivel(ingresso: IngressoBuscaNome): boolean {
               <TicketIcon class="h-4 w-4" />
               Registrar
             </AppButton>
+            <div v-else class="shrink-0 text-right">
+              <span class="inline-flex items-center rounded-full border border-zinc-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                {{ ingresso.status === 'UTILIZADO' ? 'Já utilizado' : rotuloStatus(ingresso.status) }}
+              </span>
+              <p v-if="ingresso.utilizadoEm" class="mt-1 text-[11px] text-zinc-500">
+                {{ formatDataHoraCompleta(ingresso.utilizadoEm) }}
+              </p>
+            </div>
           </div>
         </li>
       </ul>

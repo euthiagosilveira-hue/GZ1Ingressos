@@ -17,6 +17,7 @@ declare
   v_ped1 uuid;
   v_i1 uuid;
   v_i2 uuid;
+  v_outro uuid;
   v_e2_ing uuid;
   v_lista jsonb;
   v_res jsonb;
@@ -51,6 +52,7 @@ begin
 
   select id into v_i1 from public.ingressos where pedido_id = v_ped1 and participante_nome = 'Teste Busca Nome E2E' order by codigo limit 1;
   select id into v_i2 from public.ingressos where pedido_id = v_ped1 and participante_nome = 'Teste Busca Nome E2E' order by codigo offset 1 limit 1;
+  select id into v_outro from public.ingressos where pedido_id = v_ped1 and participante_nome = 'Outro Nome';
 
   -- E2: 1 ingresso com o MESMO nome ------------------------------------------
   v_r2 := public.criar_reserva(v_e2, 'Comprador B2', '11999990001', null, array['Teste Busca Nome E2E']);
@@ -111,6 +113,33 @@ begin
   select count(*) into v_entradas from public.entradas where ingresso_id = v_i1 and anulada_em is null;
   if v_entradas <> 1 then
     raise exception 'G: esperado 1 entrada ativa, encontrado %', v_entradas;
+  end if;
+
+  -- C) UTILIZADO retorna utilizado_em preenchido -----------------------------
+  if not exists (
+    select 1 from jsonb_array_elements(v_lista) e
+     where (e->>'ingresso_id')::uuid = v_i1
+       and (e->>'status') = 'UTILIZADO'
+       and (e->>'utilizado_em') is not null
+  ) then
+    raise exception 'C: UTILIZADO deveria retornar utilizado_em';
+  end if;
+
+  -- T) match tolerante: outra ordem de palavras / sem acento ainda encontra
+  v_lista := public.buscar_ingressos_por_nome(v_e1, 'E2E Nome Busca Teste');
+  if jsonb_array_length(v_lista) <> 2 then
+    raise exception 'T: match tolerante (ordem) deveria retornar 2, obtido %', jsonb_array_length(v_lista);
+  end if;
+  v_lista := public.buscar_ingressos_por_nome(v_e1, 'nome busca');
+  if jsonb_array_length(v_lista) <> 2 then
+    raise exception 'T: match tolerante (parcial) deveria retornar 2, obtido %', jsonb_array_length(v_lista);
+  end if;
+
+  -- F) CANCELADO continua aparecendo (sem filtro de status), com o status real
+  update public.ingressos set status = 'CANCELADO' where id = v_e2_ing; -- nao afeta E1
+  v_lista := public.buscar_ingressos_por_nome(v_e1, 'Outro Nome');
+  if not exists (select 1 from jsonb_array_elements(v_lista) e where (e->>'ingresso_id')::uuid = v_outro) then
+    raise exception 'F: ingresso do evento deveria aparecer na busca';
   end if;
 
   -- I) sem operador => negado -------------------------------------------------

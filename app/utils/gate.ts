@@ -20,6 +20,11 @@ export function nomeBuscaValido(nome: string): boolean {
   return typeof nome === 'string' && nome.trim().length >= 2
 }
 
+/** Somente ingresso VALIDO pode ser registrado (decisao final e da RPC). */
+export function ingressoRegistravel(status: string): boolean {
+  return status === 'VALIDO'
+}
+
 /** Mascara o token para exibicao/log (nunca expor cru). */
 export function mascararToken(valor: string): string {
   if (!valor) return ''
