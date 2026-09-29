@@ -11,6 +11,7 @@ const props = defineProps<{
     <QrcodeVue
       :value="props.value"
       :size="240"
+      :margin="4"
       level="M"
       render-as="svg"
       class="mx-auto block h-auto w-full"
