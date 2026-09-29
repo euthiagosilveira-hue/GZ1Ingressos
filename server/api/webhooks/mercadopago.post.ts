@@ -1,3 +1,5 @@
+import { serverSupabaseServiceRole } from '#supabase/server'
+
 import { ehUuid } from '../../services/payments/payment-service'
 import { MercadoPagoProvider } from '../../services/payments/mercado-pago/mercado-pago-provider'
 import { validarAssinaturaMp } from '../../services/payments/mercado-pago/mercado-pago-signature'

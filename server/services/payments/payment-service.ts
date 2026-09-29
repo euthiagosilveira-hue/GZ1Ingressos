@@ -1,5 +1,7 @@
 import type { H3Event } from 'h3'
 
+import { serverSupabaseServiceRole } from '#supabase/server'
+
 import type { Gz1PaymentStatus, PixCharge } from './payment-provider'
 import { MercadoPagoProvider } from './mercado-pago/mercado-pago-provider'
 
