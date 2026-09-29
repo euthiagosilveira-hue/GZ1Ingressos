@@ -10,9 +10,21 @@ import { decidirAcessoOperador, resolverUid } from '~/utils/auth'
 export default defineNuxtRouteMiddleware(async (to) => {
   const user = useSupabaseUser()
   const session = useSupabaseSession()
+  const supabase = useSupabaseClient()
 
-  // uid vem da sessao/user real (nao depende do ref reativo estar hidratado).
-  const uid = resolverUid(user.value?.id, session.value?.user?.id)
+  // No servidor a sessao vem dos cookies SSR; no cliente pode ainda estar
+  // restaurando durante a hidratacao (refresh) — por isso o fallback abaixo.
+  let uid = resolverUid(user.value?.id, session.value?.user?.id)
+
+  if (!uid && import.meta.client) {
+    try {
+      const { data } = await supabase.auth.getSession()
+      uid = data.session?.user?.id ?? null
+    } catch {
+      uid = null
+    }
+  }
+
   if (!uid) {
     return navigateTo(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
   }
@@ -37,7 +49,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
   })
 
   if (decisao !== 'PERMITIR') {
-    const supabase = useSupabaseClient()
     await supabase.auth.signOut()
     return navigateTo('/login?erro=SEM_PERMISSAO')
   }

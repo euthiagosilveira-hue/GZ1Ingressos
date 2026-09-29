@@ -8,8 +8,21 @@ import { resolverUid } from '~/utils/auth'
 export default defineNuxtRouteMiddleware(async (to) => {
   const user = useSupabaseUser()
   const session = useSupabaseSession()
+  const supabase = useSupabaseClient()
 
-  const uid = resolverUid(user.value?.id, session.value?.user?.id)
+  // Sessao pode ainda estar restaurando na hidratacao (refresh): usa a fonte
+  // autoritativa do client quando os refs reativos ainda estiverem vazios.
+  let uid = resolverUid(user.value?.id, session.value?.user?.id)
+
+  if (!uid && import.meta.client) {
+    try {
+      const { data } = await supabase.auth.getSession()
+      uid = data.session?.user?.id ?? null
+    } catch {
+      uid = null
+    }
+  }
+
   if (!uid) {
     return navigateTo(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
   }
@@ -26,7 +39,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   if (!perfil || !perfil.ativo || perfil.perfil !== 'ADMINISTRADOR') {
-    const supabase = useSupabaseClient()
     await supabase.auth.signOut()
     return navigateTo('/login?erro=SEM_PERMISSAO')
   }
