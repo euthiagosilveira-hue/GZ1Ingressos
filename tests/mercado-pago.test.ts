@@ -4,6 +4,8 @@ import { createHmac } from 'node:crypto'
 
 import {
   deveAutoAprovarPixTeste,
+  deveConfirmarPagamento,
+  deveIgnorarFalhaConfirmacao,
   mapMpOrderToCharge,
   mapMpStatus,
   montarPayloadOrderPix
@@ -111,4 +113,35 @@ test('C) credencial de producao/nunca-teste nunca auto-aprova', () => {
   // e o payload so recebe APRO quando o resultado composto e verdadeiro
   const autoAprovar = deveAutoAprovarPixTeste(true, false)
   assert.equal(montarPayloadOrderPix(inputPix(autoAprovar)).payer.first_name, undefined)
+})
+
+test('A) provider nao-APROVADO nao chama confirmar_pagamento', () => {
+  assert.equal(deveConfirmarPagamento('PENDENTE', 'PENDENTE'), false)
+  assert.equal(deveConfirmarPagamento('EXPIRADO', 'PENDENTE'), false)
+  assert.equal(deveConfirmarPagamento('REJEITADO', null), false)
+  assert.equal(deveConfirmarPagamento('CANCELADO', 'PENDENTE'), false)
+})
+
+test('B) provider APROVADO + interno PENDENTE chama confirmar_pagamento', () => {
+  assert.equal(deveConfirmarPagamento('APROVADO', 'PENDENTE'), true)
+  assert.equal(deveConfirmarPagamento('APROVADO', null), true)
+  assert.equal(deveConfirmarPagamento('APROVADO', undefined), true)
+})
+
+test('C) provider APROVADO + interno ja APROVADO e idempotente', () => {
+  assert.equal(deveConfirmarPagamento('APROVADO', 'APROVADO'), false)
+})
+
+test('D) webhook e status concorrentes nao duplicam', () => {
+  // 1a decisao confirma; apos confirmar o interno vira APROVADO e a 2a nao confirma.
+  assert.equal(deveConfirmarPagamento('APROVADO', 'PENDENTE'), true)
+  assert.equal(deveConfirmarPagamento('APROVADO', 'APROVADO'), false)
+  // falha por corrida: se o interno ja esta APROVADO, ignora a falha
+  assert.equal(deveIgnorarFalhaConfirmacao('APROVADO'), true)
+})
+
+test('E) falha na RPC de confirmacao vira erro controlado se nao aprovado', () => {
+  assert.equal(deveIgnorarFalhaConfirmacao('PENDENTE'), false)
+  assert.equal(deveIgnorarFalhaConfirmacao(null), false)
+  assert.equal(deveIgnorarFalhaConfirmacao(undefined), false)
 })

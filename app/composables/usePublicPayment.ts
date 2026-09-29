@@ -129,6 +129,7 @@ export function usePublicPayment() {
     } finally {
       carregando.value = false
       iniciarTimer()
+      void sincronizarStatus()
       void carregarPix()
     }
   }
@@ -157,6 +158,7 @@ export function usePublicPayment() {
     } finally {
       carregando.value = false
       iniciarTimer()
+      void sincronizarStatus()
       void carregarPix()
     }
   }
@@ -180,6 +182,26 @@ export function usePublicPayment() {
       }
     } catch {
       // silencioso: a UI mostra o estado pendente/placeholder
+    }
+  }
+
+  /**
+   * Caminho de recuperacao: consulta o status no backend (que confere a Order
+   * oficial e confirma se aprovada) e, se mudou, re-le o checkout.
+   */
+  async function sincronizarStatus() {
+    if (!token.value) return
+    try {
+      const resposta = await $fetch<{ status?: string; error?: string }>('/api/payments/status', {
+        query: { token: token.value }
+      })
+      const status = resposta?.status
+      if (status && status !== checkout.value?.pagamento?.status) {
+        const atualizado = await buscar()
+        if (atualizado) checkout.value = atualizado
+      }
+    } catch {
+      // silencioso: a tela segue com o ultimo estado conhecido
     }
   }
 

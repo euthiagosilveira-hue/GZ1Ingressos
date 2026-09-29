@@ -22,6 +22,25 @@ export function deveAutoAprovarPixTeste(
   return autoApproveHabilitado === true && credencialDeTeste === true
 }
 
+/**
+ * Caminho de recuperacao: confirma apenas se a Order oficial esta aprovada
+ * e o pagamento interno ainda nao esta APROVADO (idempotente).
+ */
+export function deveConfirmarPagamento(
+  chargeStatus: Gz1PaymentStatus,
+  pagamentoStatus?: string | null
+): boolean {
+  return chargeStatus === 'APROVADO' && pagamentoStatus !== 'APROVADO'
+}
+
+/**
+ * Condicao de corrida: se apos a falha o pagamento interno ja esta APROVADO
+ * (ex.: webhook concorrente confirmou), tratamos como sucesso.
+ */
+export function deveIgnorarFalhaConfirmacao(pagamentoStatus?: string | null): boolean {
+  return pagamentoStatus === 'APROVADO'
+}
+
 /** Monta o payload da Order Pix (Orders API). */
 export function montarPayloadOrderPix(input: CreatePixChargeInput): MpCreateOrderRequest {
   const amount = formatarValor(input.amount)

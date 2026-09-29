@@ -5,7 +5,7 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 import type { Gz1PaymentStatus, PixCharge } from './payment-provider'
 import { verificarCredencialDeTeste } from './mercado-pago/mercado-pago-client'
 import { MercadoPagoProvider } from './mercado-pago/mercado-pago-provider'
-import { deveAutoAprovarPixTeste } from './mercado-pago/mercado-pago-mapper'
+import { deveAutoAprovarPixTeste, deveConfirmarPagamento, deveIgnorarFalhaConfirmacao } from './mercado-pago/mercado-pago-mapper'
 
 export type PaymentServiceErrorCode =
   | 'PAGAMENTO_INDISPONIVEL'
@@ -189,6 +189,37 @@ export async function criarPix(
   }
 }
 
+/**
+ * Caminho de recuperacao: quando a Order oficial ja esta APROVADA mas o
+ * pagamento interno ainda nao, confirma pelo service_role (idempotente).
+ * Seguro sob concorrencia com o webhook: se a RPC falhar mas o pagamento ja
+ * estiver APROVADO, tratamos como sucesso; caso contrario, erro controlado.
+ * Usado pelo GET /api/payments/status (abrir/atualizar a tela de pagamento).
+ */
+async function confirmarPagamentoOficial(
+  event: H3Event,
+  checkoutToken: string,
+  checkout: CheckoutBackend,
+  charge: PixCharge
+): Promise<boolean> {
+  if (!deveConfirmarPagamento(charge.status, checkout.pagamento_status)) return false
+
+  const client = serverSupabaseServiceRole(event)
+  const { error } = await client.rpc('confirmar_pagamento', {
+    p_pagamento_id: checkout.pagamento_id,
+    p_transaction_id: charge.transactionId,
+    p_referencia_externa: charge.externalReference || (checkout.pagamento_id as string)
+  })
+
+  if (error) {
+    const atual = await obterCheckoutBackend(event, checkoutToken)
+    if (deveIgnorarFalhaConfirmacao(atual?.pagamento_status)) return true
+    throw new PaymentServiceError('ERRO_INESPERADO', 'Não foi possível confirmar o pagamento.', 500)
+  }
+
+  return true
+}
+
 export async function consultarStatus(
   event: H3Event,
   checkoutToken: string,
@@ -202,6 +233,13 @@ export async function consultarStatus(
   if (checkout.cobranca_id && accessToken) {
     const provider = new MercadoPagoProvider(accessToken)
     const charge = await provider.getCharge(checkout.cobranca_id)
+    const confirmou = await confirmarPagamentoOficial(event, checkoutToken, checkout, charge)
+
+    if (confirmou) {
+      const atualizado = await obterCheckoutBackend(event, checkoutToken)
+      if (atualizado?.pagamento_status === 'APROVADO') return { status: 'APROVADO' }
+    }
+
     return { status: charge.status }
   }
 
