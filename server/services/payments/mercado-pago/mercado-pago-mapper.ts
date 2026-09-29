@@ -1,5 +1,50 @@
-import type { Gz1PaymentStatus, PixCharge } from '../payment-provider'
-import type { MpOrder, MpTransactionPayment } from './mercado-pago-types'
+import type { CreatePixChargeInput, Gz1PaymentStatus, PixCharge } from '../payment-provider'
+import type { MpCreateOrderRequest, MpOrder, MpTransactionPayment } from './mercado-pago-types'
+
+const MINUTOS_MINIMOS = 30
+
+function formatarValor(valor: number): string {
+  return valor.toFixed(2)
+}
+
+function duracaoIso(minutos: number): string {
+  return `PT${Math.max(MINUTOS_MINIMOS, Math.ceil(minutos))}M`
+}
+
+/**
+ * Fail-safe: so auto-aprova quando a flag de teste esta ligada E a credencial
+ * foi confirmada como de teste. Qualquer duvida => false.
+ */
+export function deveAutoAprovarPixTeste(
+  autoApproveHabilitado: boolean,
+  credencialDeTeste: boolean
+): boolean {
+  return autoApproveHabilitado === true && credencialDeTeste === true
+}
+
+/** Monta o payload da Order Pix (Orders API). */
+export function montarPayloadOrderPix(input: CreatePixChargeInput): MpCreateOrderRequest {
+  const amount = formatarValor(input.amount)
+  const payer: { email: string; first_name?: string } = { email: input.payerEmail }
+  if (input.autoApproveTestPix) payer.first_name = 'APRO'
+
+  return {
+    type: 'online',
+    total_amount: amount,
+    external_reference: input.externalReference,
+    processing_mode: 'automatic',
+    transactions: {
+      payments: [
+        {
+          amount,
+          payment_method: { id: 'pix', type: 'bank_transfer' },
+          expiration_time: duracaoIso(input.expirationMinutes)
+        }
+      ]
+    },
+    payer
+  }
+}
 
 /**
  * Mapeia status/status_detail do Mercado Pago para o status interno GZ1.

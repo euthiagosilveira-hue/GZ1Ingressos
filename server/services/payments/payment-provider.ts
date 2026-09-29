@@ -29,6 +29,12 @@ export interface CreatePixChargeInput {
   expirationMinutes: number
   /** Chave estavel por pagamento logico. */
   idempotencyKey: string
+  /**
+   * Somente em ambiente de teste e com credencial de teste confirmada.
+   * Quando true, aplica o mecanismo oficial de auto-aprovacao (first_name=APRO).
+   * Nunca deve ser true em producao.
+   */
+  autoApproveTestPix?: boolean
 }
 
 export interface PaymentProvider {

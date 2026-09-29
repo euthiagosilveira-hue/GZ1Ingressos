@@ -3,7 +3,9 @@ import type { H3Event } from 'h3'
 import { serverSupabaseServiceRole } from '#supabase/server'
 
 import type { Gz1PaymentStatus, PixCharge } from './payment-provider'
+import { verificarCredencialDeTeste } from './mercado-pago/mercado-pago-client'
 import { MercadoPagoProvider } from './mercado-pago/mercado-pago-provider'
+import { deveAutoAprovarPixTeste } from './mercado-pago/mercado-pago-mapper'
 
 export type PaymentServiceErrorCode =
   | 'PAGAMENTO_INDISPONIVEL'
@@ -110,7 +112,8 @@ function minutosAte(iso: string): number {
 export async function criarPix(
   event: H3Event,
   checkoutToken: string,
-  accessToken: string
+  accessToken: string,
+  autoApproveTestEnabled = false
 ): Promise<PixResponse> {
   let checkout = await obterCheckoutBackend(event, checkoutToken)
   if (!checkout) {
@@ -152,12 +155,16 @@ export async function criarPix(
   }
 
   const provider = new MercadoPagoProvider(accessToken)
+  const credencialDeTeste = autoApproveTestEnabled
+    ? await verificarCredencialDeTeste(accessToken)
+    : false
   const charge: PixCharge = await provider.createPixCharge({
     amount: Number(checkout.valor_total),
     externalReference: checkout.pagamento_id as string,
     payerEmail: email,
     expirationMinutes: minutosAte(checkout.reserva_expira_em),
-    idempotencyKey: checkout.pagamento_id as string
+    idempotencyKey: checkout.pagamento_id as string,
+    autoApproveTestPix: deveAutoAprovarPixTeste(autoApproveTestEnabled, credencialDeTeste)
   })
 
   const client = serverSupabaseServiceRole(event)

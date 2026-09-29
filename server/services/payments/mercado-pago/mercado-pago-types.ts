@@ -41,5 +41,5 @@ export interface MpCreateOrderRequest {
       expiration_time: string
     }>
   }
-  payer: { email: string }
+  payer: { email: string; first_name?: string }
 }

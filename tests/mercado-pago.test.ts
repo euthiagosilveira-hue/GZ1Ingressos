@@ -3,8 +3,10 @@ import assert from 'node:assert/strict'
 import { createHmac } from 'node:crypto'
 
 import {
+  deveAutoAprovarPixTeste,
   mapMpOrderToCharge,
-  mapMpStatus
+  mapMpStatus,
+  montarPayloadOrderPix
 } from '../server/services/payments/mercado-pago/mercado-pago-mapper.ts'
 import {
   montarManifest,
@@ -74,4 +76,39 @@ test('validarAssinaturaMp aceita assinatura correta e rejeita invalida', () => {
   assert.equal(validarAssinaturaMp({ xSignature: header, xRequestId, dataId }, 'outro-segredo'), false)
   assert.equal(validarAssinaturaMp({ xSignature: 'ts=1,v1=deadbeef', xRequestId, dataId }, secret), false)
   assert.equal(validarAssinaturaMp({ xSignature: header, xRequestId, dataId }, ''), false)
+})
+
+function inputPix(autoApproveTestPix?: boolean) {
+  return {
+    amount: 40,
+    externalReference: 'pay-1',
+    payerEmail: 'test_user_br@testuser.com',
+    expirationMinutes: 30,
+    idempotencyKey: 'pay-1',
+    autoApproveTestPix
+  }
+}
+
+test('A) autoApproveTestPix=false/undefined nao envia first_name APRO', () => {
+  assert.equal(montarPayloadOrderPix(inputPix(false)).payer.first_name, undefined)
+  assert.equal(montarPayloadOrderPix(inputPix()).payer.first_name, undefined)
+  assert.equal(montarPayloadOrderPix(inputPix(false)).payer.email, 'test_user_br@testuser.com')
+})
+
+test('B) autoApproveTestPix=true envia first_name=APRO', () => {
+  const payload = montarPayloadOrderPix(inputPix(true))
+  assert.equal(payload.payer.first_name, 'APRO')
+  assert.equal(payload.payer.email, 'test_user_br@testuser.com')
+  assert.equal(payload.total_amount, '40.00')
+})
+
+test('C) credencial de producao/nunca-teste nunca auto-aprova', () => {
+  // credencial nao confirmada como teste => false mesmo com a flag ligada
+  assert.equal(deveAutoAprovarPixTeste(true, false), false)
+  assert.equal(deveAutoAprovarPixTeste(false, true), false)
+  assert.equal(deveAutoAprovarPixTeste(false, false), false)
+  assert.equal(deveAutoAprovarPixTeste(true, true), true)
+  // e o payload so recebe APRO quando o resultado composto e verdadeiro
+  const autoAprovar = deveAutoAprovarPixTeste(true, false)
+  assert.equal(montarPayloadOrderPix(inputPix(autoAprovar)).payer.first_name, undefined)
 })

@@ -6,7 +6,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Somente backend. Nunca expor em public.
     mercadoPagoAccessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '',
-    mercadoPagoWebhookSecret: process.env.MERCADO_PAGO_WEBHOOK_SECRET || ''
+    mercadoPagoWebhookSecret: process.env.MERCADO_PAGO_WEBHOOK_SECRET || '',
+    // Somente testes: auto-aprovacao Pix (first_name=APRO). Default false.
+    mercadoPagoTestAutoApprovePix: process.env.MERCADO_PAGO_TEST_AUTO_APPROVE_PIX || 'false'
   },
   supabase: {
     // Sem tela /login ainda: não redirecionar usuários não autenticados.

@@ -25,7 +25,9 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    return await criarPix(event, checkoutToken, accessToken)
+    const autoApproveTestEnabled =
+      String(config.mercadoPagoTestAutoApprovePix ?? 'false') === 'true'
+    return await criarPix(event, checkoutToken, accessToken, autoApproveTestEnabled)
   } catch (erro) {
     if (erro instanceof PaymentServiceError) {
       setResponseStatus(event, erro.status)
