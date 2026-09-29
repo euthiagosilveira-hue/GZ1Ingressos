@@ -9,14 +9,9 @@ import OrderPagination from '~/components/pedidos/OrderPagination.vue'
 import OrderSummary from '~/components/pedidos/OrderSummary.vue'
 import OrderTable from '~/components/pedidos/OrderTable.vue'
 import PageHeader from '~/components/PageHeader.vue'
-import { useOrderList } from '~/composables/useOrderList'
-import { eventosMock } from '~/data/eventos'
+import { useAdminOrders } from '~/composables/useAdminOrders'
 import type { SelectOption } from '~/types/ui'
-import type { OrderFiltersState, OrderListItem, OrderSort } from '~/types/pedido'
-
-const props = defineProps<{
-  pedidos: OrderListItem[]
-}>()
+import type { OrderFiltersState, OrderSort } from '~/types/pedido'
 
 const {
   filtros,
@@ -28,13 +23,9 @@ const {
   resumo,
   temFiltros,
   limparFiltros,
-  irPara
-} = useOrderList(props.pedidos, 10)
-
-const eventoOptions = computed<SelectOption[]>(() => [
-  { value: 'TODOS', label: 'Todos os eventos' },
-  ...eventosMock.map((evento) => ({ value: evento.id, label: evento.nome }))
-])
+  irPara,
+  eventoOptions
+} = useAdminOrders(10)
 
 const sortOptions: SelectOption[] = [
   { value: 'RECENTES', label: 'Mais recentes' },
