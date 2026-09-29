@@ -6,6 +6,8 @@ import type { CheckoutPublico } from '~/types/checkoutPagamento'
 
 const props = defineProps<{
   checkout: CheckoutPublico
+  slug: string
+  checkoutToken: string | null
 }>()
 </script>
 
@@ -19,18 +21,29 @@ const props = defineProps<{
       </span>
       <div>
         <p class="text-lg font-bold uppercase tracking-wide text-green-300">Pagamento confirmado</p>
-        <p class="text-sm text-zinc-400">Seu pedido está pago.</p>
+        <p class="text-sm text-zinc-400">
+          Seu pedido foi confirmado e seus ingressos já estão disponíveis.
+        </p>
       </div>
     </div>
 
     <PaymentSummary :checkout="props.checkout" />
 
+    <NuxtLink
+      v-if="props.slug && props.checkoutToken"
+      :to="`/eventos/${props.slug}/comprar/ingressos?token=${props.checkoutToken}`"
+      class="flex w-full items-center justify-center rounded-xl bg-amber-400 px-6 py-4 text-sm font-bold uppercase tracking-wide text-zinc-950 transition-colors duration-150 hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+    >
+      Ver meus ingressos
+    </NuxtLink>
+
     <button
+      v-else
       type="button"
       disabled
       class="flex w-full cursor-not-allowed items-center justify-center rounded-xl border border-zinc-700 px-6 py-4 text-sm font-bold uppercase tracking-wide text-zinc-500 opacity-70"
     >
-      Ver ingressos (em breve)
+      Ver meus ingressos
     </button>
   </section>
 </template>

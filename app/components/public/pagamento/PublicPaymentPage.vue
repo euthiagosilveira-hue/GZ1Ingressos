@@ -11,6 +11,7 @@ import PaymentUnavailableState from '~/components/public/pagamento/PaymentUnavai
 import { usePublicPayment } from '~/composables/usePublicPayment'
 
 const {
+  token,
   checkout,
   carregando,
   mensagemErro,
@@ -59,6 +60,8 @@ const eventoNome = computed(() => checkout.value?.eventoNome ?? 'Checkout')
         <PaymentApprovedState
           v-else-if="estado === 'PAGO' && checkout"
           :checkout="checkout"
+          :slug="eventoSlug"
+          :checkout-token="token"
         />
 
         <PaymentExpiredState
