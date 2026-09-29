@@ -4,9 +4,9 @@ import type { EventListItem } from '~/types/evento'
 const props = withDefaults(
   defineProps<{
     evento?: EventListItem | null
-    totalEntradas: number
+    totalEntradas?: number
   }>(),
-  { evento: null }
+  { evento: null, totalEntradas: 0 }
 )
 </script>
 
@@ -27,7 +27,7 @@ const props = withDefaults(
         <span class="h-2 w-2 rounded-full bg-green-400"></span>
         Portaria ativa
       </span>
-      <span class="text-xs text-zinc-400">
+      <span v-if="props.totalEntradas > 0" class="text-xs text-zinc-400">
         Entradas nesta sessão:
         <span class="font-semibold text-zinc-200">{{ props.totalEntradas }}</span>
       </span>

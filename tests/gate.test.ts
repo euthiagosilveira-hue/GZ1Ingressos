@@ -7,6 +7,7 @@ import {
   mapearResultadoEntradaRpc,
   mascararToken,
   mensagemDominioSegura,
+  nomeBuscaValido,
   normalizarMensagemEntrada,
   qrTokenPlausivel,
   rotuloResultadoEntrada,
@@ -157,4 +158,12 @@ test('normalizarMensagemEntrada cobre conhecidas e adiciona ponto', () => {
   assert.equal(normalizarMensagemEntrada('Ingresso ja utilizado'), 'Ingresso já utilizado.')
   assert.equal(normalizarMensagemEntrada('Mensagem nova sem ponto'), 'Mensagem nova sem ponto.')
   assert.equal(normalizarMensagemEntrada('Ja com ponto.'), 'Ja com ponto.')
+})
+
+test('nomeBuscaValido exige nome com pelo menos 2 caracteres', () => {
+  assert.equal(nomeBuscaValido(''), false)
+  assert.equal(nomeBuscaValido('   '), false)
+  assert.equal(nomeBuscaValido('a'), false)
+  assert.equal(nomeBuscaValido('ab'), true)
+  assert.equal(nomeBuscaValido('  João Silva  '), true)
 })

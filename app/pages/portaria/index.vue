@@ -5,7 +5,6 @@ import GateApp from '~/components/portaria/GateApp.vue'
 import { listarEventosPortaria } from '~/services/gate/eventos'
 import type { EventListItem } from '~/types/evento'
 import type { EventoPortaria } from '~/types/gate'
-import type { TicketListItem } from '~/types/ingresso'
 
 definePageMeta({
   title: 'Portaria',
@@ -16,7 +15,6 @@ definePageMeta({
 })
 
 const eventos = ref<EventListItem[]>([])
-const ingressos: TicketListItem[] = []
 const carregando = ref(true)
 const erro = ref('')
 
@@ -79,6 +77,6 @@ onMounted(() => {
       </button>
     </div>
 
-    <GateApp v-else :ingressos="ingressos" :eventos="eventos" />
+    <GateApp v-else :eventos="eventos" />
   </div>
 </template>

@@ -39,3 +39,12 @@ export interface EventoPortaria {
   local: string
   status: string
 }
+
+/** Resultado de public.buscar_ingressos_por_nome. */
+export interface IngressoBuscaNome {
+  ingressoId: string
+  codigo: string
+  participanteNome: string
+  status: string
+  utilizadoEm: string | null
+}

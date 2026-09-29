@@ -15,6 +15,11 @@ export function uuidValido(valor: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor)
 }
 
+/** Validacao apenas de formato do nome para busca (nao e regra de negocio). */
+export function nomeBuscaValido(nome: string): boolean {
+  return typeof nome === 'string' && nome.trim().length >= 2
+}
+
 /** Mascara o token para exibicao/log (nunca expor cru). */
 export function mascararToken(valor: string): string {
   if (!valor) return ''

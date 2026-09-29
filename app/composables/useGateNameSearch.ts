@@ -1,0 +1,88 @@
+import { computed, ref } from 'vue'
+
+import { GateError, buscarIngressosPorNome, registrarEntradaNome } from '~/services/gate/ingressos'
+import type { GateScanErroCode, IngressoBuscaNome, RegistrarEntradaQrResult } from '~/types/gate'
+import { nomeBuscaValido, uuidValido } from '~/utils/gate'
+
+/**
+ * Busca por nome na portaria: consulta e registro por RPC real, sempre dentro
+ * do evento selecionado. Nenhuma regra de negocio no frontend.
+ */
+export function useGateNameSearch(eventoId: () => string) {
+  const nome = ref('')
+  const buscando = ref(false)
+  const registrando = ref(false)
+  const resultados = ref<IngressoBuscaNome[]>([])
+  const resultado = ref<RegistrarEntradaQrResult | null>(null)
+  const erro = ref<GateScanErroCode | null>(null)
+  const jaBuscou = ref(false)
+
+  const nomeValido = computed(() => nomeBuscaValido(nome.value))
+  const podeBuscar = computed(() => uuidValido(eventoId()) && nomeValido.value)
+
+  async function buscar() {
+    erro.value = null
+    if (!uuidValido(eventoId())) {
+      erro.value = 'SEM_EVENTO'
+      return
+    }
+    if (!nomeValido.value) return
+
+    buscando.value = true
+    try {
+      resultados.value = await buscarIngressosPorNome({
+        eventoId: eventoId(),
+        nome: nome.value.trim()
+      })
+      jaBuscou.value = true
+    } catch (e) {
+      erro.value = e instanceof GateError ? e.code : 'ERRO_TEMPORARIO'
+      resultados.value = []
+    } finally {
+      buscando.value = false
+    }
+  }
+
+  async function registrar(ingresso: IngressoBuscaNome) {
+    erro.value = null
+    if (!uuidValido(eventoId())) {
+      erro.value = 'SEM_EVENTO'
+      return
+    }
+    registrando.value = true
+    try {
+      resultado.value = await registrarEntradaNome({
+        eventoId: eventoId(),
+        ingressoId: ingresso.ingressoId
+      })
+    } catch (e) {
+      resultado.value = null
+      erro.value = e instanceof GateError ? e.code : 'ERRO_TEMPORARIO'
+    } finally {
+      registrando.value = false
+    }
+  }
+
+  function reset() {
+    nome.value = ''
+    resultados.value = []
+    resultado.value = null
+    erro.value = null
+    jaBuscou.value = false
+  }
+
+  return {
+    nome,
+    buscando,
+    registrando,
+    resultados,
+    resultado,
+    erro,
+    jaBuscou,
+    nomeValido,
+    podeBuscar,
+    buscar,
+    registrar,
+    reset
+  }
+}
