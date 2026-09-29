@@ -2,6 +2,27 @@ import type { AuthErrorCode, PerfilOperador } from '~/types/operador'
 
 const PERFIS_PERMITIDOS: PerfilOperador[] = ['ADMINISTRADOR', 'PORTARIA']
 
+/**
+ * Retorna o primeiro uid disponivel (nao vazio).
+ * Usado para nao depender do timing de useSupabaseUser apos o signIn.
+ */
+export function resolverUid(...candidatos: Array<string | null | undefined>): string | null {
+  for (const candidato of candidatos) {
+    if (typeof candidato === 'string' && candidato.length > 0) return candidato
+  }
+  return null
+}
+
+/** Codigo de erro do perfil; null quando autorizado. */
+export function codigoErroPerfil(
+  perfil: { ativo: boolean; perfil: string } | null
+): AuthErrorCode | null {
+  if (!perfil) return 'SEM_USUARIO'
+  if (!perfil.ativo) return 'INATIVO'
+  if (!perfilPermitido(perfil.perfil)) return 'SEM_PERMISSAO'
+  return null
+}
+
 export function perfilPermitido(perfil: string | null | undefined): boolean {
   return perfil === 'ADMINISTRADOR' || perfil === 'PORTARIA'
 }

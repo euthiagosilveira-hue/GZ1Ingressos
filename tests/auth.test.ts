@@ -2,9 +2,11 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  codigoErroPerfil,
   decidirAcessoOperador,
   mensagemLoginErro,
-  perfilPermitido
+  perfilPermitido,
+  resolverUid
 } from '../app/utils/auth.ts'
 
 test('perfilPermitido aceita ADMINISTRADOR e PORTARIA', () => {
@@ -55,4 +57,50 @@ test('mensagemLoginErro nao expoe detalhes tecnicos', () => {
   assert.equal(mensagemLoginErro('CREDENCIAIS_INVALIDAS'), 'E-mail ou senha inválidos.')
   assert.equal(mensagemLoginErro('SEM_PERMISSAO'), 'Você não tem permissão para acessar a portaria.')
   assert.equal(mensagemLoginErro('ERRO_TEMPORARIO'), 'Não foi possível entrar agora. Tente novamente.')
+})
+
+// --- race condition: uid do signIn nao depende do ref reativo -----------------
+
+test('A) usa data.user.id mesmo com useSupabaseUser ainda null', () => {
+  assert.equal(resolverUid('auth-db1e2c3d', null, null), 'auth-db1e2c3d')
+})
+
+test('B) fallback para data.session.user.id', () => {
+  assert.equal(resolverUid(null, 'session-9f8e7d6c', null), 'session-9f8e7d6c')
+})
+
+test('C) sem uid disponivel => null (tratado como ERRO_TEMPORARIO, nao SEM_USUARIO)', () => {
+  assert.equal(resolverUid(null, null, null), null)
+  assert.equal(resolverUid(undefined, undefined), null)
+})
+
+test('D) uid conhecido + perfil inexistente => SEM_USUARIO', () => {
+  assert.equal(codigoErroPerfil(null), 'SEM_USUARIO')
+})
+
+test('E) perfil PORTARIA ativo => autorizado (sem erro)', () => {
+  assert.equal(codigoErroPerfil({ ativo: true, perfil: 'PORTARIA' }), null)
+})
+
+test('F) perfil ADMINISTRADOR ativo => autorizado (sem erro)', () => {
+  assert.equal(codigoErroPerfil({ ativo: true, perfil: 'ADMINISTRADOR' }), null)
+})
+
+test('G) perfil inativo => negado', () => {
+  assert.equal(codigoErroPerfil({ ativo: false, perfil: 'PORTARIA' }), 'INATIVO')
+})
+
+test('perfil ativo nao autorizado => SEM_PERMISSAO', () => {
+  assert.equal(codigoErroPerfil({ ativo: true, perfil: 'FINANCEIRO' }), 'SEM_PERMISSAO')
+})
+
+// --- middleware: nao derrubar sessao por atraso reativo -----------------------
+
+test('H) middleware com ref atrasado mas sessao presente => usa uid da sessao (sem signOut)', () => {
+  const uid = resolverUid(null, 'session-9f8e7d6c')
+  assert.equal(uid, 'session-9f8e7d6c')
+})
+
+test('I) sem sessao => null (redirect /login)', () => {
+  assert.equal(resolverUid(null, null), null)
 })

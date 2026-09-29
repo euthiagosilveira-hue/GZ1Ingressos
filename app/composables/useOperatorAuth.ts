@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 
 import { obterOperadorAtual } from '~/services/auth/operador'
 import type { AuthErrorCode, OperadorProfile } from '~/types/operador'
-import { mensagemLoginErro, perfilPermitido } from '~/utils/auth'
+import { codigoErroPerfil, mensagemLoginErro, perfilPermitido, resolverUid } from '~/utils/auth'
 
 export class AuthError extends Error {
   code: AuthErrorCode
@@ -29,15 +29,16 @@ export function useOperatorAuth() {
     () => Boolean(operador.value && operador.value.ativo && perfilPermitido(operador.value.perfil))
   )
 
-  async function carregarOperador(): Promise<OperadorProfile | null> {
-    const atual = user.value
-    if (!atual) {
+  async function carregarOperador(userId?: string): Promise<OperadorProfile | null> {
+    // Nao depende do timing de useSupabaseUser: aceita uid explicito.
+    const uid = resolverUid(userId, user.value?.id)
+    if (!uid) {
       operador.value = null
       carregado.value = true
       return null
     }
     try {
-      const perfil = await obterOperadorAtual(atual.id)
+      const perfil = await obterOperadorAtual(uid)
       operador.value = perfil
       return perfil
     } finally {
@@ -48,26 +49,23 @@ export function useOperatorAuth() {
   async function login(email: string, senha: string): Promise<OperadorProfile> {
     carregando.value = true
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: senha
       })
       if (error) throw new AuthError('CREDENCIAIS_INVALIDAS')
 
-      const perfil = await carregarOperador()
-      if (!perfil) {
+      // uid preferencialmente do retorno do signIn (nao do ref reativo).
+      const uid = resolverUid(data?.user?.id, data?.session?.user?.id, user.value?.id)
+      if (!uid) throw new AuthError('ERRO_TEMPORARIO')
+
+      const perfil = await carregarOperador(uid)
+      const codigo = codigoErroPerfil(perfil)
+      if (codigo) {
         await supabase.auth.signOut()
-        throw new AuthError('SEM_USUARIO')
+        throw new AuthError(codigo)
       }
-      if (!perfil.ativo) {
-        await supabase.auth.signOut()
-        throw new AuthError('INATIVO')
-      }
-      if (!perfilPermitido(perfil.perfil)) {
-        await supabase.auth.signOut()
-        throw new AuthError('SEM_PERMISSAO')
-      }
-      return perfil
+      return perfil as OperadorProfile
     } catch (e) {
       if (e instanceof AuthError) throw e
       throw new AuthError('ERRO_TEMPORARIO')
