@@ -63,7 +63,7 @@ const {
         />
 
         <template v-else-if="modo === 'QR'">
-          <GateQrScanner />
+          <GateQrScanner :evento-id="eventoId" />
           <GateQrSimulator :opcoes="opcoesSimulacao" @simular="simularLeitura" />
         </template>
 
