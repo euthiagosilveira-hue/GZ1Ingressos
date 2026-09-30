@@ -3,6 +3,19 @@ import type { AuthErrorCode, PerfilOperador } from '~/types/operador'
 const PERFIS_PERMITIDOS: PerfilOperador[] = ['ADMINISTRADOR', 'PORTARIA']
 
 /**
+ * Extrai o UID de um usuario retornado por useSupabaseUser().
+ * Na @nuxtjs/supabase v2 esse valor sao as JWT claims (campo `sub`), nao o
+ * objeto User (campo `id`). Aceitamos os dois formatos.
+ */
+export function uidDoUsuario(userValue: unknown): string | null {
+  if (!userValue || typeof userValue !== 'object') return null
+  const usuario = userValue as { id?: unknown; sub?: unknown }
+  if (typeof usuario.id === 'string' && usuario.id.length > 0) return usuario.id
+  if (typeof usuario.sub === 'string' && usuario.sub.length > 0) return usuario.sub
+  return null
+}
+
+/**
  * Retorna o primeiro uid disponivel (nao vazio).
  * Usado para nao depender do timing de useSupabaseUser apos o signIn.
  */

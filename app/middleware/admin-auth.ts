@@ -1,4 +1,4 @@
-import { resolverUid } from '~/utils/auth'
+import { resolverUid, uidDoUsuario } from '~/utils/auth'
 
 /**
  * Protege a area administrativa (/eventos etc.).
@@ -12,7 +12,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   // Sessao pode ainda estar restaurando na hidratacao (refresh): usa a fonte
   // autoritativa do client quando os refs reativos ainda estiverem vazios.
-  let uid = resolverUid(user.value?.id, session.value?.user?.id)
+  // No SSR user = claims (`sub`) e sessao sem `user`; no client ha session.user.
+  let uid = resolverUid(uidDoUsuario(user.value), session.value?.user?.id)
 
   if (!uid && import.meta.client) {
     try {

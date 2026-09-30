@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 
 import { obterOperadorAtual } from '~/services/auth/operador'
 import type { AuthErrorCode, OperadorProfile } from '~/types/operador'
-import { codigoErroPerfil, mensagemLoginErro, perfilPermitido, resolverUid } from '~/utils/auth'
+import { codigoErroPerfil, mensagemLoginErro, perfilPermitido, resolverUid, uidDoUsuario } from '~/utils/auth'
 
 export class AuthError extends Error {
   code: AuthErrorCode
@@ -31,7 +31,7 @@ export function useOperatorAuth() {
 
   async function carregarOperador(userId?: string): Promise<OperadorProfile | null> {
     // Nao depende do timing de useSupabaseUser: aceita uid explicito.
-    const uid = resolverUid(userId, user.value?.id)
+    const uid = resolverUid(userId, uidDoUsuario(user.value))
     if (!uid) {
       operador.value = null
       carregado.value = true
@@ -56,7 +56,7 @@ export function useOperatorAuth() {
       if (error) throw new AuthError('CREDENCIAIS_INVALIDAS')
 
       // uid preferencialmente do retorno do signIn (nao do ref reativo).
-      const uid = resolverUid(data?.user?.id, data?.session?.user?.id, user.value?.id)
+      const uid = resolverUid(data?.user?.id, data?.session?.user?.id, uidDoUsuario(user.value))
       if (!uid) throw new AuthError('ERRO_TEMPORARIO')
 
       const perfil = await carregarOperador(uid)

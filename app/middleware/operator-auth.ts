@@ -1,4 +1,4 @@
-import { decidirAcessoOperador, resolverUid } from '~/utils/auth'
+import { decidirAcessoOperador, resolverUid, uidDoUsuario } from '~/utils/auth'
 
 /**
  * Protege a area da portaria.
@@ -12,9 +12,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const session = useSupabaseSession()
   const supabase = useSupabaseClient()
 
-  // No servidor a sessao vem dos cookies SSR; no cliente pode ainda estar
-  // restaurando durante a hidratacao (refresh) — por isso o fallback abaixo.
-  let uid = resolverUid(user.value?.id, session.value?.user?.id)
+  // No SSR: useSupabaseUser() = JWT claims (`sub`) e a sessao nao tem `user`.
+  // No cliente: sessao.user.id existe. Por isso consideramos os dois campos.
+  let uid = resolverUid(uidDoUsuario(user.value), session.value?.user?.id)
 
   if (!uid && import.meta.client) {
     try {

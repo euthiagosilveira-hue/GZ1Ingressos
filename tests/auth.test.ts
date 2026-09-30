@@ -6,7 +6,8 @@ import {
   decidirAcessoOperador,
   mensagemLoginErro,
   perfilPermitido,
-  resolverUid
+  resolverUid,
+  uidDoUsuario
 } from '../app/utils/auth.ts'
 
 test('perfilPermitido aceita ADMINISTRADOR e PORTARIA', () => {
@@ -103,4 +104,26 @@ test('H) middleware com ref atrasado mas sessao presente => usa uid da sessao (s
 
 test('I) sem sessao => null (redirect /login)', () => {
   assert.equal(resolverUid(null, null), null)
+})
+
+// --- SSR: useSupabaseUser() retorna JWT claims (sub), nao User (id) -----------
+
+test('uidDoUsuario extrai sub das claims (SSR) e id do objeto User (client)', () => {
+  // SSR (@nuxtjs/supabase v2): claims com `sub`
+  assert.equal(uidDoUsuario({ sub: 'sub-9f8e7d6c', email: 'x@y.z' }), 'sub-9f8e7d6c')
+  // client: objeto User com `id`
+  assert.equal(uidDoUsuario({ id: 'user-123' }), 'user-123')
+  // ambos: prefere id
+  assert.equal(uidDoUsuario({ id: 'user-123', sub: 'sub-9f8e7d6c' }), 'user-123')
+  // invalidos
+  assert.equal(uidDoUsuario(null), null)
+  assert.equal(uidDoUsuario(undefined), null)
+  assert.equal(uidDoUsuario({}), null)
+  assert.equal(uidDoUsuario('string'), null)
+})
+
+test('middleware SSR resolve uid a partir das claims (sem session.user)', () => {
+  // No SSR: user = claims(sub); session nao tem `user` (deletado pelo modulo)
+  const uid = resolverUid(uidDoUsuario({ sub: 'sub-abc' }), undefined)
+  assert.equal(uid, 'sub-abc')
 })
