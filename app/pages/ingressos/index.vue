@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import TicketList from '~/components/ingressos/TicketList.vue'
-import { ingressosMock } from '~/data/ingressos'
 
 definePageMeta({
   title: 'Ingressos',
   description: 'Consulte ingressos emitidos, status e utilização nos eventos.',
   layout: 'admin-layout',
-  sidebarActive: 'Ingressos'
+  sidebarActive: 'Ingressos',
+  middleware: ['admin-auth']
 })
 </script>
 
 <template>
-  <TicketList :ingressos="ingressosMock" />
+  <TicketList />
 </template>

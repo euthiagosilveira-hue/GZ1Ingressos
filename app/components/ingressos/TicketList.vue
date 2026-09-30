@@ -9,14 +9,9 @@ import TicketMobileList from '~/components/ingressos/TicketMobileList.vue'
 import TicketPagination from '~/components/ingressos/TicketPagination.vue'
 import TicketSummary from '~/components/ingressos/TicketSummary.vue'
 import TicketTable from '~/components/ingressos/TicketTable.vue'
-import { useTicketList } from '~/composables/useTicketList'
-import { eventosMock } from '~/data/eventos'
+import { useAdminTickets } from '~/composables/useAdminTickets'
 import type { SelectOption } from '~/types/ui'
-import type { TicketFiltersState, TicketListItem, TicketSort } from '~/types/ingresso'
-
-const props = defineProps<{
-  ingressos: TicketListItem[]
-}>()
+import type { TicketFiltersState, TicketSort } from '~/types/ingresso'
 
 const {
   filtros,
@@ -28,13 +23,9 @@ const {
   resumo,
   temFiltros,
   limparFiltros,
-  irPara
-} = useTicketList(props.ingressos, 10)
-
-const eventoOptions = computed<SelectOption[]>(() => [
-  { value: 'TODOS', label: 'Todos os eventos' },
-  ...eventosMock.map((evento) => ({ value: evento.id, label: evento.nome }))
-])
+  irPara,
+  eventoOptions
+} = useAdminTickets(10)
 
 const sortOptions: SelectOption[] = [
   { value: 'RECENTES', label: 'Mais recentes' },

@@ -1,9 +1,106 @@
 import type {
+  AdminTicketDetailRow,
+  AdminTicketRow,
+  TicketDetail,
   TicketFiltersState,
+  TicketHistoryEvent,
   TicketListItem,
   TicketSort,
+  TicketStatus,
   TicketSummaryData
 } from '~/types/ingresso'
+import type { OrderPriceType, OrderStatus } from '~/types/pedido'
+
+/** Mapeia a linha administrativa real para o view-model da listagem. */
+export function mapearIngressoAdminParaListItem(row: AdminTicketRow): TicketListItem {
+  return {
+    id: row.ingresso_id,
+    codigo: row.codigo,
+    participanteNome: row.participante_nome,
+    valorUnitario: Number(row.valor_unitario),
+    status: row.status as TicketStatus,
+    utilizadoEm: row.utilizado_em,
+    pedidoId: row.pedido_id,
+    pedidoCodigo: row.pedido_codigo,
+    eventoId: row.evento_id,
+    eventoNome: row.evento_nome,
+    loteId: row.lote_id,
+    loteNome: row.lote_nome,
+    criadoEm: row.criado_em
+  }
+}
+
+function montarHistorico(
+  base: TicketListItem,
+  row: AdminTicketDetailRow
+): TicketHistoryEvent[] {
+  const eventos: TicketHistoryEvent[] = [
+    {
+      id: `${base.id}_h1`,
+      tipo: 'INGRESSO_RESERVADO',
+      titulo: 'Ingresso reservado',
+      descricao: `Ingresso ${base.codigo} reservado.`,
+      ocorridoEm: base.criadoEm
+    }
+  ]
+
+  if (base.status === 'VALIDO' || base.status === 'UTILIZADO') {
+    eventos.push({
+      id: `${base.id}_h3`,
+      tipo: 'INGRESSO_LIBERADO',
+      titulo: 'Ingresso liberado',
+      descricao: 'Ingresso apto para entrada.',
+      ocorridoEm: base.criadoEm
+    })
+  }
+
+  if (base.status === 'UTILIZADO') {
+    eventos.push({
+      id: `${base.id}_h4`,
+      tipo: 'ENTRADA_REGISTRADA',
+      titulo: 'Entrada registrada',
+      ocorridoEm: row.entrada?.entrada_em ?? base.utilizadoEm ?? base.criadoEm
+    })
+  }
+
+  if (base.status === 'EXPIRADO') {
+    eventos.push({
+      id: `${base.id}_h5`,
+      tipo: 'INGRESSO_EXPIRADO',
+      titulo: 'Ingresso expirado',
+      descricao: 'O ingresso expirou junto com a reserva.',
+      ocorridoEm: base.criadoEm
+    })
+  }
+
+  if (base.status === 'CANCELADO') {
+    eventos.push({
+      id: `${base.id}_h6`,
+      tipo: 'INGRESSO_CANCELADO',
+      titulo: 'Ingresso cancelado',
+      descricao: 'O ingresso foi cancelado e não pode ser utilizado.',
+      ocorridoEm: base.criadoEm
+    })
+  }
+
+  return eventos
+}
+
+/** Mapeia a linha de detalhe real para o view-model da tela de detalhe. */
+export function mapearIngressoAdminParaDetalhe(row: AdminTicketDetailRow): TicketDetail {
+  const base = mapearIngressoAdminParaListItem(row)
+  return {
+    ...base,
+    pedidoStatus: row.pedido_status as OrderStatus,
+    tipoPreco: (row.lote_id ? 'LOTE' : 'AVULSO') as OrderPriceType,
+    eventoInicioEm: row.evento_inicio_em,
+    eventoLocal: row.evento_local,
+    valorPedido: Number(row.valor_unitario),
+    // Placeholder visual (nunca o qr_token real, que nao e exposto no admin).
+    qrMockValue: `DEMO-${base.codigo}`,
+    historico: montarHistorico(base, row)
+  }
+}
 
 export function filtrarIngressos(
   ingressos: TicketListItem[],
