@@ -10,7 +10,6 @@ import LotDetailsModal from '~/components/lotes/LotDetailsModal.vue'
 import LotEventHeader from '~/components/lotes/LotEventHeader.vue'
 import LotFormModal from '~/components/lotes/LotFormModal.vue'
 import LotGrid from '~/components/lotes/LotGrid.vue'
-import { buscarEstoqueAntecipado, buscarLotesMock } from '~/data/lotes'
 import type { EventListItem } from '~/types/evento'
 import type {
   LotFormMode,
@@ -23,10 +22,15 @@ import { proximaOrdem } from '~/utils/lotes'
 
 const props = defineProps<{
   evento: EventListItem
+  lotes: LotListItem[]
+  estoqueAntecipado: number
+  processando?: boolean
 }>()
 
-const lotes = ref<LotListItem[]>(buscarLotesMock(props.evento.id))
-const estoqueAntecipado = buscarEstoqueAntecipado(props.evento.id)
+const emit = defineEmits<{
+  criar: [payload: LotPayload]
+  ativar: [id: string]
+}>()
 
 const formAberto = ref(false)
 const formModo = ref<LotFormMode>('create')
@@ -36,16 +40,16 @@ const loteParaAtivar = ref<LotListItem | null>(null)
 const loteParaEncerrar = ref<LotListItem | null>(null)
 const loteDetalhes = ref<LotListItem | null>(null)
 
-const lotesOrdenados = computed(() => [...lotes.value].sort((a, b) => a.ordem - b.ordem))
+const lotesOrdenados = computed(() => [...props.lotes].sort((a, b) => a.ordem - b.ordem))
 const ordens = computed<LotOrdemRef[]>(() =>
-  lotes.value.map((lote) => ({ id: lote.id, ordem: lote.ordem }))
+  props.lotes.map((lote) => ({ id: lote.id, ordem: lote.ordem }))
 )
-const totalLotes = computed(() => lotes.value.length)
-const lotesAtivos = computed(() => lotes.value.filter((lote) => lote.status === 'ATIVO').length)
-const vendidos = computed(() => lotes.value.reduce((total, lote) => total + lote.vendidos, 0))
-const disponiveis = computed(() => lotes.value.reduce((total, lote) => total + lote.disponiveis, 0))
+const totalLotes = computed(() => props.lotes.length)
+const lotesAtivos = computed(() => props.lotes.filter((lote) => lote.status === 'ATIVO').length)
+const vendidos = computed(() => props.lotes.reduce((total, lote) => total + lote.vendidos, 0))
+const disponiveis = computed(() => props.lotes.reduce((total, lote) => total + lote.disponiveis, 0))
 const precoAtual = computed(() => {
-  const ativo = lotes.value.find((lote) => lote.status === 'ATIVO')
+  const ativo = props.lotes.find((lote) => lote.status === 'ATIVO')
   return ativo ? ativo.preco : null
 })
 
@@ -64,7 +68,7 @@ const valorInicialForm = computed<Partial<LotFormValue>>(() => {
     }
   }
   return {
-    ordem: proximaOrdem(lotes.value),
+    ordem: proximaOrdem(props.lotes),
     tipoAtivacao: 'MANUAL',
     status: 'INATIVO'
   }
@@ -77,7 +81,7 @@ function abrirNovo() {
 }
 
 function abrirEdicao(id: string) {
-  const lote = lotes.value.find((item) => item.id === id)
+  const lote = props.lotes.find((item) => item.id === id)
   if (!lote) return
   formModo.value = 'edit'
   loteEmEdicao.value = lote
@@ -91,79 +95,32 @@ function fecharForm() {
 
 function salvar(payload: LotPayload) {
   if (formModo.value === 'create') {
-    lotes.value = [
-      ...lotes.value,
-      {
-        id: `lote_${Date.now()}`,
-        eventoId: props.evento.id,
-        nome: payload.nome,
-        ordem: payload.ordem,
-        quantidade: payload.quantidade,
-        preco: payload.preco,
-        tipoAtivacao: payload.tipoAtivacao,
-        ativacaoEm: payload.ativacaoEm,
-        ativadoEm: null,
-        encerradoEm: null,
-        status: 'INATIVO',
-        vendidos: 0,
-        disponiveis: payload.quantidade
-      }
-    ]
-    toast.success('Lote criado com sucesso!')
-  } else if (loteEmEdicao.value) {
-    const id = loteEmEdicao.value.id
-    lotes.value = lotes.value.map((lote) =>
-      lote.id === id
-        ? {
-            ...lote,
-            nome: payload.nome,
-            ordem: payload.ordem,
-            quantidade: payload.quantidade,
-            preco: payload.preco,
-            tipoAtivacao: payload.tipoAtivacao,
-            ativacaoEm: payload.ativacaoEm,
-            disponiveis: Math.max(payload.quantidade - lote.vendidos, 0)
-          }
-        : lote
-    )
-    toast.success('Lote atualizado com sucesso!')
+    emit('criar', payload)
+  } else {
+    toast.info('A edição de lote estará disponível em breve.')
   }
   fecharForm()
 }
 
 function solicitarAtivacao(id: string) {
-  loteParaAtivar.value = lotes.value.find((item) => item.id === id) ?? null
+  loteParaAtivar.value = props.lotes.find((item) => item.id === id) ?? null
 }
 
 function confirmarAtivacao() {
   const alvo = loteParaAtivar.value
   if (!alvo) return
-  const agora = new Date().toISOString()
-  lotes.value = lotes.value.map((lote) => {
-    if (lote.id === alvo.id) {
-      return { ...lote, status: 'ATIVO', ativadoEm: agora, encerradoEm: null }
-    }
-    if (lote.status === 'ATIVO') {
-      return { ...lote, status: 'ENCERRADO', encerradoEm: agora }
-    }
-    return lote
-  })
-  toast.success(`${alvo.nome} ativado.`)
+  emit('ativar', alvo.id)
   loteParaAtivar.value = null
 }
 
 function solicitarEncerramento(id: string) {
-  loteParaEncerrar.value = lotes.value.find((item) => item.id === id) ?? null
+  loteParaEncerrar.value = props.lotes.find((item) => item.id === id) ?? null
 }
 
 function confirmarEncerramento() {
   const alvo = loteParaEncerrar.value
   if (!alvo) return
-  const agora = new Date().toISOString()
-  lotes.value = lotes.value.map((lote) =>
-    lote.id === alvo.id ? { ...lote, status: 'ENCERRADO', encerradoEm: agora } : lote
-  )
-  toast.success(`${alvo.nome} encerrado.`)
+  toast.info('O encerramento ocorre automaticamente na virada do lote.')
   loteParaEncerrar.value = null
 }
 
@@ -179,7 +136,7 @@ function acaoLote(payload: { id: string; action: string }) {
       solicitarEncerramento(payload.id)
       break
     case 'detalhes':
-      loteDetalhes.value = lotes.value.find((item) => item.id === payload.id) ?? null
+      loteDetalhes.value = props.lotes.find((item) => item.id === payload.id) ?? null
       break
   }
 }
@@ -207,7 +164,7 @@ function acaoLote(payload: { id: string; action: string }) {
 
     <PageHeader title="Lotes" subtitle="Gerencie os preços e as etapas de venda deste evento.">
       <template #actions>
-        <AppButton variant="primary" @click="abrirNovo">
+        <AppButton variant="primary" :disabled="props.processando" @click="abrirNovo">
           <PlusIcon class="h-4 w-4" />
           Novo lote
         </AppButton>
@@ -216,7 +173,7 @@ function acaoLote(payload: { id: string; action: string }) {
 
     <LotEventHeader
       :evento="props.evento"
-      :estoque-antecipado="estoqueAntecipado"
+      :estoque-antecipado="props.estoqueAntecipado"
       :vendidos="vendidos"
       :disponiveis="disponiveis"
       :total-lotes="totalLotes"
