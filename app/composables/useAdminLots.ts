@@ -1,6 +1,6 @@
 import { onMounted, ref } from 'vue'
 
-import { ativarLoteAdmin, criarLoteAdmin, listarLotesAdmin, type CriarLoteAdminInput } from '~/services/admin/lotes'
+import { ativarLoteAdmin, criarLoteAdmin, definirVendasEventoAdmin, listarLotesAdmin, type CriarLoteAdminInput } from '~/services/admin/lotes'
 import type { EventListItem } from '~/types/evento'
 import type { LotListItem } from '~/types/lote'
 
@@ -50,6 +50,16 @@ export function useAdminLots(eventoId: string) {
     }
   }
 
+  async function abrirVendas() {
+    processando.value = true
+    try {
+      await definirVendasEventoAdmin(eventoId, 'ABERTAS')
+      await carregar()
+    } finally {
+      processando.value = false
+    }
+  }
+
   onMounted(() => {
     void carregar()
   })
@@ -64,6 +74,7 @@ export function useAdminLots(eventoId: string) {
     carregar,
     criar,
     ativar,
+    abrirVendas,
     refresh: carregar
   }
 }

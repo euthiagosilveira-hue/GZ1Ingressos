@@ -1,4 +1,4 @@
-import type { EventListItem } from '~/types/evento'
+import type { EventListItem, SalesStatus } from '~/types/evento'
 import type { LotActivationType, LotListItem } from '~/types/lote'
 import {
   mapearEventoLotesParaListItem,
@@ -34,14 +34,28 @@ export interface CriarLoteAdminInput {
 function mensagemErroLote(error: RpcErrorLike | null, padrao: string): string {
   const e = error ?? {}
   const mensagem = (e.message ?? '').toLowerCase()
+
+  // Regras de dominio conhecidas (mensagens da RPC) tem prioridade.
+  if (mensagem.includes('vendas encerradas')) {
+    return 'Abra as vendas do evento antes de ativar um lote.'
+  }
+  if (mensagem.includes('nao permite ativacao') || mensagem.includes('nao permite alterar vendas')) {
+    return 'Este evento não permite essa ação.'
+  }
+  if (mensagem.includes('encerrado e nao pode ser reaberto')) {
+    return 'Este lote está encerrado e não pode ser reaberto.'
+  }
+  if (mensagem.includes('ja esta ativo')) {
+    return 'Este lote já está ativo.'
+  }
   if (e.code === '42501' || mensagem.includes('permiss')) {
     return 'Você não tem permissão para gerenciar lotes.'
   }
+  if (e.code === '23503' || mensagem.includes('nao encontrado')) {
+    return 'Evento ou lote não encontrado.'
+  }
   if (e.code === '23514') {
     return 'Verifique os dados informados.'
-  }
-  if (e.code === '23503' || mensagem.includes('nao encontrado')) {
-    return 'Evento não encontrado.'
   }
   return padrao
 }
@@ -89,5 +103,20 @@ export async function ativarLoteAdmin(loteId: string): Promise<void> {
   const { error } = await client.rpc('ativar_lote_manual', { p_lote_id: loteId })
   if (error) {
     throw new Error(mensagemErroLote(error, 'Não foi possível ativar o lote.'))
+  }
+}
+
+/** Abre/encerra as vendas do evento (RPC de dominio, ADMINISTRADOR). */
+export async function definirVendasEventoAdmin(
+  eventoId: string,
+  vendasStatus: SalesStatus
+): Promise<void> {
+  const client = useSupabaseClient()
+  const { error } = await client.rpc('definir_vendas_evento_admin', {
+    p_evento_id: eventoId,
+    p_vendas_status: vendasStatus
+  })
+  if (error) {
+    throw new Error(mensagemErroLote(error, 'Não foi possível alterar as vendas do evento.'))
   }
 }

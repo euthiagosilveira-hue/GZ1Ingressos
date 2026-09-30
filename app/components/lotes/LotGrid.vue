@@ -5,6 +5,7 @@ import type { LotListItem } from '~/types/lote'
 
 const props = defineProps<{
   lotes: LotListItem[]
+  vendasAbertas: boolean
 }>()
 
 const emit = defineEmits<{
@@ -22,6 +23,7 @@ const emit = defineEmits<{
         v-for="lote in props.lotes"
         :key="lote.id"
         :lote="lote"
+        :vendas-abertas="props.vendasAbertas"
         @action="emit('action', { id: lote.id, action: $event })"
       />
     </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { ref } from 'vue'
 import { ArrowUpTrayIcon, TrashIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
@@ -10,25 +10,29 @@ const emit = defineEmits<{
   'update:modelValue': [value: string | null]
 }>()
 
+const BUCKET = 'eventos-capas'
 const TIPOS_ACEITOS = ['image/png', 'image/jpeg', 'image/webp']
 const TAMANHO_MAXIMO = 5 * 1024 * 1024
 
+const client = useSupabaseClient()
 const inputRef = ref<HTMLInputElement | null>(null)
 const erro = ref('')
-const urlCriada = ref<string | null>(null)
+const enviando = ref(false)
 
 function abrirSeletor() {
   inputRef.value?.click()
 }
 
-function revogarUrl() {
-  if (urlCriada.value) {
-    URL.revokeObjectURL(urlCriada.value)
-    urlCriada.value = null
+function extensao(arquivo: File): string {
+  const porTipo: Record<string, string> = {
+    'image/png': 'png',
+    'image/jpeg': 'jpg',
+    'image/webp': 'webp'
   }
+  return porTipo[arquivo.type] ?? 'jpg'
 }
 
-function aoSelecionar(evento: Event) {
+async function aoSelecionar(evento: Event) {
   const target = evento.target as HTMLInputElement
   const arquivo = target.files?.[0]
   if (!arquivo) return
@@ -46,20 +50,28 @@ function aoSelecionar(evento: Event) {
   }
 
   erro.value = ''
-  revogarUrl()
-  const url = URL.createObjectURL(arquivo)
-  urlCriada.value = url
-  emit('update:modelValue', url)
+  enviando.value = true
+  try {
+    const caminho = `capas/${crypto.randomUUID()}.${extensao(arquivo)}`
+    const { error } = await client.storage
+      .from(BUCKET)
+      .upload(caminho, arquivo, { contentType: arquivo.type, upsert: false })
+    if (error) throw error
+    const { data } = client.storage.from(BUCKET).getPublicUrl(caminho)
+    emit('update:modelValue', data.publicUrl)
+  } catch {
+    erro.value = 'Não foi possível enviar a imagem. Tente novamente.'
+  } finally {
+    enviando.value = false
+    target.value = ''
+  }
 }
 
 function remover() {
-  revogarUrl()
   erro.value = ''
   if (inputRef.value) inputRef.value.value = ''
   emit('update:modelValue', null)
 }
-
-onBeforeUnmount(revogarUrl)
 </script>
 
 <template>
@@ -92,12 +104,19 @@ onBeforeUnmount(revogarUrl)
     </ul>
 
     <p v-if="erro" class="text-xs text-red-400">{{ erro }}</p>
+    <p v-else-if="enviando" class="text-xs text-zinc-500">Enviando imagem...</p>
 
     <div class="mt-auto flex flex-wrap gap-3">
-      <AppButton variant="outline" size="sm" @click="abrirSeletor">
+      <AppButton variant="outline" size="sm" :disabled="enviando" @click="abrirSeletor">
         {{ props.modelValue ? 'Trocar imagem' : 'Escolher imagem' }}
       </AppButton>
-      <AppButton v-if="props.modelValue" variant="ghost" size="sm" @click="remover">
+      <AppButton
+        v-if="props.modelValue"
+        variant="ghost"
+        size="sm"
+        :disabled="enviando"
+        @click="remover"
+      >
         <TrashIcon class="h-4 w-4" />
         Remover
       </AppButton>

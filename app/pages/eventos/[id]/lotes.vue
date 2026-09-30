@@ -15,8 +15,18 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { evento, estoqueAntecipado, lotes, carregando, erro, processando, criar, ativar, refresh } =
-  useAdminLots(String(route.params.id))
+const {
+  evento,
+  estoqueAntecipado,
+  lotes,
+  carregando,
+  erro,
+  processando,
+  criar,
+  ativar,
+  abrirVendas,
+  refresh
+} = useAdminLots(String(route.params.id))
 
 async function aoCriar(payload: LotPayload) {
   try {
@@ -39,6 +49,15 @@ async function aoAtivar(id: string) {
     toast.success('Lote ativado.')
   } catch (e) {
     toast.error(e instanceof Error ? e.message : 'Não foi possível ativar o lote.')
+  }
+}
+
+async function aoAbrirVendas() {
+  try {
+    await abrirVendas()
+    toast.success('Vendas abertas.')
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Não foi possível abrir as vendas.')
   }
 }
 </script>
@@ -76,6 +95,7 @@ async function aoAtivar(id: string) {
     :processando="processando"
     @criar="aoCriar"
     @ativar="aoAtivar"
+    @abrir-vendas="aoAbrirVendas"
   />
 
   <LotEventNotFound v-else />

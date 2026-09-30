@@ -45,7 +45,7 @@ test('mapearEventoLotesParaListItem converte o cabecalho', () => {
     publicacao_status: 'PUBLICADO',
     inicio_em: '2026-10-29T23:00:00+00:00',
     local: 'Galeria',
-    imagem_url: null,
+    imagem_url: 'https://cdn.exemplo.com/capa.jpg',
     capacidade_total: 500,
     estoque_antecipado: 100,
     vendidos: 2,
@@ -59,8 +59,27 @@ test('mapearEventoLotesParaListItem converte o cabecalho', () => {
   assert.equal(evento.publicacaoStatus, 'PUBLICADO')
   assert.equal(evento.inicioEm, '2026-10-29T23:00:00+00:00')
   assert.equal(evento.local, 'Galeria')
+  assert.equal(evento.imagemUrl, 'https://cdn.exemplo.com/capa.jpg')
   assert.equal(evento.vendidos, 2)
   assert.equal(evento.disponiveis, 98)
+})
+
+test('mapearEventoLotesParaListItem descarta capa nao persistente (blob)', () => {
+  const row: EventoLotesAdminRow = {
+    evento_id: 'evt-2',
+    nome: 'Evento Blob',
+    status: 'AGENDADO',
+    vendas_status: 'ENCERRADAS',
+    publicacao_status: 'PUBLICADO',
+    inicio_em: '2026-10-29T23:00:00+00:00',
+    local: 'Galeria',
+    imagem_url: 'blob:https://gz-1-ingressos.vercel.app/61108c56',
+    capacidade_total: 100,
+    estoque_antecipado: 50,
+    vendidos: 0,
+    disponiveis: 50
+  }
+  assert.equal(mapearEventoLotesParaListItem(row).imagemUrl, null)
 })
 
 test('montarAtivacaoEm interpreta America/Sao_Paulo e retorna instante UTC', () => {

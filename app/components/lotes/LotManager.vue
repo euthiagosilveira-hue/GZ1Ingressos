@@ -30,7 +30,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   criar: [payload: LotPayload]
   ativar: [id: string]
+  abrirVendas: []
 }>()
+
+const vendasAbertas = computed(() => props.evento.vendasStatus === 'ABERTAS')
 
 const formAberto = ref(false)
 const formModo = ref<LotFormMode>('create')
@@ -132,6 +135,9 @@ function acaoLote(payload: { id: string; action: string }) {
     case 'ativar':
       solicitarAtivacao(payload.id)
       break
+    case 'ativar-bloqueado':
+      toast.error('Abra as vendas do evento antes de ativar um lote.')
+      break
     case 'encerrar':
       solicitarEncerramento(payload.id)
       break
@@ -179,9 +185,11 @@ function acaoLote(payload: { id: string; action: string }) {
       :total-lotes="totalLotes"
       :lotes-ativos="lotesAtivos"
       :preco-atual="precoAtual"
+      :vendas-status="props.evento.vendasStatus"
+      @abrir-vendas="emit('abrirVendas')"
     />
 
-    <LotGrid :lotes="lotesOrdenados" @action="acaoLote" @create="abrirNovo" />
+    <LotGrid :lotes="lotesOrdenados" :vendas-abertas="vendasAbertas" @action="acaoLote" @create="abrirNovo" />
 
     <LotFormModal
       :open="formAberto"

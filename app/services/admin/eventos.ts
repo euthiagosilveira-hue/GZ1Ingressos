@@ -1,4 +1,5 @@
 import type { AdminEventListItem, EventStatus, PublicationStatus, SalesStatus } from '~/types/evento'
+import { imagemValida } from '~/utils/imagem'
 
 export interface AdminEventFiltros {
   busca?: string | null
@@ -105,7 +106,7 @@ export async function criarEventoAdmin(
     p_nome: input.nome,
     p_slug: input.slug,
     p_descricao: input.descricao ?? null,
-    p_imagem_url: input.imagemUrl ?? null,
+    p_imagem_url: imagemValida(input.imagemUrl),
     p_inicio_em: input.inicioEm,
     p_local: input.local,
     p_endereco: input.endereco,

@@ -1,6 +1,7 @@
 import type { EventListItem } from '~/types/evento'
 import type { LotActivationType, LotListItem, LotOrdemRef, LotStatus } from '~/types/lote'
 import { montarInicioEm } from './eventos.ts'
+import { imagemValida } from './imagem.ts'
 
 const ROTULOS: Record<LotActivationType, string> = {
   MANUAL: 'Manual',
@@ -101,7 +102,7 @@ export function mapearEventoLotesParaListItem(row: EventoLotesAdminRow): EventLi
     id: row.evento_id,
     nome: row.nome,
     slug: '',
-    imagemUrl: row.imagem_url,
+    imagemUrl: imagemValida(row.imagem_url),
     inicioEm: row.inicio_em,
     local: row.local,
     status: row.status,

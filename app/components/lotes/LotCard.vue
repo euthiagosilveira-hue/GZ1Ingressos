@@ -10,6 +10,7 @@ import type { LotListItem } from '~/types/lote'
 
 const props = defineProps<{
   lote: LotListItem
+  vendasAbertas: boolean
 }>()
 
 const emit = defineEmits<{
@@ -78,7 +79,11 @@ const esgotado = computed(() => props.lote.disponiveis === 0)
 
     <div class="mt-auto border-t border-zinc-800 pt-4">
       <div class="pt-0.5">
-        <LotActions :status="props.lote.status" @action="emit('action', $event)" />
+        <LotActions
+          :status="props.lote.status"
+          :vendas-abertas="props.vendasAbertas"
+          @action="emit('action', $event)"
+        />
       </div>
     </div>
   </BaseCard>
