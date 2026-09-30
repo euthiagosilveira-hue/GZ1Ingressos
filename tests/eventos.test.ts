@@ -38,7 +38,18 @@ test('gerarSlug normaliza acentos/espacos/simbolos', () => {
   assert.equal(gerarSlug('Ação--2026'), 'acao-2026')
 })
 
-test('montarInicioEm combina data e hora', () => {
-  assert.equal(montarInicioEm('2026-10-25', '19:19'), '2026-10-25T19:19:00')
-  assert.equal(montarInicioEm('', '19:19'), '')
+test('montarInicioEm interpreta America/Sao_Paulo e retorna instante UTC', () => {
+  // A) 20:00 local (UTC-3) => 23:00Z
+  assert.equal(montarInicioEm('2026-10-29', '20:00'), '2026-10-29T23:00:00.000Z')
+  // B) horario da manha
+  assert.equal(montarInicioEm('2026-10-29', '09:30'), '2026-10-29T12:30:00.000Z')
+  // C) meia-noite local => 03:00Z
+  assert.equal(montarInicioEm('2026-10-29', '00:00'), '2026-10-29T03:00:00.000Z')
+  // D) virada de mes
+  assert.equal(montarInicioEm('2026-10-31', '23:30'), '2026-11-01T02:30:00.000Z')
+  // E) valor nao e ambiguo (contem Z)
+  assert.equal(montarInicioEm('2026-10-29', '20:00').endsWith('Z'), true)
+  // vazio
+  assert.equal(montarInicioEm('', '20:00'), '')
+  assert.equal(montarInicioEm('2026-10-29', ''), '')
 })
