@@ -16,6 +16,16 @@ export function qrUtilizavel(status: PublicTicketStatus): boolean {
   return status === 'VALIDO'
 }
 
+/** Normaliza o codigo do pedido (trim + maiusculo). */
+export function normalizarCodigoPedido(valor: string): string {
+  return (valor ?? '').trim().toUpperCase()
+}
+
+/** Normaliza telefone comparando apenas digitos. */
+export function normalizarTelefone(valor: string): string {
+  return (valor ?? '').replace(/\D/g, '')
+}
+
 /** Mensagem amigavel para erros de carregamento dos ingressos. */
 export function mensagemTicketsErro(code: TicketsErrorCode): string {
   const mapa: Record<TicketsErrorCode, string> = {

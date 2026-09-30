@@ -21,5 +21,12 @@ const emit = defineEmits<{
     >
       Tentar novamente
     </button>
+
+    <NuxtLink
+      to="/recuperar-ingressos"
+      class="block text-xs font-medium uppercase tracking-wide text-zinc-500 transition-colors hover:text-zinc-300"
+    >
+      Recuperar meus ingressos
+    </NuxtLink>
   </section>
 </template>

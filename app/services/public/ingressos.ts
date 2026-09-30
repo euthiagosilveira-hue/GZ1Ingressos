@@ -84,3 +84,19 @@ export async function obterIngressosCheckout(token: string): Promise<PublicOrder
   if (data === null) return null
   return mapearTickets(data as IngressosRpc)
 }
+
+/**
+ * Recupera os ingressos via token de recuperacao temporario (bearer).
+ * Mesmo shape de obterIngressosCheckout (reutiliza a UI existente).
+ */
+export async function obterIngressosRecuperacao(
+  token: string
+): Promise<PublicOrderTickets | null> {
+  const client = useSupabaseClient()
+  const { data, error } = await client.rpc('obter_ingressos_recuperacao', { p_token: token })
+  if (error) {
+    throw new TicketsError('ERRO_INESPERADO', (error as RpcErrorLike).message ?? 'Erro inesperado')
+  }
+  if (data === null) return null
+  return mapearTickets(data as IngressosRpc)
+}
