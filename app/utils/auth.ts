@@ -67,3 +67,17 @@ export function mensagemLoginErro(code: AuthErrorCode): string {
   }
   return mapa[code]
 }
+
+/**
+ * Sanitiza um destino de redirect. Aceita apenas caminhos internos que comecam
+ * com "/" (bloqueia http(s)://, //host, /\, javascript:, data:, etc.).
+ */
+export function sanitizarRedirect(valor: string | null | undefined): string | null {
+  if (typeof valor !== 'string') return null
+  const v = valor.trim()
+  if (!v.startsWith('/')) return null
+  if (v.startsWith('//') || v.startsWith('/\\')) return null
+  if (/[\r\n\t]/.test(v)) return null
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(v)) return null
+  return v
+}

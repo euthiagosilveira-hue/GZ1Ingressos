@@ -4,7 +4,7 @@ import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 
 import AppButton from '~/components/AppButton.vue'
 import { AuthError, useOperatorAuth } from '~/composables/useOperatorAuth'
-import { mensagemLoginErro } from '~/utils/auth'
+import { mensagemLoginErro, sanitizarRedirect } from '~/utils/auth'
 
 definePageMeta({
   layout: false
@@ -35,9 +35,12 @@ async function entrar() {
 
   try {
     const perfil = await login(form.email, form.senha)
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
-    if (redirect) {
-      await navigateTo(redirect)
+    const destino = sanitizarRedirect(
+      typeof route.query.redirect === 'string' ? route.query.redirect : null
+    )
+    // Honra o redirect apenas se for interno e permitido ao perfil.
+    if (destino && (perfil.perfil === 'ADMINISTRADOR' || destino.startsWith('/portaria'))) {
+      await navigateTo(destino)
       return
     }
     await navigateTo(perfil.perfil === 'PORTARIA' ? '/portaria' : '/')

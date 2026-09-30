@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { ChevronDownIcon } from '@heroicons/vue/24/outline'
 
-import type { EntryByHour } from '~/data/dashboard'
+import type { EntryByHour } from '~/types/dashboard'
 
 const props = defineProps<{
   data: EntryByHour[]

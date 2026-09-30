@@ -2,7 +2,7 @@
 import { CalendarDaysIcon, ClockIcon, MapPinIcon } from '@heroicons/vue/24/outline'
 
 import AppButton from '~/components/AppButton.vue'
-import type { TodayEvent } from '~/data/dashboard'
+import type { TodayEvent } from '~/types/dashboard'
 
 const props = defineProps<{
   event: TodayEvent

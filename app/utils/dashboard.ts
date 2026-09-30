@@ -1,9 +1,13 @@
 import type {
   AdminDashboardData,
   AdminDashboardEvento,
-  AdminDashboardOrder
+  AdminDashboardOrder,
+  EntryByHour,
+  PaymentSlice,
+  RecentEntry,
+  RecentOrder,
+  TodayEvent
 } from '~/types/dashboard'
-import type { EntryByHour, PaymentSlice, RecentEntry, RecentOrder, TodayEvent } from '~/data/dashboard'
 
 const moedaBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 

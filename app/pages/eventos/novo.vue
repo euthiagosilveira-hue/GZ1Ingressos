@@ -8,7 +8,8 @@ definePageMeta({
   title: 'Criar evento',
   description: 'Preencha as informações do seu evento.',
   layout: 'admin-layout',
-  sidebarActive: 'Eventos'
+  sidebarActive: 'Eventos',
+  middleware: ['admin-auth']
 })
 
 function aoSubmeter(_payload: EventPayload) {

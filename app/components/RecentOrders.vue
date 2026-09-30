@@ -3,7 +3,7 @@ import { EyeIcon } from '@heroicons/vue/24/outline'
 
 import AppButton from '~/components/AppButton.vue'
 import StatusBadge from '~/components/StatusBadge.vue'
-import type { RecentOrder } from '~/data/dashboard'
+import type { RecentOrder } from '~/types/dashboard'
 
 const props = defineProps<{
   orders: RecentOrder[]

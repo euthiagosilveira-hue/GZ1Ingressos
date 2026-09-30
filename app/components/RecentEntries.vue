@@ -2,7 +2,7 @@
 import { CheckIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
 import AppButton from '~/components/AppButton.vue'
-import type { RecentEntry } from '~/data/dashboard'
+import type { RecentEntry } from '~/types/dashboard'
 
 const props = defineProps<{
   entries: RecentEntry[]

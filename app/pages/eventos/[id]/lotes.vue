@@ -9,7 +9,8 @@ definePageMeta({
   title: 'Lotes',
   description: 'Gerencie os preços e as etapas de venda deste evento.',
   layout: 'admin-layout',
-  sidebarActive: 'Eventos'
+  sidebarActive: 'Eventos',
+  middleware: ['admin-auth']
 })
 
 const route = useRoute()

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { PaymentSlice } from '~/data/dashboard'
+import type { PaymentSlice } from '~/types/dashboard'
 
 const props = defineProps<{
   data: PaymentSlice[]

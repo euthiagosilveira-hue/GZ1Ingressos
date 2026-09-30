@@ -7,6 +7,7 @@ import {
   mensagemLoginErro,
   perfilPermitido,
   resolverUid,
+  sanitizarRedirect,
   uidDoUsuario
 } from '../app/utils/auth.ts'
 
@@ -126,4 +127,25 @@ test('middleware SSR resolve uid a partir das claims (sem session.user)', () => 
   // No SSR: user = claims(sub); session nao tem `user` (deletado pelo modulo)
   const uid = resolverUid(uidDoUsuario({ sub: 'sub-abc' }), undefined)
   assert.equal(uid, 'sub-abc')
+})
+
+// --- open redirect ------------------------------------------------------------
+
+test('sanitizarRedirect aceita apenas caminhos internos seguros', () => {
+  assert.equal(sanitizarRedirect('/eventos'), '/eventos')
+  assert.equal(sanitizarRedirect('/pedidos?evento=1'), '/pedidos?evento=1')
+  assert.equal(sanitizarRedirect('  /portaria '), '/portaria')
+})
+
+test('sanitizarRedirect bloqueia destinos externos/perigosos', () => {
+  assert.equal(sanitizarRedirect('https://externo.com'), null)
+  assert.equal(sanitizarRedirect('http://externo.com'), null)
+  assert.equal(sanitizarRedirect('//externo.com'), null)
+  assert.equal(sanitizarRedirect('/\\externo.com'), null)
+  assert.equal(sanitizarRedirect('javascript:alert(1)'), null)
+  assert.equal(sanitizarRedirect('data:text/html,x'), null)
+  assert.equal(sanitizarRedirect('eventos'), null)
+  assert.equal(sanitizarRedirect(null), null)
+  assert.equal(sanitizarRedirect(undefined), null)
+  assert.equal(sanitizarRedirect('/ok\nset-cookie'), null)
 })

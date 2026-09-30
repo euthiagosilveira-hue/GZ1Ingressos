@@ -53,3 +53,51 @@ export interface AdminDashboardData {
   pedidosRecentes: AdminDashboardOrder[]
   entradasRecentes: AdminDashboardEntry[]
 }
+
+/** View-models usados pelos componentes visuais do dashboard. */
+export interface EntryByHour {
+  hora: string
+  entradas: number
+}
+
+export interface PaymentSlice {
+  key: 'paid' | 'pending' | 'canceled'
+  label: string
+  value: number
+  color: string
+}
+
+export interface RecentOrder {
+  id: string
+  buyer: string
+  tickets: number
+  total: string
+  payment: 'Pago' | 'Pendente'
+  entranceUsed: number
+  entranceTotal: number
+}
+
+export interface RecentEntry {
+  id: string
+  name: string
+  ticket: string
+  time: string
+  dateLabel: string
+  ok: boolean
+  statusLabel: string
+}
+
+export interface TodayEvent {
+  badge: string
+  title: string
+  date: string
+  time: string
+  venue: string
+  poster: {
+    weekday: string
+    day: string
+    month: string
+    label: string
+    name: string
+  }
+}
