@@ -10,7 +10,7 @@ import PublicTicketsUnavailable from '~/components/public/ingressos/PublicTicket
 import { usePublicTickets } from '~/composables/usePublicTickets'
 import { mensagemTicketsErro } from '~/utils/publicIngressos'
 
-const { token, tickets, carregando, erro, estado, carregar } = usePublicTickets()
+const { token, recoveryToken, tickets, carregando, erro, estado, carregar } = usePublicTickets()
 
 const tituloIndisponivel = computed(() => {
   const status = tickets.value?.pedidoStatus
@@ -69,6 +69,8 @@ const descricaoIndisponivel = computed(() => {
             :evento-nome="tickets.eventoNome"
             :evento-inicio-em="tickets.eventoInicioEm"
             :evento-local="tickets.eventoLocal"
+            :checkout-token="token"
+            :recovery-token="recoveryToken"
           />
         </div>
 
