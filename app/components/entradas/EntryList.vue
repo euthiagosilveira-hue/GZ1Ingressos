@@ -13,14 +13,9 @@ import EntryMobileList from '~/components/entradas/EntryMobileList.vue'
 import EntryPagination from '~/components/entradas/EntryPagination.vue'
 import EntrySummary from '~/components/entradas/EntrySummary.vue'
 import EntryTable from '~/components/entradas/EntryTable.vue'
-import { useEntryList } from '~/composables/useEntryList'
-import { eventosMock } from '~/data/eventos'
+import { useAdminEntries } from '~/composables/useAdminEntries'
 import type { SelectOption } from '~/types/ui'
 import type { EntryFiltersState, EntryListItem, EntrySort } from '~/types/entrada'
-
-const props = defineProps<{
-  entradas: EntryListItem[]
-}>()
 
 const {
   itens,
@@ -34,13 +29,8 @@ const {
   temFiltros,
   limparFiltros,
   irPara,
-  anularEntrada
-} = useEntryList(props.entradas, 10)
-
-const eventoOptions = computed<SelectOption[]>(() => [
-  { value: 'TODOS', label: 'Todos os eventos' },
-  ...eventosMock.map((evento) => ({ value: evento.id, label: evento.nome }))
-])
+  eventoOptions
+} = useAdminEntries(10)
 
 const sortOptions: SelectOption[] = [
   { value: 'RECENTES', label: 'Mais recentes' },
@@ -98,19 +88,15 @@ function acaoEntrada(payload: {
   abrirDetalhes(payload.id)
 }
 
-function confirmarAnulacao(motivo: string) {
+function confirmarAnulacao(_motivo: string) {
   const alvo = entradaAnulacao.value
   if (!alvo) return
 
-  anularEntrada(alvo.id, motivo)
-  toast.success('Entrada anulada (mock).')
+  // Somente leitura nesta etapa: a anulacao real sera implementada depois.
+  toast.info('Ação de anulação disponível em etapa futura.')
 
   anulacaoAberta.value = false
   entradaAnulacao.value = null
-
-  if (entradaDetalhes.value?.id === alvo.id) {
-    entradaDetalhes.value = itens.value.find((item) => item.id === alvo.id) ?? null
-  }
 }
 
 function irParaPortaria() {

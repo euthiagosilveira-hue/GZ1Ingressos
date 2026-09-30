@@ -1,12 +1,44 @@
 import type {
+  AdminEntryRow,
   EntryFiltersState,
   EntryListItem,
+  EntryMethod,
   EntryPeriodFilter,
   EntrySort,
   EntryState,
   EntrySummaryData
 } from '~/types/entrada'
-import { normalizarTexto } from '~/utils/portaria'
+
+function normalizarTexto(valor: string): string {
+  return valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+/** Mapeia a linha real de public.entradas para o view-model da listagem. */
+export function mapearEntradaAdminParaListItem(row: AdminEntryRow): EntryListItem {
+  return {
+    id: row.entrada_id,
+    ingressoId: row.ingresso_id,
+    ingressoCodigo: row.ingresso_codigo,
+    participanteNome: row.participante_nome,
+    pedidoId: row.pedido_id,
+    pedidoCodigo: row.pedido_codigo,
+    eventoId: row.evento_id,
+    eventoNome: row.evento_nome,
+    usuarioId: row.operador_id ?? '',
+    usuarioNome: row.operador_nome ?? '—',
+    metodo: row.metodo as EntryMethod,
+    entradaEm: row.entrada_em,
+    anuladaEm: row.anulada_em,
+    anuladaPorUsuarioId: null,
+    anuladaPorUsuarioNome: row.anulada_por_nome,
+    motivoAnulacao: row.motivo_anulacao,
+    criadoEm: row.criado_em
+  }
+}
 
 /**
  * `EntryState` é derivado para a UI (a tabela real não possui coluna status):

@@ -51,3 +51,25 @@ export interface EntrySummaryData {
   qrCode: number
   nome: number
 }
+
+/** Linha bruta de public.listar_entradas_admin. */
+export interface AdminEntryRow {
+  entrada_id: string
+  entrada_em: string
+  metodo: string
+  anulada_em: string | null
+  anulada_por_nome: string | null
+  motivo_anulacao: string | null
+  ingresso_id: string
+  ingresso_codigo: string
+  participante_nome: string
+  ingresso_status: string
+  pedido_id: string
+  pedido_codigo: string
+  evento_id: string
+  evento_nome: string
+  evento_inicio_em: string | null
+  operador_id: string | null
+  operador_nome: string | null
+  criado_em: string
+}
