@@ -34,9 +34,13 @@ async function entrar() {
   }
 
   try {
-    await login(form.email, form.senha)
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/portaria'
-    await navigateTo(redirect.startsWith('/portaria') ? redirect : '/portaria')
+    const perfil = await login(form.email, form.senha)
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+    if (redirect) {
+      await navigateTo(redirect)
+      return
+    }
+    await navigateTo(perfil.perfil === 'PORTARIA' ? '/portaria' : '/')
   } catch (e) {
     erro.value = e instanceof AuthError ? e.message : mensagemLoginErro('ERRO_TEMPORARIO')
     // Garante que uma sessao sem permissao nao permaneca ativa.
