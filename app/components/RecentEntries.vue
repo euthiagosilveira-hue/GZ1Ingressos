@@ -23,16 +23,16 @@ const props = defineProps<{
       </button>
     </div>
 
-    <div class="mt-5 flex-1 space-y-5">
-      <div v-for="entry in props.entries" :key="entry.id" class="flex items-center gap-3.5">
+    <div class="mt-5 flex-1 space-y-4">
+      <div v-for="entry in props.entries" :key="entry.id" class="flex items-center gap-3">
         <span
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border"
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border"
           :class="entry.ok
-            ? 'border-green-500 bg-green-500 text-white'
-            : 'border-red-500/50 bg-red-500/15 text-red-400'"
+            ? 'border-green-500/70 bg-green-500/5 text-green-400'
+            : 'border-red-500/50 bg-red-500/10 text-red-400'"
         >
-          <CheckIcon v-if="entry.ok" class="h-5 w-5" />
-          <XMarkIcon v-else class="h-5 w-5" />
+          <CheckIcon v-if="entry.ok" class="h-4 w-4" />
+          <XMarkIcon v-else class="h-4 w-4" />
         </span>
 
         <div class="min-w-0 flex-1">
