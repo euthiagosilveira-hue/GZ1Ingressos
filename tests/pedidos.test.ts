@@ -108,3 +108,40 @@ test('mapearPedidoAdminParaDetalhe monta pagamento, ingressos e historico', () =
   assert.equal(det.historico.some((h) => h.tipo === 'PAGAMENTO_APROVADO'), true)
   assert.equal(det.historico.some((h) => h.tipo === 'INGRESSOS_LIBERADOS'), true)
 })
+
+test('mapearPedidoAdminParaDetalhe preserva evento real (nome/data/local)', () => {
+  const det = mapearPedidoAdminParaDetalhe({
+    id: 'a',
+    codigo: 'GZ100800',
+    evento_id: 'e1e1e1e1-1111-2222-3333-444444444444',
+    evento_nome: 'GZ1 Evento Teste Público',
+    lote_id: null,
+    lote_nome: null,
+    comprador_nome: 'Comprador',
+    comprador_telefone: '11999990000',
+    comprador_email: null,
+    quantidade: 1,
+    tipo_preco: 'LOTE',
+    valor_unitario: '40.00',
+    valor_total: '40.00',
+    status: 'PAGO',
+    reserva_expira_em: null,
+    pago_em: '2026-09-29T12:00:00Z',
+    cancelado_em: null,
+    criado_em: '2026-09-29T11:59:00Z',
+    atualizado_em: null,
+    motivo_valor_avulso: null,
+    autorizado_por_nome: null,
+    pagamento_status: 'APROVADO',
+    pagamento_valor: '40.00',
+    evento_inicio_em: '2026-10-25T19:19:10Z',
+    evento_local: 'Galeria Zero 1',
+    pagamento: null,
+    ingressos: []
+  })
+
+  assert.equal(det.eventoId, 'e1e1e1e1-1111-2222-3333-444444444444')
+  assert.equal(det.eventoNome, 'GZ1 Evento Teste Público')
+  assert.equal(det.eventoInicioEm, '2026-10-25T19:19:10Z')
+  assert.equal(det.eventoLocal, 'Galeria Zero 1')
+})

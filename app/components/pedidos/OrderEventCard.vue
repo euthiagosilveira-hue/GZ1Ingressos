@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { toast } from 'vue3-toastify'
 
 import AppButton from '~/components/AppButton.vue'
 import BaseCard from '~/components/BaseCard.vue'
-import { eventosMock } from '~/data/eventos'
 import { formatDataHora } from '~/utils/format'
 import type { OrderDetail } from '~/types/pedido'
 
@@ -12,16 +10,12 @@ const props = defineProps<{
   pedido: OrderDetail
 }>()
 
-const evento = computed(
-  () => eventosMock.find((item) => item.id === props.pedido.eventoId) ?? null
-)
-
 function verEvento() {
-  if (!evento.value) {
-    toast.info('Evento não disponível nos mocks.')
+  if (!props.pedido.eventoId) {
+    toast.info('Evento não disponível.')
     return
   }
-  navigateTo(`/eventos/${evento.value.id}/lotes`)
+  navigateTo(`/eventos/${props.pedido.eventoId}/lotes`)
 }
 </script>
 
@@ -34,13 +28,13 @@ function verEvento() {
         <dt class="text-xs text-zinc-500">Nome</dt>
         <dd class="text-sm text-zinc-200">{{ props.pedido.eventoNome }}</dd>
       </div>
-      <div v-if="evento">
+      <div v-if="props.pedido.eventoInicioEm">
         <dt class="text-xs text-zinc-500">Data e hora</dt>
-        <dd class="text-sm text-zinc-200">{{ formatDataHora(evento.inicioEm) }}</dd>
+        <dd class="text-sm text-zinc-200">{{ formatDataHora(props.pedido.eventoInicioEm) }}</dd>
       </div>
-      <div v-if="evento">
+      <div v-if="props.pedido.eventoLocal">
         <dt class="text-xs text-zinc-500">Local</dt>
-        <dd class="text-sm text-zinc-200">{{ evento.local }}</dd>
+        <dd class="text-sm text-zinc-200">{{ props.pedido.eventoLocal }}</dd>
       </div>
       <div v-if="props.pedido.loteNome">
         <dt class="text-xs text-zinc-500">Lote</dt>

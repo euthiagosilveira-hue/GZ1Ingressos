@@ -69,6 +69,8 @@ export interface OrderHistoryEvent {
 
 export interface OrderDetail extends OrderListItem {
   atualizadoEm: string | null
+  eventoInicioEm: string | null
+  eventoLocal: string | null
   motivoValorAvulso: string | null
   autorizadoPorUsuarioId: string | null
   autorizadoPorNome: string | null

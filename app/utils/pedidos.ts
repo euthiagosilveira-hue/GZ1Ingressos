@@ -147,6 +147,8 @@ export function mapearPedidoAdminParaDetalhe(row: AdminPedidoDetalheRow): OrderD
   return {
     ...base,
     atualizadoEm: row.atualizado_em ?? base.criadoEm,
+    eventoInicioEm: row.evento_inicio_em ?? null,
+    eventoLocal: row.evento_local ?? null,
     motivoValorAvulso: row.motivo_valor_avulso,
     autorizadoPorUsuarioId: null,
     autorizadoPorNome: row.autorizado_por_nome,
