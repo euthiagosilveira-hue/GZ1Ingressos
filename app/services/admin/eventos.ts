@@ -60,3 +60,82 @@ export async function listarEventosAdmin(
   const rows = (data ?? []) as AdminEventRow[]
   return rows.map(mapear)
 }
+
+export interface CriarEventoAdminInput {
+  nome: string
+  slug: string
+  descricao?: string | null
+  imagemUrl?: string | null
+  inicioEm: string
+  local: string
+  endereco: string
+  capacidadeTotal: number
+  estoqueAntecipado: number
+  publicacaoStatus: PublicationStatus
+  vendasStatus: SalesStatus
+}
+
+export interface CriarEventoAdminResult {
+  eventoId: string
+  slug: string
+  nome: string
+  status: EventStatus
+  publicacaoStatus: PublicationStatus
+}
+
+interface CriarEventoRpc {
+  evento_id: string
+  slug: string
+  nome: string
+  status: string
+  publicacao_status: string
+}
+
+interface RpcErrorLike {
+  code?: string | null
+  message?: string | null
+}
+
+/** Cria um evento real (RPC segura, ADMINISTRADOR). Sem INSERT direto. */
+export async function criarEventoAdmin(
+  input: CriarEventoAdminInput
+): Promise<CriarEventoAdminResult> {
+  const client = useSupabaseClient()
+  const { data, error } = await client.rpc('criar_evento_admin', {
+    p_nome: input.nome,
+    p_slug: input.slug,
+    p_descricao: input.descricao ?? null,
+    p_imagem_url: input.imagemUrl ?? null,
+    p_inicio_em: input.inicioEm,
+    p_local: input.local,
+    p_endereco: input.endereco,
+    p_capacidade_total: input.capacidadeTotal,
+    p_estoque_antecipado: input.estoqueAntecipado,
+    p_publicacao_status: input.publicacaoStatus,
+    p_vendas_status: input.vendasStatus
+  })
+
+  if (error) {
+    const e = error as RpcErrorLike
+    const mensagem = (e.message ?? '').toLowerCase()
+    if (e.code === '42501' || mensagem.includes('permiss')) {
+      throw new Error('Você não tem permissão para criar eventos.')
+    }
+    if (e.code === '23505' || mensagem.includes('endereco de url')) {
+      throw new Error('Já existe um evento com esse endereço de URL.')
+    }
+    if (e.code === '23514') {
+      throw new Error('Verifique os dados informados.')
+    }
+    throw new Error('Não foi possível criar o evento.')
+  }
+
+  const r = data as CriarEventoRpc
+  return {
+    eventoId: r.evento_id,
+    slug: r.slug,
+    nome: r.nome,
+    status: r.status as EventStatus,
+    publicacaoStatus: r.publicacao_status as PublicationStatus
+  }
+}

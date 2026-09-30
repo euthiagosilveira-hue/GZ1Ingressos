@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { mapearEventoAdminParaListItem } from '../app/utils/eventos.ts'
+import { mapearEventoAdminParaListItem, gerarSlug, montarInicioEm } from '../app/utils/eventos.ts'
 
 test('mapearEventoAdminParaListItem adapta o item real para o shape dos cards', () => {
   const item = mapearEventoAdminParaListItem({
@@ -30,4 +30,15 @@ test('mapearEventoAdminParaListItem adapta o item real para o shape dos cards', 
   assert.equal(item.vendidos, 9)
   assert.equal(item.imagemUrl, null)
   assert.equal(item.loteAtual, null)
+})
+
+test('gerarSlug normaliza acentos/espacos/simbolos', () => {
+  assert.equal(gerarSlug('Meu Evento Show!'), 'meu-evento-show')
+  assert.equal(gerarSlug('  Banda  Conexão  '), 'banda-conexao')
+  assert.equal(gerarSlug('Ação--2026'), 'acao-2026')
+})
+
+test('montarInicioEm combina data e hora', () => {
+  assert.equal(montarInicioEm('2026-10-25', '19:19'), '2026-10-25T19:19:00')
+  assert.equal(montarInicioEm('', '19:19'), '')
 })

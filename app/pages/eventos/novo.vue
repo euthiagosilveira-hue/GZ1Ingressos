@@ -2,6 +2,7 @@
 import { toast } from 'vue3-toastify'
 
 import EventForm from '~/components/eventos/EventForm.vue'
+import { criarEventoAdmin } from '~/services/admin/eventos'
 import type { EventPayload } from '~/types/evento'
 
 definePageMeta({
@@ -12,9 +13,26 @@ definePageMeta({
   middleware: ['admin-auth']
 })
 
-function aoSubmeter(_payload: EventPayload) {
-  toast.success('Evento salvo com sucesso!')
-  navigateTo('/eventos')
+async function aoSubmeter(payload: EventPayload) {
+  try {
+    const evento = await criarEventoAdmin({
+      nome: payload.nome,
+      slug: payload.slug,
+      descricao: payload.descricao,
+      imagemUrl: payload.imagemUrl,
+      inicioEm: payload.inicioEm,
+      local: payload.local,
+      endereco: payload.endereco,
+      capacidadeTotal: payload.capacidadeTotal,
+      estoqueAntecipado: payload.estoqueAntecipado,
+      publicacaoStatus: payload.publicacaoStatus,
+      vendasStatus: payload.vendasStatus
+    })
+    toast.success('Evento criado com sucesso!')
+    await navigateTo(`/eventos/${evento.eventoId}/lotes`)
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Não foi possível criar o evento.')
+  }
 }
 
 function aoCancelar() {
