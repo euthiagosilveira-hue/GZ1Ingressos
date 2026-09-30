@@ -1,11 +1,59 @@
 import type {
+  AdminFinanceMovimentacaoRow,
+  AdminFinanceResumoRow,
   FinancialFiltersState,
   FinancialPeriodFilter,
   FinancialSort,
   FinancialSummaryData,
   PaymentListItem
 } from '~/types/pagamento'
-import { normalizarTexto } from '~/utils/portaria'
+import type { PaymentProvider, PaymentStatus } from '~/types/pagamento'
+
+function normalizarTexto(valor: string): string {
+  return valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+/** Resumo real (faturamento so de pagamentos APROVADOS). */
+export function mapearFinanceiroResumo(row: AdminFinanceResumoRow): FinancialSummaryData {
+  return {
+    total: Number(row.total),
+    aprovados: Number(row.aprovados),
+    valorAprovado: Number(row.valorAprovado),
+    pendente: Number(row.pendente),
+    reembolsado: Number(row.reembolsado),
+    liquido: Number(row.liquido)
+  }
+}
+
+/** Mapeia a movimentacao real para o view-model da listagem. */
+export function mapearMovimentacaoParaListItem(
+  row: AdminFinanceMovimentacaoRow
+): PaymentListItem {
+  return {
+    id: row.pagamento_id,
+    pedidoId: row.pedido_id,
+    pedidoCodigo: row.pedido_codigo,
+    eventoId: row.evento_id,
+    eventoNome: row.evento_nome,
+    compradorNome: row.comprador_nome,
+    provider: row.provedor as PaymentProvider,
+    valor: Number(row.valor),
+    status: row.status as PaymentStatus,
+    transactionId: row.transacao_id ?? '',
+    chargeId: row.cobranca_id ?? '',
+    externalReference: row.referencia_externa ?? '',
+    criadoEm: row.criado_em,
+    expiraEm: row.expira_em,
+    confirmadoEm: row.confirmado_em,
+    canceladoEm: row.cancelado_em,
+    reembolsadoEm: row.reembolsado_em,
+    valorReembolsado: Number(row.valor_reembolsado ?? 0)
+  }
+}
 
 export function referenciaTemporalPagamentos(pagamentos: PaymentListItem[]): Date {
   if (pagamentos.length === 0) return new Date()

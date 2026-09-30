@@ -10,8 +10,7 @@ import PaymentFilters from '~/components/financeiro/PaymentFilters.vue'
 import PaymentMobileList from '~/components/financeiro/PaymentMobileList.vue'
 import PaymentPagination from '~/components/financeiro/PaymentPagination.vue'
 import PaymentTable from '~/components/financeiro/PaymentTable.vue'
-import { useFinancialList } from '~/composables/useFinancialList'
-import { eventosMock } from '~/data/eventos'
+import { useAdminFinance } from '~/composables/useAdminFinance'
 import type { SelectOption } from '~/types/ui'
 import type {
   FinancialFiltersState,
@@ -19,27 +18,20 @@ import type {
   PaymentListItem
 } from '~/types/pagamento'
 
-const props = defineProps<{
-  pagamentos: PaymentListItem[]
-}>()
-
 const {
   filtros,
   ordenacao,
   pagina,
+  pagamentos,
   pagamentosPaginados,
   total,
   numeroPaginas,
   resumo,
   temFiltros,
   limparFiltros,
-  irPara
-} = useFinancialList(props.pagamentos, 10)
-
-const eventoOptions = computed<SelectOption[]>(() => [
-  { value: 'TODOS', label: 'Todos os eventos' },
-  ...eventosMock.map((evento) => ({ value: evento.id, label: evento.nome }))
-])
+  irPara,
+  eventoOptions
+} = useAdminFinance(10)
 
 const sortOptions: SelectOption[] = [
   { value: 'RECENTES', label: 'Mais recentes' },
@@ -68,7 +60,7 @@ function acaoPagamento(payload: { id: string; pedidoId: string; action: string }
     return
   }
 
-  const pagamento = props.pagamentos.find((item) => item.id === payload.id) ?? null
+  const pagamento = pagamentos.value.find((item) => item.id === payload.id) ?? null
   if (!pagamento) return
 
   pagamentoDetalhes.value = pagamento

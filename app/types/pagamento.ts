@@ -73,3 +73,39 @@ export interface FinancialSummaryData {
   reembolsado: number
   liquido: number
 }
+
+/** Linha de movimentacao de public.obter_financeiro_admin. */
+export interface AdminFinanceMovimentacaoRow {
+  pagamento_id: string
+  pedido_id: string
+  pedido_codigo: string
+  evento_id: string
+  evento_nome: string
+  comprador_nome: string
+  provedor: string
+  status: string
+  valor: number | string
+  valor_reembolsado: number | string | null
+  transacao_id: string | null
+  cobranca_id: string | null
+  referencia_externa: string | null
+  expira_em: string | null
+  confirmado_em: string | null
+  cancelado_em: string | null
+  reembolsado_em: string | null
+  criado_em: string
+}
+
+export interface AdminFinanceResumoRow {
+  total: number
+  aprovados: number
+  valorAprovado: number | string
+  pendente: number | string
+  reembolsado: number | string
+  liquido: number | string
+}
+
+export interface AdminFinanceResponse {
+  resumo: AdminFinanceResumoRow
+  movimentacoes: AdminFinanceMovimentacaoRow[] | null
+}
