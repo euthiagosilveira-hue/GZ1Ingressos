@@ -240,18 +240,23 @@ export async function consultarStatus(
   let status: Gz1PaymentStatus = (checkout.pagamento_status as Gz1PaymentStatus) ?? 'PENDENTE'
 
   // 1) Reconcilia com o provedor ANTES de qualquer expiracao: nunca perder um
-  //    pagamento aprovado no limite da reserva.
+  //    pagamento aprovado no limite da reserva. Se o provedor falhar, mantemos
+  //    o status interno e seguimos para a expiracao (fonte de verdade e o banco).
   if (checkout.cobranca_id && accessToken) {
-    const provider = new MercadoPagoProvider(accessToken)
-    const charge = await provider.getCharge(checkout.cobranca_id)
-    const confirmou = await confirmarPagamentoOficial(event, checkoutToken, checkout, charge)
+    try {
+      const provider = new MercadoPagoProvider(accessToken)
+      const charge = await provider.getCharge(checkout.cobranca_id)
+      const confirmou = await confirmarPagamentoOficial(event, checkoutToken, checkout, charge)
 
-    if (confirmou) {
-      const atualizado = await obterCheckoutBackend(event, checkoutToken)
-      if (atualizado?.pagamento_status === 'APROVADO') return { status: 'APROVADO' }
+      if (confirmou) {
+        const atualizado = await obterCheckoutBackend(event, checkoutToken)
+        if (atualizado?.pagamento_status === 'APROVADO') return { status: 'APROVADO' }
+      }
+
+      status = charge.status
+    } catch {
+      // Provedor indisponivel/ordem nao encontrada: nao bloqueia a expiracao.
     }
-
-    status = charge.status
   }
 
   // 2) Somente expira se NAO estiver aprovado e a reserva realmente venceu.
