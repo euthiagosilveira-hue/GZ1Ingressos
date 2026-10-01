@@ -10,10 +10,14 @@ import { descricaoAtivacao } from '~/utils/lotes'
 import type { SelectOption } from '~/types/ui'
 import type { LotActivationType, LotFormErrors, LotFormValue } from '~/types/lote'
 
-const props = defineProps<{
-  value: LotFormValue
-  errors: LotFormErrors
-}>()
+const props = withDefaults(
+  defineProps<{
+    value: LotFormValue
+    errors: LotFormErrors
+    bloqueada?: boolean
+  }>(),
+  { bloqueada: false }
+)
 
 const opcoes: SelectOption[] = [
   { value: 'MANUAL', label: 'Manual' },
@@ -36,17 +40,31 @@ function definirTipo(tipo: string) {
       <SegmentedControl
         :model-value="value.tipoAtivacao"
         :options="opcoes"
+        :disabled="props.bloqueada"
         @update:model-value="definirTipo"
       />
       <p v-if="!errors.tipoAtivacao" class="mt-2 text-xs text-zinc-500">{{ descricao }}</p>
+      <p v-if="props.bloqueada" class="mt-2 text-xs text-amber-400/80">
+        A ativação deste lote já foi definida e não pode ser alterada.
+      </p>
     </FormField>
 
     <div v-if="value.tipoAtivacao === 'DATA_HORA'" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <FormField label="Data de ativação" required :error="errors.dataAtivacao">
-        <BaseInput v-model="value.dataAtivacao" type="date" :invalid="!!errors.dataAtivacao" />
+        <BaseInput
+          v-model="value.dataAtivacao"
+          type="date"
+          :disabled="props.bloqueada"
+          :invalid="!!errors.dataAtivacao"
+        />
       </FormField>
       <FormField label="Horário de ativação" required :error="errors.horaAtivacao">
-        <BaseInput v-model="value.horaAtivacao" type="time" :invalid="!!errors.horaAtivacao" />
+        <BaseInput
+          v-model="value.horaAtivacao"
+          type="time"
+          :disabled="props.bloqueada"
+          :invalid="!!errors.horaAtivacao"
+        />
       </FormField>
     </div>
 

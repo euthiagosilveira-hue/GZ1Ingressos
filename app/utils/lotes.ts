@@ -1,6 +1,12 @@
 import type { EventListItem, EventStatus, SalesStatus } from '~/types/evento'
-import type { LotActivationType, LotListItem, LotOrdemRef, LotStatus } from '~/types/lote'
-import { montarInicioEm } from './eventos.ts'
+import type {
+  LotActivationType,
+  LotFormValue,
+  LotListItem,
+  LotOrdemRef,
+  LotStatus
+} from '~/types/lote'
+import { montarInicioEm, separarInstanteSaoPaulo } from './eventos.ts'
 import { imagemValida } from './imagem.ts'
 
 /** As vendas precisam estar ABERTAS para ativar um lote (regra de dominio). */
@@ -126,5 +132,20 @@ export function mapearEventoLotesParaListItem(row: EventoLotesAdminRow): EventLi
     loteAtual: null,
     vendidos: row.vendidos,
     disponiveis: row.disponiveis
+  }
+}
+
+/** Lote real -> estado inicial do LotForm (edicao), com data/hora em Sao Paulo. */
+export function mapearLoteParaFormulario(lote: LotListItem): Partial<LotFormValue> {
+  const { data, hora } = separarInstanteSaoPaulo(lote.ativacaoEm ?? '')
+  return {
+    nome: lote.nome,
+    ordem: lote.ordem,
+    quantidade: lote.quantidade,
+    preco: lote.preco,
+    tipoAtivacao: lote.tipoAtivacao,
+    dataAtivacao: data,
+    horaAtivacao: hora,
+    status: lote.status
   }
 }

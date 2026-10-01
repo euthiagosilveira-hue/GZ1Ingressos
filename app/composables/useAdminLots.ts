@@ -1,6 +1,14 @@
 import { onMounted, ref } from 'vue'
 
-import { ativarLoteAdmin, criarLoteAdmin, definirVendasEventoAdmin, listarLotesAdmin, type CriarLoteAdminInput } from '~/services/admin/lotes'
+import {
+  ativarLoteAdmin,
+  atualizarLoteAdmin,
+  criarLoteAdmin,
+  definirVendasEventoAdmin,
+  listarLotesAdmin,
+  type AtualizarLoteAdminInput,
+  type CriarLoteAdminInput
+} from '~/services/admin/lotes'
 import type { EventListItem } from '~/types/evento'
 import type { LotListItem } from '~/types/lote'
 
@@ -40,6 +48,16 @@ export function useAdminLots(eventoId: string) {
     }
   }
 
+  async function atualizar(loteId: string, input: AtualizarLoteAdminInput) {
+    processando.value = true
+    try {
+      await atualizarLoteAdmin(loteId, input)
+      await carregar()
+    } finally {
+      processando.value = false
+    }
+  }
+
   async function ativar(loteId: string) {
     processando.value = true
     try {
@@ -73,6 +91,7 @@ export function useAdminLots(eventoId: string) {
     processando,
     carregar,
     criar,
+    atualizar,
     ativar,
     abrirVendas,
     refresh: carregar

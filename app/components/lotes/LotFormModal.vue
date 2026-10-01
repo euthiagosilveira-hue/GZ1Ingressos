@@ -12,12 +12,20 @@ const props = withDefaults(
     initialValue?: Partial<LotFormValue>
     ordens?: LotOrdemRef[]
     idAtual?: string
+    ativacaoBloqueada?: boolean
+    ordemBloqueada?: boolean
+    submitLabel?: string
+    submitting?: boolean
   }>(),
   {
     mode: 'create',
     initialValue: () => ({}),
     ordens: () => [],
-    idAtual: ''
+    idAtual: '',
+    ativacaoBloqueada: false,
+    ordemBloqueada: false,
+    submitLabel: 'Salvar lote',
+    submitting: false
   }
 )
 
@@ -47,6 +55,10 @@ const subtitulo = computed(() =>
       :initial-value="props.initialValue"
       :ordens="props.ordens"
       :id-atual="props.idAtual"
+      :ativacao-bloqueada="props.ativacaoBloqueada"
+      :ordem-bloqueada="props.ordemBloqueada"
+      :submit-label="props.submitLabel"
+      :submitting="props.submitting"
       @submit="emit('submit', $event)"
       @cancel="emit('cancel')"
     />

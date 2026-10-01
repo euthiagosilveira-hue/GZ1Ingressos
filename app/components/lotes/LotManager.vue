@@ -18,7 +18,7 @@ import type {
   LotOrdemRef,
   LotPayload
 } from '~/types/lote'
-import { proximaOrdem } from '~/utils/lotes'
+import { mapearLoteParaFormulario, proximaOrdem } from '~/utils/lotes'
 
 const props = defineProps<{
   evento: EventListItem
@@ -29,6 +29,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   criar: [payload: LotPayload]
+  atualizar: [id: string, payload: LotPayload]
   ativar: [id: string]
   abrirVendas: []
 }>()
@@ -58,17 +59,7 @@ const precoAtual = computed(() => {
 
 const valorInicialForm = computed<Partial<LotFormValue>>(() => {
   if (formModo.value === 'edit' && loteEmEdicao.value) {
-    const lote = loteEmEdicao.value
-    return {
-      nome: lote.nome,
-      ordem: lote.ordem,
-      quantidade: lote.quantidade,
-      preco: lote.preco,
-      tipoAtivacao: lote.tipoAtivacao,
-      dataAtivacao: lote.ativacaoEm ? lote.ativacaoEm.slice(0, 10) : '',
-      horaAtivacao: lote.ativacaoEm ? lote.ativacaoEm.slice(11, 16) : '',
-      status: lote.status
-    }
+    return mapearLoteParaFormulario(loteEmEdicao.value)
   }
   return {
     ordem: proximaOrdem(props.lotes),
@@ -99,8 +90,8 @@ function fecharForm() {
 function salvar(payload: LotPayload) {
   if (formModo.value === 'create') {
     emit('criar', payload)
-  } else {
-    toast.info('A edição de lote estará disponível em breve.')
+  } else if (loteEmEdicao.value) {
+    emit('atualizar', loteEmEdicao.value.id, payload)
   }
   fecharForm()
 }
@@ -197,6 +188,10 @@ function acaoLote(payload: { id: string; action: string }) {
       :initial-value="valorInicialForm"
       :ordens="ordens"
       :id-atual="loteEmEdicao?.id ?? ''"
+      :ativacao-bloqueada="formModo === 'edit' && loteEmEdicao?.status === 'ATIVO'"
+      :ordem-bloqueada="formModo === 'edit'"
+      :submit-label="formModo === 'edit' ? 'Salvar alterações' : 'Salvar lote'"
+      :submitting="props.processando"
       @submit="salvar"
       @cancel="fecharForm"
     />

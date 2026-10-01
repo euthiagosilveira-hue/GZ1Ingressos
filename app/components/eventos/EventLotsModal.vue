@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ArrowTopRightOnSquareIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import { ArrowTopRightOnSquareIcon, PencilSquareIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import { toast } from 'vue3-toastify'
 
 import AppButton from '~/components/AppButton.vue'
@@ -10,9 +10,9 @@ import LotActivationBadge from '~/components/lotes/LotActivationBadge.vue'
 import LotForm from '~/components/lotes/LotForm.vue'
 import LotStatusBadge from '~/components/lotes/LotStatusBadge.vue'
 import { useAdminLots } from '~/composables/useAdminLots'
-import type { LotFormValue, LotPayload } from '~/types/lote'
+import type { LotFormValue, LotListItem, LotPayload } from '~/types/lote'
 import { formatDataHora, formatMoeda, formatNumero } from '~/utils/format'
-import { ativacaoLoteBloqueada, eventoPermiteAbrirVendas, proximaOrdem } from '~/utils/lotes'
+import { ativacaoLoteBloqueada, eventoPermiteAbrirVendas, mapearLoteParaFormulario, proximaOrdem } from '~/utils/lotes'
 
 const props = defineProps<{
   open: boolean
@@ -24,10 +24,11 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const { evento, lotes, carregando, erro, processando, criar, ativar, abrirVendas, refresh } =
+const { evento, lotes, carregando, erro, processando, criar, atualizar, ativar, abrirVendas, refresh } =
   useAdminLots(props.eventoId)
 
-const modo = ref<'lista' | 'novo'>('lista')
+const modo = ref<'lista' | 'novo' | 'editar'>('lista')
+const loteEmEdicao = ref<LotListItem | null>(null)
 const loteParaAtivar = ref<string | null>(null)
 
 const lotesOrdenados = computed(() => [...lotes.value].sort((a, b) => a.ordem - b.ordem))
@@ -40,6 +41,10 @@ const valorInicialForm = computed<Partial<LotFormValue>>(() => ({
   tipoAtivacao: 'MANUAL',
   status: 'INATIVO'
 }))
+const valorInicialEdicao = computed<Partial<LotFormValue>>(() =>
+  loteEmEdicao.value ? mapearLoteParaFormulario(loteEmEdicao.value) : {}
+)
+const ativacaoBloqueadaEdicao = computed(() => loteEmEdicao.value?.status === 'ATIVO')
 const ordens = computed(() => lotes.value.map((lote) => ({ id: lote.id, ordem: lote.ordem })))
 const loteAlvoAtivacao = computed(
   () => lotes.value.find((lote) => lote.id === loteParaAtivar.value) ?? null
@@ -51,6 +56,18 @@ function bloqueada(status: (typeof lotes.value)[number]['status']): boolean {
 
 function fechar() {
   emit('close')
+}
+
+function abrirEdicao(loteId: string) {
+  const lote = lotes.value.find((item) => item.id === loteId)
+  if (!lote || lote.status === 'ENCERRADO') return
+  loteEmEdicao.value = lote
+  modo.value = 'editar'
+}
+
+function voltarLista() {
+  loteEmEdicao.value = null
+  modo.value = 'lista'
 }
 
 async function aoCriar(payload: LotPayload) {
@@ -66,6 +83,24 @@ async function aoCriar(payload: LotPayload) {
     modo.value = 'lista'
   } catch (e) {
     toast.error(e instanceof Error ? e.message : 'Não foi possível criar o lote.')
+  }
+}
+
+async function aoAtualizar(payload: LotPayload) {
+  const lote = loteEmEdicao.value
+  if (!lote) return
+  try {
+    await atualizar(lote.id, {
+      nome: payload.nome,
+      quantidade: payload.quantidade,
+      preco: payload.preco,
+      tipoAtivacao: payload.tipoAtivacao,
+      ativacaoEm: payload.ativacaoEm
+    })
+    toast.success('Lote atualizado com sucesso.')
+    voltarLista()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Não foi possível atualizar o lote.')
   }
 }
 
@@ -116,8 +151,24 @@ async function aoAbrirVendas() {
       mode="create"
       :initial-value="valorInicialForm"
       :ordens="ordens"
+      :submitting="processando"
       @submit="aoCriar"
-      @cancel="modo = 'lista'"
+      @cancel="voltarLista"
+    />
+
+    <!-- Formulario de edicao (reutiliza o mesmo LotForm) -->
+    <LotForm
+      v-else-if="modo === 'editar'"
+      mode="edit"
+      :initial-value="valorInicialEdicao"
+      :ordens="ordens"
+      :id-atual="loteEmEdicao?.id ?? ''"
+      :ativacao-bloqueada="ativacaoBloqueadaEdicao"
+      :ordem-bloqueada="true"
+      submit-label="Salvar alterações"
+      :submitting="processando"
+      @submit="aoAtualizar"
+      @cancel="voltarLista"
     />
 
     <div v-else class="space-y-4">
@@ -211,20 +262,32 @@ async function aoAbrirVendas() {
               <p v-if="lote.encerradoEm">Encerrado em {{ formatDataHora(lote.encerradoEm) }}</p>
             </div>
 
-            <button
-              v-if="lote.status === 'INATIVO'"
-              type="button"
-              :title="bloqueada(lote.status) ? 'Abra as vendas do evento antes de ativar um lote.' : undefined"
-              :class="[
-                'inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50',
-                bloqueada(lote.status)
-                  ? 'cursor-not-allowed border-zinc-700 text-zinc-500'
-                  : 'border-green-500/40 bg-green-500/10 text-green-300 hover:bg-green-500/20'
-              ]"
-              @click="solicitarAtivacao(lote.id)"
-            >
-              Ativar lote
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                v-if="lote.status !== 'ENCERRADO'"
+                type="button"
+                class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-200 transition-colors duration-150 hover:border-zinc-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+                @click="abrirEdicao(lote.id)"
+              >
+                <PencilSquareIcon class="h-4 w-4" />
+                Editar
+              </button>
+
+              <button
+                v-if="lote.status === 'INATIVO'"
+                type="button"
+                :title="bloqueada(lote.status) ? 'Abra as vendas do evento antes de ativar um lote.' : undefined"
+                :class="[
+                  'inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50',
+                  bloqueada(lote.status)
+                    ? 'cursor-not-allowed border-zinc-700 text-zinc-500'
+                    : 'border-green-500/40 bg-green-500/10 text-green-300 hover:bg-green-500/20'
+                ]"
+                @click="solicitarAtivacao(lote.id)"
+              >
+                Ativar lote
+              </button>
+            </div>
           </div>
         </li>
       </ul>

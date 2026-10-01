@@ -11,12 +11,20 @@ const props = withDefaults(
     initialValue?: Partial<LotFormValue>
     ordens?: LotOrdemRef[]
     idAtual?: string
+    ativacaoBloqueada?: boolean
+    ordemBloqueada?: boolean
+    submitLabel?: string
+    submitting?: boolean
   }>(),
   {
     mode: 'create',
     initialValue: () => ({}),
     ordens: () => [],
-    idAtual: ''
+    idAtual: '',
+    ativacaoBloqueada: false,
+    ordemBloqueada: false,
+    submitLabel: 'Salvar lote',
+    submitting: false
   }
 )
 
@@ -39,8 +47,16 @@ function aoSubmeter() {
 
 <template>
   <form class="space-y-6" novalidate @submit.prevent="aoSubmeter">
-    <LotBasicSection :value="valor" :errors="erros" />
-    <LotActivationSection :value="valor" :errors="erros" />
-    <LotFormActions @cancel="emit('cancel')" />
+    <LotBasicSection :value="valor" :errors="erros" :ordem-bloqueada="props.ordemBloqueada" />
+    <LotActivationSection
+      :value="valor"
+      :errors="erros"
+      :bloqueada="props.ativacaoBloqueada"
+    />
+    <LotFormActions
+      :submit-label="props.submitLabel"
+      :submitting="props.submitting"
+      @cancel="emit('cancel')"
+    />
   </form>
 </template>

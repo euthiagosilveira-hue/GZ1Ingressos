@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   mapearEventoLotesParaListItem,
   mapearLoteAdminParaListItem,
+  mapearLoteParaFormulario,
   montarAtivacaoEm,
   proximaOrdem,
   vendasPermitemAtivacao,
@@ -12,6 +13,7 @@ import {
   type EventoLotesAdminRow,
   type LoteAdminRow
 } from '../app/utils/lotes.ts'
+import type { LotListItem } from '../app/types/lote.ts'
 
 test('mapearLoteAdminParaListItem converte a linha real', () => {
   const row: LoteAdminRow = {
@@ -122,4 +124,38 @@ test('ativacaoLoteBloqueada', () => {
   assert.equal(ativacaoLoteBloqueada('INATIVO', 'ABERTAS'), false)
   assert.equal(ativacaoLoteBloqueada('ATIVO', 'ENCERRADAS'), false)
   assert.equal(ativacaoLoteBloqueada('ENCERRADO', 'ENCERRADAS'), false)
+})
+
+const loteBase: LotListItem = {
+  id: 'l1',
+  eventoId: 'e1',
+  nome: 'Lote 1',
+  ordem: 2,
+  quantidade: 20,
+  preco: 40,
+  tipoAtivacao: 'DATA_HORA',
+  ativacaoEm: '2026-10-29T23:00:00.000Z',
+  ativadoEm: null,
+  encerradoEm: null,
+  status: 'INATIVO',
+  vendidos: 5,
+  disponiveis: 15
+}
+
+test('mapearLoteParaFormulario preenche o LotForm com data/hora em Sao Paulo', () => {
+  const form = mapearLoteParaFormulario(loteBase)
+  assert.equal(form.nome, 'Lote 1')
+  assert.equal(form.ordem, 2)
+  assert.equal(form.quantidade, 20)
+  assert.equal(form.preco, 40)
+  assert.equal(form.tipoAtivacao, 'DATA_HORA')
+  assert.equal(form.dataAtivacao, '2026-10-29')
+  assert.equal(form.horaAtivacao, '20:00')
+  assert.equal(form.status, 'INATIVO')
+})
+
+test('mapearLoteParaFormulario sem ativacao_em deixa data/hora vazias', () => {
+  const form = mapearLoteParaFormulario({ ...loteBase, tipoAtivacao: 'MANUAL', ativacaoEm: null })
+  assert.equal(form.dataAtivacao, '')
+  assert.equal(form.horaAtivacao, '')
 })

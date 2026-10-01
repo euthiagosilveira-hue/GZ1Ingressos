@@ -23,6 +23,7 @@ const {
   erro,
   processando,
   criar,
+  atualizar,
   ativar,
   abrirVendas,
   refresh
@@ -40,6 +41,21 @@ async function aoCriar(payload: LotPayload) {
     toast.success('Lote criado com sucesso!')
   } catch (e) {
     toast.error(e instanceof Error ? e.message : 'Não foi possível criar o lote.')
+  }
+}
+
+async function aoAtualizar(id: string, payload: LotPayload) {
+  try {
+    await atualizar(id, {
+      nome: payload.nome,
+      quantidade: payload.quantidade,
+      preco: payload.preco,
+      tipoAtivacao: payload.tipoAtivacao,
+      ativacaoEm: payload.ativacaoEm
+    })
+    toast.success('Lote atualizado com sucesso.')
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Não foi possível atualizar o lote.')
   }
 }
 
@@ -94,6 +110,7 @@ async function aoAbrirVendas() {
     :estoque-antecipado="estoqueAntecipado"
     :processando="processando"
     @criar="aoCriar"
+    @atualizar="aoAtualizar"
     @ativar="aoAtivar"
     @abrir-vendas="aoAbrirVendas"
   />

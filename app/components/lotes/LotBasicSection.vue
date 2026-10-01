@@ -5,10 +5,14 @@ import FormField from '~/components/FormField.vue'
 import { formatMoeda } from '~/utils/format'
 import type { LotFormErrors, LotFormValue } from '~/types/lote'
 
-const props = defineProps<{
-  value: LotFormValue
-  errors: LotFormErrors
-}>()
+const props = withDefaults(
+  defineProps<{
+    value: LotFormValue
+    errors: LotFormErrors
+    ordemBloqueada?: boolean
+  }>(),
+  { ordemBloqueada: false }
+)
 
 type CampoNumerico = 'ordem' | 'quantidade' | 'preco'
 
@@ -49,6 +53,7 @@ function atribuirNumero(campo: CampoNumerico, entrada: string) {
           min="1"
           step="1"
           placeholder="1"
+          :disabled="props.ordemBloqueada"
           :invalid="!!errors.ordem"
           @update:model-value="(entrada) => atribuirNumero('ordem', entrada)"
         />
