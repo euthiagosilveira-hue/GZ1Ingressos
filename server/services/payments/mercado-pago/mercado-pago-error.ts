@@ -88,3 +88,22 @@ export function sanitizarErroMercadoPago(erro: unknown): MpErroSanitizado {
     errors: json ? objetoSeguro(json.errors ?? null, 0) : null
   }
 }
+
+export interface MpErroLogContexto {
+  endpoint: string
+  operation: string
+  pagamentoId: string | null
+  pedidoCodigo: string | null
+}
+
+/**
+ * Monta a linha de log sanitizada e JA SERIALIZADA (JSON string), para que
+ * estruturas aninhadas como errors[].details aparecam expandidas no Runtime Log
+ * (evita o console mostrar "[Array]"). Nunca inclui headers/tokens/body bruto.
+ */
+export function serializarLogErroMercadoPago(contexto: MpErroLogContexto, erro: unknown): string {
+  return JSON.stringify({
+    ...contexto,
+    ...sanitizarErroMercadoPago(erro)
+  })
+}

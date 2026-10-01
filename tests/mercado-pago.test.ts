@@ -16,7 +16,7 @@ import {
   validarAssinaturaMp
 } from '../server/services/payments/mercado-pago/mercado-pago-signature.ts'
 import { MercadoPagoHttpError } from '../server/services/payments/mercado-pago/mercado-pago-client.ts'
-import { sanitizarErroMercadoPago } from '../server/services/payments/mercado-pago/mercado-pago-error.ts'
+import { sanitizarErroMercadoPago, serializarLogErroMercadoPago } from '../server/services/payments/mercado-pago/mercado-pago-error.ts'
 
 test('mapMpStatus mapeia estados principais', () => {
   assert.equal(mapMpStatus('processed', 'accredited'), 'APROVADO')
@@ -196,6 +196,53 @@ test('sanitizarErroMercadoPago extrai httpStatus/code/message/cause', () => {
   assert.equal(s.message, 'The payer email is invalid')
   assert.deepEqual(s.cause, [{ code: 'invalid_email', description: 'Email invalido' }])
   assert.equal(s.errors, null)
+})
+
+test('serializarLogErroMercadoPago expande errors[].details e nao vaza secrets', () => {
+  const corpo = JSON.stringify({
+    errors: [
+      {
+        code: 'failed',
+        message: 'As seguintes transações falharam',
+        details: [
+          {
+            code: 'invalid_transaction',
+            message: 'A chave PIX do vendedor nao existe',
+            reason: 'pix_key_not_registered',
+            authorization: 'Bearer SECRET_TOKEN_XYZ',
+            access_token: 'APP_USR-SECRET'
+          }
+        ]
+      }
+    ]
+  })
+  const linha = serializarLogErroMercadoPago(
+    {
+      endpoint: 'POST /v1/orders',
+      operation: 'createOrder',
+      pagamentoId: 'pag-1',
+      pedidoCodigo: 'GZ100154'
+    },
+    new MercadoPagoHttpError(402, corpo)
+  )
+
+  // e uma string serializada (nao objeto), com details expandido
+  assert.equal(typeof linha, 'string')
+  const parsed = JSON.parse(linha) as {
+    httpStatus: number
+    errors: Array<{ code: string; message: string; details: Array<Record<string, unknown>> }>
+  }
+  assert.equal(parsed.httpStatus, 402)
+  assert.equal(parsed.errors[0].code, 'failed')
+  assert.equal(parsed.errors[0].details.length, 1)
+  assert.equal(parsed.errors[0].details[0].message, 'A chave PIX do vendedor nao existe')
+  assert.equal(parsed.errors[0].details[0].reason, 'pix_key_not_registered')
+
+  assert.ok(linha.includes('pix_key_not_registered'))
+  assert.ok(!linha.includes('SECRET_TOKEN_XYZ'))
+  assert.ok(!linha.includes('APP_USR-SECRET'))
+  assert.ok(!linha.includes('authorization'))
+  assert.ok(!linha.includes('access_token'))
 })
 
 test('sanitizarErroMercadoPago extrai errors de resposta HTTP 402', () => {

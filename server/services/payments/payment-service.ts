@@ -6,7 +6,7 @@ import type { Gz1PaymentStatus, PixCharge } from './payment-provider'
 import { verificarCredencialDeTeste } from './mercado-pago/mercado-pago-client'
 import { MercadoPagoProvider } from './mercado-pago/mercado-pago-provider'
 import { deveAutoAprovarPixTeste, deveConfirmarPagamento, deveExpirarReserva, deveIgnorarFalhaConfirmacao } from './mercado-pago/mercado-pago-mapper'
-import { sanitizarErroMercadoPago } from './mercado-pago/mercado-pago-error'
+import { serializarLogErroMercadoPago } from './mercado-pago/mercado-pago-error'
 
 export type PaymentServiceErrorCode =
   | 'PAGAMENTO_INDISPONIVEL'
@@ -169,14 +169,20 @@ export async function criarPix(
       autoApproveTestPix: deveAutoAprovarPixTeste(autoApproveTestEnabled, credencialDeTeste)
     })
   } catch (erro) {
-    // Log tecnico sanitizado (sem token/headers/corpo bruto). Cliente segue generico.
-    console.error('[mercado-pago] createPixCharge failed', {
-      endpoint: 'POST /v1/orders',
-      operation: 'createOrder',
-      pagamentoId: checkout.pagamento_id,
-      pedidoCodigo: checkout.codigo_pedido,
-      ...sanitizarErroMercadoPago(erro)
-    })
+    // Log tecnico sanitizado e serializado (sem token/headers/corpo bruto).
+    // Serializar garante que errors[].details apareca expandido no Runtime Log.
+    console.error(
+      '[mercado-pago] createPixCharge failed',
+      serializarLogErroMercadoPago(
+        {
+          endpoint: 'POST /v1/orders',
+          operation: 'createOrder',
+          pagamentoId: checkout.pagamento_id,
+          pedidoCodigo: checkout.codigo_pedido
+        },
+        erro
+      )
+    )
     throw erro
   }
 
