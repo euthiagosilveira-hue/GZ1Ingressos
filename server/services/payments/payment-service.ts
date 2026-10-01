@@ -5,7 +5,7 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 import type { Gz1PaymentStatus, PixCharge } from './payment-provider'
 import { verificarCredencialDeTeste } from './mercado-pago/mercado-pago-client'
 import { MercadoPagoProvider } from './mercado-pago/mercado-pago-provider'
-import { deveAutoAprovarPixTeste, deveConfirmarPagamento, deveIgnorarFalhaConfirmacao } from './mercado-pago/mercado-pago-mapper'
+import { deveAutoAprovarPixTeste, deveConfirmarPagamento, deveExpirarReserva, deveIgnorarFalhaConfirmacao } from './mercado-pago/mercado-pago-mapper'
 
 export type PaymentServiceErrorCode =
   | 'PAGAMENTO_INDISPONIVEL'
@@ -229,6 +229,18 @@ export async function consultarStatus(
     throw new PaymentServiceError('CHECKOUT_INVALIDO', 'Checkout não encontrado.', 404)
   }
 
+  // Pedido ja finalizado (nao aprovado) reflete o estado definitivo.
+  if (
+    (checkout.pedido_status === 'EXPIRADO' || checkout.pedido_status === 'CANCELADO') &&
+    checkout.pagamento_status !== 'APROVADO'
+  ) {
+    return { status: checkout.pedido_status === 'CANCELADO' ? 'CANCELADO' : 'EXPIRADO' }
+  }
+
+  let status: Gz1PaymentStatus = (checkout.pagamento_status as Gz1PaymentStatus) ?? 'PENDENTE'
+
+  // 1) Reconcilia com o provedor ANTES de qualquer expiracao: nunca perder um
+  //    pagamento aprovado no limite da reserva.
   if (checkout.cobranca_id && accessToken) {
     const provider = new MercadoPagoProvider(accessToken)
     const charge = await provider.getCharge(checkout.cobranca_id)
@@ -239,8 +251,23 @@ export async function consultarStatus(
       if (atualizado?.pagamento_status === 'APROVADO') return { status: 'APROVADO' }
     }
 
-    return { status: charge.status }
+    status = charge.status
   }
 
-  return { status: (checkout.pagamento_status as Gz1PaymentStatus) ?? 'PENDENTE' }
+  // 2) Somente expira se NAO estiver aprovado e a reserva realmente venceu.
+  if (
+    status !== 'APROVADO' &&
+    deveExpirarReserva(checkout.reserva_expira_em, checkout.pedido_status, checkout.pagamento_status, Date.now())
+  ) {
+    const client = serverSupabaseServiceRole(event)
+    const { data, error } = await client.rpc('expirar_reserva', { p_pedido_id: checkout.pedido_id })
+    if (!error) {
+      const resultado = (data as { resultado?: string; status?: string } | null) ?? null
+      if (resultado?.resultado === 'expirado' || resultado?.status === 'EXPIRADO') {
+        return { status: 'EXPIRADO' }
+      }
+    }
+  }
+
+  return { status }
 }

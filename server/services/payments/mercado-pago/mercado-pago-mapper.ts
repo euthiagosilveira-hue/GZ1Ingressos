@@ -41,6 +41,24 @@ export function deveIgnorarFalhaConfirmacao(pagamentoStatus?: string | null): bo
   return pagamentoStatus === 'APROVADO'
 }
 
+/**
+ * Decide se a reserva deve ser expirada. Nunca expira pagamento aprovado;
+ * apenas pedidos ainda RESERVADO cujo prazo ja passou (relogio do servidor).
+ */
+export function deveExpirarReserva(
+  reservaExpiraEm: string | null | undefined,
+  pedidoStatus: string | null | undefined,
+  pagamentoStatus: string | null | undefined,
+  agoraMs: number
+): boolean {
+  if (pedidoStatus !== 'RESERVADO') return false
+  if (pagamentoStatus === 'APROVADO') return false
+  if (!reservaExpiraEm) return false
+  const limite = Date.parse(reservaExpiraEm)
+  if (Number.isNaN(limite)) return false
+  return agoraMs >= limite
+}
+
 /** Monta o payload da Order Pix (Orders API). */
 export function montarPayloadOrderPix(input: CreatePixChargeInput): MpCreateOrderRequest {
   const amount = formatarValor(input.amount)

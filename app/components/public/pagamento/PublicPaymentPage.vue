@@ -21,6 +21,7 @@ const {
   pix,
   pixCarregando,
   pixErro,
+  verificandoExpiracao,
   carregar,
   atualizar,
   tentarPix
@@ -59,6 +60,7 @@ const eventoNome = computed(() => checkout.value?.eventoNome ?? 'Checkout')
           :pix="pix"
           :pix-carregando="pixCarregando"
           :pix-erro="pixErro"
+          :verificando="verificandoExpiracao"
           @atualizar="atualizar"
           @tentar-pix="tentarPix"
         />

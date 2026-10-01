@@ -37,6 +37,7 @@ export function usePublicPayment() {
   const pix = ref<{ pixCopyPaste: string | null; pixQrCode: string | null; expiresAt: string | null } | null>(null)
   const pixCarregando = ref(false)
   const pixErro = ref(false)
+  const verificandoExpiracao = ref(false)
 
   let timer: ReturnType<typeof setInterval> | null = null
   let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -102,7 +103,7 @@ export function usePublicPayment() {
       recalcular()
       if (segundos.value <= 0) {
         pararTimer()
-        void atualizar()
+        void finalizarExpiracao()
       }
     }, 1000)
   }
@@ -197,6 +198,7 @@ export function usePublicPayment() {
   /** Busca/gera o Pix real no backend (nunca chama o provider no cliente). */
   async function carregarPix() {
     if (!token.value || estado.value !== 'PENDENTE') return
+    if (tempoEsgotado.value || verificandoExpiracao.value) return
     if (pix.value?.pixCopyPaste) return
 
     pixCarregando.value = true
@@ -225,6 +227,31 @@ export function usePublicPayment() {
       pixErro.value = true
     } finally {
       pixCarregando.value = false
+    }
+  }
+
+  /**
+   * Quando o contador local zera: para os timers e faz UMA reconciliacao final
+   * com o backend (que confere o provedor e so entao expira, se aplicavel).
+   */
+  async function finalizarExpiracao() {
+    if (verificandoExpiracao.value) return
+    pararTimer()
+    pararPolling()
+    verificandoExpiracao.value = true
+    try {
+      await $fetch('/api/payments/status', { query: { token: token.value } }).catch(() => null)
+      const atual = await buscar()
+      if (atual) checkout.value = atual
+    } catch (e) {
+      tratarErro(e)
+    } finally {
+      verificandoExpiracao.value = false
+    }
+
+    iniciarTimer()
+    if (estado.value === 'PENDENTE' && segundos.value > 0) {
+      iniciarPolling()
     }
   }
 
@@ -270,6 +297,7 @@ export function usePublicPayment() {
     pix,
     pixCarregando,
     pixErro,
+    verificandoExpiracao,
     carregar,
     atualizar,
     tentarPix: carregarPix

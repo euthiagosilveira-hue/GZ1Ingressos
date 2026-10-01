@@ -5,6 +5,7 @@ import { createHmac } from 'node:crypto'
 import {
   deveAutoAprovarPixTeste,
   deveConfirmarPagamento,
+  deveExpirarReserva,
   deveIgnorarFalhaConfirmacao,
   mapMpOrderToCharge,
   mapMpStatus,
@@ -144,4 +145,38 @@ test('E) falha na RPC de confirmacao vira erro controlado se nao aprovado', () =
   assert.equal(deveIgnorarFalhaConfirmacao('PENDENTE'), false)
   assert.equal(deveIgnorarFalhaConfirmacao(null), false)
   assert.equal(deveIgnorarFalhaConfirmacao(undefined), false)
+})
+
+const AGORA = Date.parse('2026-10-01T15:00:00Z')
+
+test('deveExpirarReserva: reserva vencida e nao aprovada expira', () => {
+  assert.equal(
+    deveExpirarReserva('2026-10-01T14:59:59Z', 'RESERVADO', 'PENDENTE', AGORA),
+    true
+  )
+})
+
+test('deveExpirarReserva: reserva ainda valida nao expira', () => {
+  assert.equal(
+    deveExpirarReserva('2026-10-01T15:30:00Z', 'RESERVADO', 'PENDENTE', AGORA),
+    false
+  )
+})
+
+test('deveExpirarReserva: pagamento aprovado no limite NUNCA expira', () => {
+  assert.equal(
+    deveExpirarReserva('2026-10-01T14:59:59Z', 'RESERVADO', 'APROVADO', AGORA),
+    false
+  )
+})
+
+test('deveExpirarReserva: pedido ja finalizado nao expira de novo', () => {
+  assert.equal(deveExpirarReserva('2026-10-01T14:00:00Z', 'PAGO', 'APROVADO', AGORA), false)
+  assert.equal(deveExpirarReserva('2026-10-01T14:00:00Z', 'EXPIRADO', 'EXPIRADO', AGORA), false)
+  assert.equal(deveExpirarReserva('2026-10-01T14:00:00Z', 'CANCELADO', 'CANCELADO', AGORA), false)
+})
+
+test('deveExpirarReserva: dados ausentes/invalidos nao expiram', () => {
+  assert.equal(deveExpirarReserva(null, 'RESERVADO', 'PENDENTE', AGORA), false)
+  assert.equal(deveExpirarReserva('data-invalida', 'RESERVADO', 'PENDENTE', AGORA), false)
 })
