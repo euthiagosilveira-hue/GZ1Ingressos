@@ -1,4 +1,11 @@
-import type { AdminEventListItem, EventFiltersState, EventListItem } from '~/types/evento'
+import type {
+  AdminEventDetail,
+  AdminEventListItem,
+  EventFiltersState,
+  EventFormValue,
+  EventListItem
+} from '~/types/evento'
+import { imagemValida } from './imagem.ts'
 
 /** Adapta o item administrativo real para o shape usado pelos cards. */
 export function mapearEventoAdminParaListItem(evento: AdminEventListItem): EventListItem {
@@ -108,4 +115,49 @@ export function montarInicioEm(data: string, hora: string): string {
   instante = paredeComoUtc - offset * 60000
 
   return new Date(instante).toISOString()
+}
+
+/** Converte um instante ISO para data (YYYY-MM-DD) e hora (HH:MM) em Sao Paulo. */
+export function separarInstanteSaoPaulo(iso: string): { data: string; hora: string } {
+  if (!iso) return { data: '', hora: '' }
+  const instante = new Date(iso)
+  if (Number.isNaN(instante.getTime())) return { data: '', hora: '' }
+
+  const formatador = new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ_EVENTO,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+  const mapa: Record<string, string> = {}
+  for (const parte of formatador.formatToParts(instante)) mapa[parte.type] = parte.value
+
+  const hora = String(Number(mapa.hour) % 24).padStart(2, '0')
+  return {
+    data: `${mapa.year}-${mapa.month}-${mapa.day}`,
+    hora: `${hora}:${mapa.minute}`
+  }
+}
+
+/** Mapeia o evento administrativo real para o estado do EventForm (sem any). */
+export function mapearEventoAdminParaFormulario(evento: AdminEventDetail): EventFormValue {
+  const { data, hora } = separarInstanteSaoPaulo(evento.inicioEm)
+  return {
+    nome: evento.nome,
+    slug: evento.slug,
+    descricao: evento.descricao ?? '',
+    imagemUrl: imagemValida(evento.imagemUrl),
+    dataInicio: data,
+    horaInicio: hora,
+    local: evento.local,
+    endereco: evento.endereco,
+    capacidadeTotal: evento.capacidadeTotal,
+    estoqueAntecipado: evento.estoqueAntecipado,
+    publicacaoStatus: evento.publicacaoStatus,
+    vendasStatus: evento.vendasStatus,
+    status: 'AGENDADO'
+  }
 }

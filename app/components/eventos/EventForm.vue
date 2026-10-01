@@ -53,6 +53,11 @@ function aoSubmeter() {
 function aoCancelar() {
   emit('cancel')
 }
+
+function visualizarPublico() {
+  if (props.mode === 'create' || !valor.slug) return
+  navigateTo(`/eventos/${valor.slug}`)
+}
 </script>
 
 <template>
@@ -67,7 +72,9 @@ function aoCancelar() {
 
     <PageHeader :title="titulo" subtitle="Preencha as informações do seu evento.">
       <template #actions>
-        <AppButton variant="outline" :disabled="modoCriacao">Visualizar público</AppButton>
+        <AppButton variant="outline" :disabled="modoCriacao" @click="visualizarPublico">
+          Visualizar público
+        </AppButton>
         <AppButton variant="primary" :disabled="enviando" @click="aoSubmeter">
           Salvar evento
         </AppButton>

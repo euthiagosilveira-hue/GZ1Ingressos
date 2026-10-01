@@ -99,3 +99,22 @@ export interface AdminEventListItem {
   pedidosCount: number
   ingressosCount: number
 }
+
+/** Evento administrativo completo (public.obter_evento_admin). */
+export interface AdminEventDetail {
+  eventoId: string
+  nome: string
+  slug: string
+  descricao: string | null
+  imagemUrl: string | null
+  inicioEm: string
+  encerradoEm: string | null
+  local: string
+  endereco: string
+  capacidadeTotal: number
+  estoqueAntecipado: number
+  status: EventStatus
+  vendasStatus: SalesStatus
+  publicacaoStatus: PublicationStatus
+  publicadoEm: string | null
+}

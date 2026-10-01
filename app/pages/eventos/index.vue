@@ -33,9 +33,17 @@ function irParaCriar() {
   navigateTo('/eventos/novo')
 }
 
+function editarEvento(id: string) {
+  navigateTo(`/eventos/${id}/editar`)
+}
+
 function acaoEvento(payload: { id: string; action: string }) {
   if (payload.action === 'lotes') {
     navigateTo(`/eventos/${payload.id}/lotes`)
+    return
+  }
+  if (payload.action === 'editar') {
+    editarEvento(payload.id)
     return
   }
   if (payload.action === 'visualizar') {
@@ -89,7 +97,7 @@ function acaoEvento(payload: { id: string; action: string }) {
     <EventGrid
       v-else
       :events="eventosLista"
-      @edit="irParaCriar"
+      @edit="editarEvento"
       @action="acaoEvento"
       @create="irParaCriar"
     />

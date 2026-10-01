@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { mapearEventoAdminParaListItem, gerarSlug, montarInicioEm } from '../app/utils/eventos.ts'
+import { mapearEventoAdminParaListItem, gerarSlug, montarInicioEm, separarInstanteSaoPaulo, mapearEventoAdminParaFormulario } from '../app/utils/eventos.ts'
+import type { AdminEventDetail } from '../app/types/evento.ts'
 
 test('mapearEventoAdminParaListItem adapta o item real para o shape dos cards', () => {
   const item = mapearEventoAdminParaListItem({
@@ -52,4 +53,73 @@ test('montarInicioEm interpreta America/Sao_Paulo e retorna instante UTC', () =>
   // vazio
   assert.equal(montarInicioEm('', '20:00'), '')
   assert.equal(montarInicioEm('2026-10-29', ''), '')
+})
+
+test('separarInstanteSaoPaulo converte UTC para data/hora local', () => {
+  assert.deepEqual(separarInstanteSaoPaulo('2026-10-29T23:00:00.000Z'), {
+    data: '2026-10-29',
+    hora: '20:00'
+  })
+  assert.deepEqual(separarInstanteSaoPaulo('2026-10-29T03:00:00.000Z'), {
+    data: '2026-10-29',
+    hora: '00:00'
+  })
+  assert.deepEqual(separarInstanteSaoPaulo('2026-11-01T02:30:00.000Z'), {
+    data: '2026-10-31',
+    hora: '23:30'
+  })
+  assert.deepEqual(separarInstanteSaoPaulo(''), { data: '', hora: '' })
+})
+
+const detalheBase: AdminEventDetail = {
+  eventoId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+  nome: 'PDC convida Cantor Braga',
+  slug: 'pdc-convida-cantor-braga',
+  descricao: 'Show',
+  imagemUrl: 'https://cdn.exemplo.com/capa.jpg',
+  inicioEm: '2026-10-29T23:00:00.000Z',
+  encerradoEm: null,
+  local: 'Galeria',
+  endereco: 'Rua 1',
+  capacidadeTotal: 350,
+  estoqueAntecipado: 200,
+  status: 'AGENDADO',
+  vendasStatus: 'ENCERRADAS',
+  publicacaoStatus: 'PUBLICADO',
+  publicadoEm: '2026-10-01T00:00:00Z'
+}
+
+test('mapearEventoAdminParaFormulario preenche todos os campos', () => {
+  const form = mapearEventoAdminParaFormulario(detalheBase)
+  assert.equal(form.nome, 'PDC convida Cantor Braga')
+  assert.equal(form.slug, 'pdc-convida-cantor-braga')
+  assert.equal(form.descricao, 'Show')
+  assert.equal(form.imagemUrl, 'https://cdn.exemplo.com/capa.jpg')
+  assert.equal(form.dataInicio, '2026-10-29')
+  assert.equal(form.horaInicio, '20:00')
+  assert.equal(form.local, 'Galeria')
+  assert.equal(form.endereco, 'Rua 1')
+  assert.equal(form.capacidadeTotal, 350)
+  assert.equal(form.estoqueAntecipado, 200)
+  assert.equal(form.publicacaoStatus, 'PUBLICADO')
+  assert.equal(form.vendasStatus, 'ENCERRADAS')
+  assert.equal(form.status, 'AGENDADO')
+})
+
+test('mapearEventoAdminParaFormulario trata descricao nula e capa invalida', () => {
+  const semCapa = mapearEventoAdminParaFormulario({
+    ...detalheBase,
+    descricao: null,
+    imagemUrl: 'blob:https://gz-1-ingressos.vercel.app/abc'
+  })
+  assert.equal(semCapa.descricao, '')
+  assert.equal(semCapa.imagemUrl, null)
+
+  const semImagem = mapearEventoAdminParaFormulario({ ...detalheBase, imagemUrl: null })
+  assert.equal(semImagem.imagemUrl, null)
+})
+
+test('round-trip: form -> instante preserva o horario', () => {
+  const form = mapearEventoAdminParaFormulario(detalheBase)
+  assert.equal(montarInicioEm(form.dataInicio, form.horaInicio), '2026-10-29T23:00:00.000Z')
 })
