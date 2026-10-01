@@ -19,7 +19,9 @@ export function mapearEventoAdminParaListItem(evento: AdminEventListItem): Event
     status: evento.status,
     vendasStatus: evento.vendasStatus,
     publicacaoStatus: evento.publicacaoStatus,
-    loteAtual: null,
+    loteAtual: evento.loteAtivo
+      ? { id: evento.loteAtivo.id, nome: evento.loteAtivo.nome, preco: evento.loteAtivo.preco }
+      : null,
     vendidos: evento.ingressosCount,
     disponiveis: 0
   }

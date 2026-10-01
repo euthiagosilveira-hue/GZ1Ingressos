@@ -27,6 +27,13 @@ interface AdminEventRow {
   estoque_antecipado: number
   publicado_em: string | null
   imagem_url: string | null
+  lote_ativo_id: string | null
+  lote_ativo_nome: string | null
+  lote_ativo_ordem: number | null
+  lote_ativo_preco: number | string | null
+  lote_ativo_quantidade: number | null
+  lote_ativo_vendidos: number | null
+  lote_ativo_disponiveis: number | null
   lotes_count: number
   pedidos_count: number
   ingressos_count: number
@@ -46,6 +53,17 @@ function mapear(row: AdminEventRow): AdminEventListItem {
     estoqueAntecipado: row.estoque_antecipado,
     publicadoEm: row.publicado_em,
     imagemUrl: row.imagem_url,
+    loteAtivo: row.lote_ativo_id
+      ? {
+          id: row.lote_ativo_id,
+          nome: row.lote_ativo_nome ?? '',
+          ordem: row.lote_ativo_ordem ?? 0,
+          preco: Number(row.lote_ativo_preco ?? 0),
+          quantidade: row.lote_ativo_quantidade ?? 0,
+          vendidos: row.lote_ativo_vendidos ?? 0,
+          disponiveis: row.lote_ativo_disponiveis ?? 0
+        }
+      : null,
     lotesCount: row.lotes_count,
     pedidosCount: row.pedidos_count,
     ingressosCount: row.ingressos_count

@@ -82,6 +82,17 @@ export interface EventPayload {
 
 export type EventFormMode = 'create' | 'edit'
 
+/** Lote ATIVO vigente de um evento (listagem administrativa). */
+export interface AdminEventLoteAtivo {
+  id: string
+  nome: string
+  ordem: number
+  preco: number
+  quantidade: number
+  vendidos: number
+  disponiveis: number
+}
+
 /** Item da listagem administrativa (public.listar_eventos_admin_filtrado). */
 export interface AdminEventListItem {
   eventoId: string
@@ -96,6 +107,7 @@ export interface AdminEventListItem {
   estoqueAntecipado: number
   publicadoEm: string | null
   imagemUrl: string | null
+  loteAtivo: AdminEventLoteAtivo | null
   lotesCount: number
   pedidosCount: number
   ingressosCount: number

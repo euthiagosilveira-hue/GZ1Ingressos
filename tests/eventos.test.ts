@@ -18,6 +18,7 @@ test('mapearEventoAdminParaListItem adapta o item real para o shape dos cards', 
     estoqueAntecipado: 100,
     publicadoEm: '2026-09-01T00:00:00Z',
     imagemUrl: 'https://cdn.exemplo.com/capa.jpg',
+    loteAtivo: { id: 'lote-1', nome: 'Lote 1', ordem: 1, preco: 40, quantidade: 150, vendidos: 132, disponiveis: 18 },
     lotesCount: 2,
     pedidosCount: 7,
     ingressosCount: 9
@@ -31,6 +32,28 @@ test('mapearEventoAdminParaListItem adapta o item real para o shape dos cards', 
   assert.equal(item.vendasStatus, 'ENCERRADAS')
   assert.equal(item.vendidos, 9)
   assert.equal(item.imagemUrl, 'https://cdn.exemplo.com/capa.jpg')
+  assert.deepEqual(item.loteAtual, { id: 'lote-1', nome: 'Lote 1', preco: 40 })
+})
+
+test('mapearEventoAdminParaListItem mantem "sem lote" quando nao ha ativo', () => {
+  const item = mapearEventoAdminParaListItem({
+    eventoId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    nome: 'Evento Sem Lote',
+    slug: 'evento-sem-lote',
+    inicioEm: '2026-10-25T19:19:10.781Z',
+    local: 'Galeria Zero 1',
+    status: 'AGENDADO',
+    vendasStatus: 'ENCERRADAS',
+    publicacaoStatus: 'RASCUNHO',
+    capacidadeTotal: 200,
+    estoqueAntecipado: 100,
+    publicadoEm: null,
+    imagemUrl: null,
+    loteAtivo: null,
+    lotesCount: 0,
+    pedidosCount: 0,
+    ingressosCount: 0
+  })
   assert.equal(item.loteAtual, null)
 })
 
@@ -47,6 +70,7 @@ test('mapearEventoAdminParaListItem usa fallback quando capa e invalida', () => 
     capacidadeTotal: 200,
     estoqueAntecipado: 100,
     publicadoEm: null,
+    loteAtivo: null,
     lotesCount: 0,
     pedidosCount: 0,
     ingressosCount: 0
