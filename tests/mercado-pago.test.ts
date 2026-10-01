@@ -195,6 +195,39 @@ test('sanitizarErroMercadoPago extrai httpStatus/code/message/cause', () => {
   assert.equal(s.code, 'invalid_payer_email')
   assert.equal(s.message, 'The payer email is invalid')
   assert.deepEqual(s.cause, [{ code: 'invalid_email', description: 'Email invalido' }])
+  assert.equal(s.errors, null)
+})
+
+test('sanitizarErroMercadoPago extrai errors de resposta HTTP 402', () => {
+  const corpo = JSON.stringify({
+    errors: [
+      {
+        code: 'invalid_transaction',
+        message: 'Transaction could not be processed',
+        description: 'The Pix key is not registered',
+        type: 'processing_error',
+        headers: { Authorization: 'Bearer SECRET_TOKEN_XYZ' },
+        access_token: 'APP_USR-SECRET',
+        details: [{ code: 'pix_key_missing', reason: 'Pix key not found' }]
+      }
+    ]
+  })
+  const s = sanitizarErroMercadoPago(new MercadoPagoHttpError(402, corpo))
+  assert.equal(s.httpStatus, 402)
+  assert.deepEqual(s.errors, [
+    {
+      code: 'invalid_transaction',
+      message: 'Transaction could not be processed',
+      description: 'The Pix key is not registered',
+      type: 'processing_error',
+      details: [{ code: 'pix_key_missing', reason: 'Pix key not found' }]
+    }
+  ])
+  const serializado = JSON.stringify(s)
+  assert.ok(!serializado.includes('SECRET_TOKEN_XYZ'))
+  assert.ok(!serializado.includes('APP_USR-SECRET'))
+  assert.ok(!serializado.includes('"headers"'))
+  assert.ok(!serializado.includes('"access_token"'))
 })
 
 test('sanitizarErroMercadoPago lida com corpo nao-JSON e erro generico', () => {
@@ -219,7 +252,7 @@ test('sanitizarErroMercadoPago nunca inclui headers/tokens/segredos', () => {
     cause: [{ code: 'policy', description: 'negado para APP_USR-SECRET' }]
   })
   const s = sanitizarErroMercadoPago(new MercadoPagoHttpError(403, corpo))
-  assert.deepEqual(Object.keys(s).sort(), ['cause', 'code', 'httpStatus', 'message'])
+  assert.deepEqual(Object.keys(s).sort(), ['cause', 'code', 'errors', 'httpStatus', 'message'])
   assert.equal(s.httpStatus, 403)
   assert.equal(s.code, 'unauthorized')
   const serializado = JSON.stringify(s)

@@ -5,11 +5,21 @@ export interface MpErroSanitizado {
   code: string | null
   message: string | null
   cause: unknown
+  errors: unknown
 }
 
-const CAMPOS_CAUSA = ['code', 'description', 'type', 'details', 'message', 'reason']
+const CAMPOS_PERMITIDOS = [
+  'code',
+  'message',
+  'description',
+  'type',
+  'details',
+  'cause',
+  'reason'
+]
 const LIMITE_TEXTO = 300
 const LIMITE_ITENS = 10
+const PROFUNDIDADE_MAXIMA = 4
 
 function texto(valor: unknown): string | null {
   if (typeof valor !== 'string') return null
@@ -21,24 +31,34 @@ function texto(valor: unknown): string | null {
   return redigido.slice(0, LIMITE_TEXTO)
 }
 
-function causaSegura(valor: unknown): unknown {
+/**
+ * Reduz um valor arbitrário a uma estrutura segura (apenas campos funcionais,
+ * com limites de itens/tamanho/profundidade). Nunca inclui headers, tokens ou
+ * o corpo bruto.
+ */
+function objetoSeguro(valor: unknown, profundidade: number): unknown {
   if (valor == null) return null
   if (typeof valor === 'string') return texto(valor)
-  if (Array.isArray(valor)) return valor.slice(0, LIMITE_ITENS).map(causaSegura)
+  if (typeof valor === 'number' || typeof valor === 'boolean') return valor
+  if (Array.isArray(valor)) {
+    if (profundidade >= PROFUNDIDADE_MAXIMA) return null
+    return valor.slice(0, LIMITE_ITENS).map((item) => objetoSeguro(item, profundidade + 1))
+  }
   if (typeof valor === 'object') {
+    if (profundidade >= PROFUNDIDADE_MAXIMA) return null
     const origem = valor as Record<string, unknown>
     const saida: Record<string, unknown> = {}
-    for (const chave of CAMPOS_CAUSA) {
-      if (origem[chave] !== undefined) saida[chave] = causaSegura(origem[chave])
+    for (const chave of CAMPOS_PERMITIDOS) {
+      if (origem[chave] !== undefined) saida[chave] = objetoSeguro(origem[chave], profundidade + 1)
     }
     return Object.keys(saida).length > 0 ? saida : null
   }
-  return String(valor).slice(0, LIMITE_TEXTO)
+  return texto(String(valor))
 }
 
 /**
- * Extrai apenas campos tecnicos seguros de um erro do Mercado Pago.
- * Nunca inclui Authorization, token, headers ou o corpo bruto.
+ * Extrai apenas campos tecnicos seguros de um erro do Mercado Pago, incluindo
+ * o campo `errors` retornado pela Orders API (ex.: HTTP 402).
  */
 export function sanitizarErroMercadoPago(erro: unknown): MpErroSanitizado {
   const httpStatus = erro instanceof MercadoPagoHttpError ? erro.status : null
@@ -64,6 +84,7 @@ export function sanitizarErroMercadoPago(erro: unknown): MpErroSanitizado {
     httpStatus,
     code: json ? texto(json.error) ?? texto(json.code) : null,
     message: json ? texto(json.message) : texto(bruto),
-    cause: json ? causaSegura(json.cause ?? null) : null
+    cause: json ? objetoSeguro(json.cause ?? null, 0) : null,
+    errors: json ? objetoSeguro(json.errors ?? null, 0) : null
   }
 }
