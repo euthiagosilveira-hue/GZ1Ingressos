@@ -51,7 +51,7 @@ export class MercadoPagoClient {
 
     if (!response.ok) {
       const texto = await response.text().catch(() => '')
-      throw new MercadoPagoHttpError(response.status, texto.slice(0, 300))
+      throw new MercadoPagoHttpError(response.status, texto.slice(0, 2000))
     }
 
     return (await response.json()) as T

@@ -15,6 +15,8 @@ import {
   montarManifest,
   validarAssinaturaMp
 } from '../server/services/payments/mercado-pago/mercado-pago-signature.ts'
+import { MercadoPagoHttpError } from '../server/services/payments/mercado-pago/mercado-pago-client.ts'
+import { sanitizarErroMercadoPago } from '../server/services/payments/mercado-pago/mercado-pago-error.ts'
 
 test('mapMpStatus mapeia estados principais', () => {
   assert.equal(mapMpStatus('processed', 'accredited'), 'APROVADO')
@@ -179,4 +181,51 @@ test('deveExpirarReserva: pedido ja finalizado nao expira de novo', () => {
 test('deveExpirarReserva: dados ausentes/invalidos nao expiram', () => {
   assert.equal(deveExpirarReserva(null, 'RESERVADO', 'PENDENTE', AGORA), false)
   assert.equal(deveExpirarReserva('data-invalida', 'RESERVADO', 'PENDENTE', AGORA), false)
+})
+
+test('sanitizarErroMercadoPago extrai httpStatus/code/message/cause', () => {
+  const corpo = JSON.stringify({
+    message: 'The payer email is invalid',
+    error: 'invalid_payer_email',
+    status: 400,
+    cause: [{ code: 'invalid_email', description: 'Email invalido' }]
+  })
+  const s = sanitizarErroMercadoPago(new MercadoPagoHttpError(400, corpo))
+  assert.equal(s.httpStatus, 400)
+  assert.equal(s.code, 'invalid_payer_email')
+  assert.equal(s.message, 'The payer email is invalid')
+  assert.deepEqual(s.cause, [{ code: 'invalid_email', description: 'Email invalido' }])
+})
+
+test('sanitizarErroMercadoPago lida com corpo nao-JSON e erro generico', () => {
+  const texto = sanitizarErroMercadoPago(new MercadoPagoHttpError(500, 'erro interno do provedor'))
+  assert.equal(texto.httpStatus, 500)
+  assert.equal(texto.code, null)
+  assert.equal(texto.message, 'erro interno do provedor')
+  assert.equal(texto.cause, null)
+
+  const generico = sanitizarErroMercadoPago(new Error('falha de rede'))
+  assert.equal(generico.httpStatus, null)
+})
+
+test('sanitizarErroMercadoPago nunca inclui headers/tokens/segredos', () => {
+  const corpo = JSON.stringify({
+    message: 'forbidden',
+    error: 'unauthorized',
+    status: 403,
+    authorization: 'Bearer SECRET_TOKEN_XYZ',
+    access_token: 'APP_USR-SECRET',
+    headers: { Authorization: 'Bearer SECRET_TOKEN_XYZ' },
+    cause: [{ code: 'policy', description: 'negado para APP_USR-SECRET' }]
+  })
+  const s = sanitizarErroMercadoPago(new MercadoPagoHttpError(403, corpo))
+  assert.deepEqual(Object.keys(s).sort(), ['cause', 'code', 'httpStatus', 'message'])
+  assert.equal(s.httpStatus, 403)
+  assert.equal(s.code, 'unauthorized')
+  const serializado = JSON.stringify(s)
+  assert.ok(!serializado.includes('SECRET_TOKEN_XYZ'))
+  assert.ok(!serializado.includes('APP_USR-SECRET'))
+  assert.ok(!serializado.includes('"authorization"'))
+  assert.ok(!serializado.includes('"access_token"'))
+  assert.ok(!serializado.includes('"headers"'))
 })

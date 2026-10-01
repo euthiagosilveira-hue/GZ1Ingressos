@@ -6,6 +6,7 @@ import type { Gz1PaymentStatus, PixCharge } from './payment-provider'
 import { verificarCredencialDeTeste } from './mercado-pago/mercado-pago-client'
 import { MercadoPagoProvider } from './mercado-pago/mercado-pago-provider'
 import { deveAutoAprovarPixTeste, deveConfirmarPagamento, deveExpirarReserva, deveIgnorarFalhaConfirmacao } from './mercado-pago/mercado-pago-mapper'
+import { sanitizarErroMercadoPago } from './mercado-pago/mercado-pago-error'
 
 export type PaymentServiceErrorCode =
   | 'PAGAMENTO_INDISPONIVEL'
@@ -157,14 +158,27 @@ export async function criarPix(
   const credencialDeTeste = autoApproveTestEnabled
     ? await verificarCredencialDeTeste(accessToken)
     : false
-  const charge: PixCharge = await provider.createPixCharge({
-    amount: Number(checkout.valor_total),
-    externalReference: checkout.pagamento_id as string,
-    payerEmail: email,
-    expirationMinutes: minutosAte(checkout.reserva_expira_em),
-    idempotencyKey: checkout.pagamento_id as string,
-    autoApproveTestPix: deveAutoAprovarPixTeste(autoApproveTestEnabled, credencialDeTeste)
-  })
+  let charge: PixCharge
+  try {
+    charge = await provider.createPixCharge({
+      amount: Number(checkout.valor_total),
+      externalReference: checkout.pagamento_id as string,
+      payerEmail: email,
+      expirationMinutes: minutosAte(checkout.reserva_expira_em),
+      idempotencyKey: checkout.pagamento_id as string,
+      autoApproveTestPix: deveAutoAprovarPixTeste(autoApproveTestEnabled, credencialDeTeste)
+    })
+  } catch (erro) {
+    // Log tecnico sanitizado (sem token/headers/corpo bruto). Cliente segue generico.
+    console.error('[mercado-pago] createPixCharge failed', {
+      endpoint: 'POST /v1/orders',
+      operation: 'createOrder',
+      pagamentoId: checkout.pagamento_id,
+      pedidoCodigo: checkout.codigo_pedido,
+      ...sanitizarErroMercadoPago(erro)
+    })
+    throw erro
+  }
 
   const client = serverSupabaseServiceRole(event)
   const { error } = await client.rpc('registrar_cobranca_externa', {
