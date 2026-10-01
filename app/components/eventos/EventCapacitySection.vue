@@ -1,14 +1,26 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+
 import AppButton from '~/components/AppButton.vue'
 import BaseCard from '~/components/BaseCard.vue'
 import BaseInput from '~/components/BaseInput.vue'
+import EventLotsModal from '~/components/eventos/EventLotsModal.vue'
 import FormField from '~/components/FormField.vue'
 import type { EventFormErrors, EventFormValue } from '~/types/evento'
 
 const props = defineProps<{
   value: EventFormValue
   errors: EventFormErrors
+  eventoId?: string | null
+  eventoNome?: string
 }>()
+
+const modalLotesAberto = ref(false)
+
+function abrirModalLotes() {
+  if (!props.eventoId) return
+  modalLotesAberto.value = true
+}
 
 function definirNumero(campo: 'capacidadeTotal' | 'estoqueAntecipado', bruto: string) {
   props.value[campo] = bruto === '' ? null : Number(bruto)
@@ -57,8 +69,10 @@ function definirNumero(campo: 'capacidadeTotal' | 'estoqueAntecipado', bruto: st
         Os preços dos ingressos serão configurados nos lotes do evento.
       </p>
       <div class="mt-3 flex flex-wrap items-center gap-3">
-        <AppButton variant="outline" size="sm" disabled>Configurar lotes</AppButton>
-        <span class="text-xs text-zinc-500">
+        <AppButton variant="outline" size="sm" :disabled="!props.eventoId" @click="abrirModalLotes">
+          Configurar lotes
+        </AppButton>
+        <span v-if="!props.eventoId" class="text-xs text-zinc-500">
           Salve o evento primeiro para configurar os lotes.
         </span>
       </div>
@@ -69,4 +83,12 @@ function definirNumero(campo: 'capacidadeTotal' | 'estoqueAntecipado', bruto: st
       <span class="text-zinc-400">Até 10 ingressos por pedido.</span>
     </p>
   </BaseCard>
+
+  <EventLotsModal
+    v-if="modalLotesAberto && props.eventoId"
+    :open="modalLotesAberto"
+    :evento-id="props.eventoId"
+    :evento-nome="props.eventoNome"
+    @close="modalLotesAberto = false"
+  />
 </template>

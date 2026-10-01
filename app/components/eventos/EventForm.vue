@@ -17,10 +17,12 @@ const props = withDefaults(
   defineProps<{
     mode?: EventFormMode
     initialValue?: Partial<EventFormValue>
+    eventoId?: string | null
   }>(),
   {
     mode: 'create',
-    initialValue: () => ({})
+    initialValue: () => ({}),
+    eventoId: null
   }
 )
 
@@ -90,7 +92,12 @@ function visualizarPublico() {
     />
     <EventImageSection :value="valor" />
     <EventDescriptionSection :value="valor" :errors="erros" />
-    <EventCapacitySection :value="valor" :errors="erros" />
+    <EventCapacitySection
+      :value="valor"
+      :errors="erros"
+      :evento-id="props.eventoId"
+      :evento-nome="valor.nome"
+    />
     <EventPublicationSection :value="valor" />
 
     <EventFormActions :submitting="enviando" @cancel="aoCancelar" @submit="aoSubmeter" />

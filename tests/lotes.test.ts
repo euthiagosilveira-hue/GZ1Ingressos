@@ -6,6 +6,9 @@ import {
   mapearLoteAdminParaListItem,
   montarAtivacaoEm,
   proximaOrdem,
+  vendasPermitemAtivacao,
+  eventoPermiteAbrirVendas,
+  ativacaoLoteBloqueada,
   type EventoLotesAdminRow,
   type LoteAdminRow
 } from '../app/utils/lotes.ts'
@@ -100,4 +103,23 @@ test('proximaOrdem calcula max+1', () => {
     ]),
     4
   )
+})
+
+test('vendasPermitemAtivacao reflete a regra de dominio', () => {
+  assert.equal(vendasPermitemAtivacao('ABERTAS'), true)
+  assert.equal(vendasPermitemAtivacao('ENCERRADAS'), false)
+})
+
+test('eventoPermiteAbrirVendas', () => {
+  assert.equal(eventoPermiteAbrirVendas('AGENDADO', 'ENCERRADAS'), true)
+  assert.equal(eventoPermiteAbrirVendas('AGENDADO', 'ABERTAS'), false)
+  assert.equal(eventoPermiteAbrirVendas('REALIZADO', 'ENCERRADAS'), false)
+  assert.equal(eventoPermiteAbrirVendas('CANCELADO', 'ENCERRADAS'), false)
+})
+
+test('ativacaoLoteBloqueada', () => {
+  assert.equal(ativacaoLoteBloqueada('INATIVO', 'ENCERRADAS'), true)
+  assert.equal(ativacaoLoteBloqueada('INATIVO', 'ABERTAS'), false)
+  assert.equal(ativacaoLoteBloqueada('ATIVO', 'ENCERRADAS'), false)
+  assert.equal(ativacaoLoteBloqueada('ENCERRADO', 'ENCERRADAS'), false)
 })

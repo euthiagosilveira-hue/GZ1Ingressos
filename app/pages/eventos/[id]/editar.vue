@@ -111,6 +111,7 @@ onMounted(() => void carregar())
   <EventForm
     v-else-if="valorInicial"
     mode="edit"
+    :evento-id="eventoId"
     :initial-value="valorInicial"
     @submit="aoSubmeter"
     @cancel="aoCancelar"

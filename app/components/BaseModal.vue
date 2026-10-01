@@ -7,7 +7,7 @@ const props = withDefaults(
     open: boolean
     title?: string
     subtitle?: string
-    size?: 'md' | 'lg'
+    size?: 'md' | 'lg' | 'xl'
   }>(),
   { title: '', subtitle: '', size: 'md' }
 )
@@ -70,7 +70,9 @@ onBeforeUnmount(() => {
         >
           <div
             class="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-zinc-800 bg-zinc-900 shadow-2xl shadow-black/50 sm:max-w-lg sm:rounded-2xl"
-            :class="props.size === 'lg' ? 'sm:max-w-2xl' : ''"
+            :class="
+              props.size === 'xl' ? 'sm:max-w-4xl' : props.size === 'lg' ? 'sm:max-w-2xl' : ''
+            "
           >
             <header class="flex items-start justify-between gap-4 border-b border-zinc-800 p-5">
               <div class="min-w-0">

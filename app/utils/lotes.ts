@@ -1,7 +1,22 @@
-import type { EventListItem } from '~/types/evento'
+import type { EventListItem, EventStatus, SalesStatus } from '~/types/evento'
 import type { LotActivationType, LotListItem, LotOrdemRef, LotStatus } from '~/types/lote'
 import { montarInicioEm } from './eventos.ts'
 import { imagemValida } from './imagem.ts'
+
+/** As vendas precisam estar ABERTAS para ativar um lote (regra de dominio). */
+export function vendasPermitemAtivacao(vendasStatus: SalesStatus): boolean {
+  return vendasStatus === 'ABERTAS'
+}
+
+/** O evento permite abrir as vendas (ENCERRADAS e ainda editavel). */
+export function eventoPermiteAbrirVendas(status: EventStatus, vendasStatus: SalesStatus): boolean {
+  return vendasStatus === 'ENCERRADAS' && status !== 'REALIZADO' && status !== 'CANCELADO'
+}
+
+/** Um lote INATIVO fica com ativacao bloqueada quando as vendas estao fechadas. */
+export function ativacaoLoteBloqueada(status: LotStatus, vendasStatus: SalesStatus): boolean {
+  return status === 'INATIVO' && !vendasPermitemAtivacao(vendasStatus)
+}
 
 const ROTULOS: Record<LotActivationType, string> = {
   MANUAL: 'Manual',
