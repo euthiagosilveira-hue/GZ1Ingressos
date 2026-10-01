@@ -70,14 +70,8 @@ async function garantirPagamentoLogico(
   token: string,
   checkout: CheckoutBackend
 ): Promise<CheckoutBackend> {
-  if (checkout.pagamento_id) {
-    if (checkout.provedor !== 'MERCADO_PAGO') {
-      throw new PaymentServiceError(
-        'PROVIDER_CONFLITO',
-        'Este pedido possui um pagamento iniciado com outro provedor.',
-        409
-      )
-    }
+  // Pagamento ja no provedor correto: reutiliza.
+  if (checkout.pagamento_id && checkout.provedor === 'MERCADO_PAGO') {
     return checkout
   }
 
@@ -90,8 +84,13 @@ async function garantirPagamentoLogico(
     p_referencia_externa: null
   })
   if (error) {
-    if (error.message?.includes('ja possui pagamento')) {
-      throw new PaymentServiceError('PROVIDER_CONFLITO', 'Este pedido já possui pagamento.', 409)
+    const msg = (error.message ?? '').toLowerCase()
+    if (msg.includes('outro provedor') || msg.includes('ja possui pagamento')) {
+      throw new PaymentServiceError(
+        'PROVIDER_CONFLITO',
+        'Este pedido possui um pagamento iniciado com outro provedor.',
+        409
+      )
     }
     throw new PaymentServiceError('ERRO_INESPERADO', error.message, 500)
   }

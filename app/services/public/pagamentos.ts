@@ -117,7 +117,7 @@ export async function criarPagamentoPendente(token: string): Promise<CheckoutPub
   const client = useSupabaseClient()
   const { data, error } = await client.rpc('criar_pagamento_pendente_por_token', {
     p_token: token,
-    p_provider: 'STONE',
+    p_provider: 'MERCADO_PAGO',
     p_transaction_id: null,
     p_charge_id: null,
     p_referencia_externa: null

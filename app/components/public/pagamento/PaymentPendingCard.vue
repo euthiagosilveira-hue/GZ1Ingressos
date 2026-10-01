@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline'
+import QrcodeVue from 'qrcode.vue'
 
 import PaymentExpiration from '~/components/public/pagamento/PaymentExpiration.vue'
 import PaymentStatusBadge from '~/components/public/pagamento/PaymentStatusBadge.vue'
 import PaymentSummary from '~/components/public/pagamento/PaymentSummary.vue'
 import type { CheckoutPublico } from '~/types/checkoutPagamento'
 import type { PaymentStatus } from '~/types/pagamento'
+import { valorQrPix } from '~/utils/pagamentos'
 
 interface PixData {
   pixCopyPaste: string | null
@@ -19,35 +21,65 @@ const props = defineProps<{
   textoCountdown: string
   tempoEsgotado: boolean
   pix: PixData | null
+  pixCarregando?: boolean
+  pixErro?: boolean
 }>()
 
 const emit = defineEmits<{
   atualizar: []
+  tentarPix: []
 }>()
 
 const statusPagamento: PaymentStatus = props.checkout.pagamento?.status ?? 'PENDENTE'
 
+// Se o provider retornar imagem base64 (PNG), usamos como fallback;
+// quando ha o codigo copia-e-cola, geramos o QR a partir dele para garantir
+// que o QR decodifique EXATAMENTE para o payload Pix.
 const qrSrc = computed(() => {
   const qr = props.pix?.pixQrCode
   if (!qr) return null
-  return qr.startsWith('data:') ? qr : `data:image/jpeg;base64,${qr}`
+  return qr.startsWith('data:') ? qr : `data:image/png;base64,${qr}`
 })
 
-const temPix = computed(() => Boolean(props.pix?.pixCopyPaste || qrSrc.value))
+const pixCopiaCola = computed(() => valorQrPix(props.pix))
+const temPix = computed(() => Boolean(pixCopiaCola.value || qrSrc.value))
 const copiado = ref(false)
 
 async function copiar() {
-  const codigo = props.pix?.pixCopyPaste
-  if (!codigo || typeof navigator === 'undefined' || !navigator.clipboard) return
+  const codigo = pixCopiaCola.value
+  if (!codigo || typeof navigator === 'undefined') return
   try {
-    await navigator.clipboard.writeText(codigo)
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(codigo)
+    } else {
+      copiaLegado(codigo)
+    }
     copiado.value = true
     setTimeout(() => {
       copiado.value = false
     }, 2000)
   } catch {
-    // silencioso
+    try {
+      copiaLegado(codigo)
+      copiado.value = true
+      setTimeout(() => {
+        copiado.value = false
+      }, 2000)
+    } catch {
+      // silencioso: usuario pode copiar manualmente
+    }
   }
+}
+
+function copiaLegado(texto: string) {
+  const area = document.createElement('textarea')
+  area.value = texto
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.select()
+  document.execCommand('copy')
+  document.body.removeChild(area)
 }
 </script>
 
@@ -61,18 +93,32 @@ async function copiar() {
     <PaymentSummary :checkout="props.checkout" />
 
     <div v-if="temPix" class="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-      <p class="text-sm font-semibold text-zinc-200">Pague com Pix</p>
+      <p class="text-sm font-semibold text-zinc-200">Pagamento via Pix</p>
 
-      <div v-if="qrSrc" class="mx-auto w-full max-w-[240px] rounded-xl bg-white p-3">
+      <div v-if="pixCopiaCola" class="mx-auto w-full max-w-[240px] rounded-xl bg-white p-3">
+        <QrcodeVue
+          :value="pixCopiaCola"
+          :size="220"
+          :margin="2"
+          level="M"
+          render-as="svg"
+          class="mx-auto block h-auto w-full"
+        />
+      </div>
+      <div v-else-if="qrSrc" class="mx-auto w-full max-w-[240px] rounded-xl bg-white p-3">
         <img :src="qrSrc" alt="QR Code Pix" class="h-auto w-full" />
       </div>
 
-      <div v-if="props.pix?.pixCopyPaste" class="space-y-2">
+      <p class="text-center text-xs text-zinc-500">
+        Abra o app do seu banco, escaneie o QR Code ou use o Pix Copia e Cola.
+      </p>
+
+      <div v-if="pixCopiaCola" class="space-y-2">
         <p class="text-xs uppercase tracking-wide text-zinc-500">Pix copia e cola</p>
         <p
           class="max-h-24 overflow-y-auto break-all rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-300"
         >
-          {{ props.pix.pixCopyPaste }}
+          {{ pixCopiaCola }}
         </p>
         <button
           type="button"
@@ -85,10 +131,32 @@ async function copiar() {
       </div>
     </div>
 
-    <div v-else class="rounded-xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4">
+    <div
+      v-else-if="props.pixCarregando"
+      class="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
+      aria-busy="true"
+    >
       <p class="text-sm font-semibold text-zinc-200">Pagamento via Pix</p>
-      <p class="mt-1 text-sm text-zinc-500">
-        Os dados do Pix serão disponibilizados quando a integração com o provedor for concluída.
+      <p class="mt-1 text-sm text-zinc-400">Gerando pagamento Pix...</p>
+    </div>
+
+    <div v-else-if="props.pixErro" class="space-y-2 rounded-xl border border-red-500/40 bg-red-500/5 p-4">
+      <p class="text-sm font-semibold text-red-300">
+        Não foi possível gerar o pagamento Pix. Tente novamente.
+      </p>
+      <button
+        type="button"
+        class="inline-flex items-center justify-center rounded-lg border border-amber-400/60 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-amber-400 transition-colors hover:bg-amber-400 hover:text-zinc-950"
+        @click="emit('tentarPix')"
+      >
+        Tentar novamente
+      </button>
+    </div>
+
+    <div v-else class="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <p class="text-sm font-semibold text-zinc-200">Pagamento via Pix</p>
+      <p class="mt-1 text-sm text-zinc-400">
+        Estamos preparando o seu pagamento Pix. Use "Atualizar status" em instantes.
       </p>
     </div>
 

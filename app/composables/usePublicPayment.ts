@@ -12,6 +12,8 @@ import type {
   PagamentoEstado
 } from '~/types/checkoutPagamento'
 
+const INTERVALO_POLLING_MS = 5000
+
 function ehUuid(valor: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor)
 }
@@ -33,8 +35,11 @@ export function usePublicPayment() {
   const erro = ref<PagamentoErrorCode | null>(null)
   const segundos = ref(0)
   const pix = ref<{ pixCopyPaste: string | null; pixQrCode: string | null; expiresAt: string | null } | null>(null)
+  const pixCarregando = ref(false)
+  const pixErro = ref(false)
 
   let timer: ReturnType<typeof setInterval> | null = null
+  let pollTimer: ReturnType<typeof setInterval> | null = null
 
   const estado = computed<PagamentoEstado>(() => {
     if (carregando.value) return 'CARREGANDO'
@@ -90,8 +95,7 @@ export function usePublicPayment() {
   function iniciarTimer() {
     pararTimer()
     recalcular()
-    // Nao reinicia em estado nao-pendente nem quando o tempo ja esgotou
-    // (evita loop de refresh automatico).
+    // Nao reinicia em estado nao-pendente nem quando o tempo ja esgotou.
     if (estado.value !== 'PENDENTE' || segundos.value <= 0) return
 
     timer = setInterval(() => {
@@ -101,6 +105,31 @@ export function usePublicPayment() {
         void atualizar()
       }
     }, 1000)
+  }
+
+  function pararPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer)
+      pollTimer = null
+    }
+  }
+
+  /** Polling moderado enquanto o pagamento estiver pendente e a reserva valida. */
+  function iniciarPolling() {
+    pararPolling()
+    if (estado.value !== 'PENDENTE' || tempoEsgotado.value) return
+
+    pollTimer = setInterval(() => {
+      if (estado.value !== 'PENDENTE' || tempoEsgotado.value) {
+        pararPolling()
+        return
+      }
+      void (async () => {
+        await sincronizarStatus()
+        if (!pix.value?.pixCopyPaste) await carregarPix()
+        if (estado.value !== 'PENDENTE') pararPolling()
+      })()
+    }, INTERVALO_POLLING_MS)
   }
 
   function tratarErro(e: unknown) {
@@ -131,6 +160,7 @@ export function usePublicPayment() {
       iniciarTimer()
       void sincronizarStatus()
       void carregarPix()
+      iniciarPolling()
     }
   }
 
@@ -160,12 +190,17 @@ export function usePublicPayment() {
       iniciarTimer()
       void sincronizarStatus()
       void carregarPix()
+      iniciarPolling()
     }
   }
 
   /** Busca/gera o Pix real no backend (nunca chama o provider no cliente). */
   async function carregarPix() {
     if (!token.value || estado.value !== 'PENDENTE') return
+    if (pix.value?.pixCopyPaste) return
+
+    pixCarregando.value = true
+    pixErro.value = false
     try {
       const resposta = await $fetch<{
         pixCopyPaste?: string | null
@@ -179,9 +214,17 @@ export function usePublicPayment() {
           pixQrCode: resposta.pixQrCode ?? null,
           expiresAt: resposta.expiresAt ?? null
         }
+        if (!pix.value.pixCopyPaste && !pix.value.pixQrCode) {
+          pix.value = null
+          pixErro.value = true
+        }
+      } else {
+        pixErro.value = true
       }
     } catch {
-      // silencioso: a UI mostra o estado pendente/placeholder
+      pixErro.value = true
+    } finally {
+      pixCarregando.value = false
     }
   }
 
@@ -211,6 +254,7 @@ export function usePublicPayment() {
 
   onUnmounted(() => {
     pararTimer()
+    pararPolling()
   })
 
   return {
@@ -224,7 +268,10 @@ export function usePublicPayment() {
     textoCountdown,
     tempoEsgotado,
     pix,
+    pixCarregando,
+    pixErro,
     carregar,
-    atualizar
+    atualizar,
+    tentarPix: carregarPix
   }
 }

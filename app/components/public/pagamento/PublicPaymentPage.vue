@@ -19,8 +19,11 @@ const {
   textoCountdown,
   tempoEsgotado,
   pix,
+  pixCarregando,
+  pixErro,
   carregar,
-  atualizar
+  atualizar,
+  tentarPix
 } = usePublicPayment()
 
 const eventoSlug = computed(() => checkout.value?.eventoSlug ?? '')
@@ -54,7 +57,10 @@ const eventoNome = computed(() => checkout.value?.eventoNome ?? 'Checkout')
           :texto-countdown="textoCountdown"
           :tempo-esgotado="tempoEsgotado"
           :pix="pix"
+          :pix-carregando="pixCarregando"
+          :pix-erro="pixErro"
           @atualizar="atualizar"
+          @tentar-pix="tentarPix"
         />
 
         <PaymentApprovedState
