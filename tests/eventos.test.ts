@@ -17,6 +17,7 @@ test('mapearEventoAdminParaListItem adapta o item real para o shape dos cards', 
     capacidadeTotal: 200,
     estoqueAntecipado: 100,
     publicadoEm: '2026-09-01T00:00:00Z',
+    imagemUrl: 'https://cdn.exemplo.com/capa.jpg',
     lotesCount: 2,
     pedidosCount: 7,
     ingressosCount: 9
@@ -29,8 +30,38 @@ test('mapearEventoAdminParaListItem adapta o item real para o shape dos cards', 
   assert.equal(item.publicacaoStatus, 'PUBLICADO')
   assert.equal(item.vendasStatus, 'ENCERRADAS')
   assert.equal(item.vendidos, 9)
-  assert.equal(item.imagemUrl, null)
+  assert.equal(item.imagemUrl, 'https://cdn.exemplo.com/capa.jpg')
   assert.equal(item.loteAtual, null)
+})
+
+test('mapearEventoAdminParaListItem usa fallback quando capa e invalida', () => {
+  const base = {
+    eventoId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    nome: 'Evento Real',
+    slug: 'evento-real',
+    inicioEm: '2026-10-25T19:19:10.781Z',
+    local: 'Galeria Zero 1',
+    status: 'AGENDADO' as const,
+    vendasStatus: 'ABERTAS' as const,
+    publicacaoStatus: 'PUBLICADO' as const,
+    capacidadeTotal: 200,
+    estoqueAntecipado: 100,
+    publicadoEm: null,
+    lotesCount: 0,
+    pedidosCount: 0,
+    ingressosCount: 0
+  }
+
+  assert.equal(mapearEventoAdminParaListItem({ ...base, imagemUrl: null }).imagemUrl, null)
+  assert.equal(
+    mapearEventoAdminParaListItem({ ...base, imagemUrl: 'blob:https://gz-1-ingressos.vercel.app/x' }).imagemUrl,
+    null
+  )
+  assert.equal(mapearEventoAdminParaListItem({ ...base, imagemUrl: 'C:\\capa.png' }).imagemUrl, null)
+  assert.equal(
+    mapearEventoAdminParaListItem({ ...base, imagemUrl: 'https://cdn.exemplo.com/x.jpg' }).imagemUrl,
+    'https://cdn.exemplo.com/x.jpg'
+  )
 })
 
 test('gerarSlug normaliza acentos/espacos/simbolos', () => {

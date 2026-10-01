@@ -26,6 +26,7 @@ interface AdminEventRow {
   capacidade_total: number
   estoque_antecipado: number
   publicado_em: string | null
+  imagem_url: string | null
   lotes_count: number
   pedidos_count: number
   ingressos_count: number
@@ -44,6 +45,7 @@ function mapear(row: AdminEventRow): AdminEventListItem {
     capacidadeTotal: row.capacidade_total,
     estoqueAntecipado: row.estoque_antecipado,
     publicadoEm: row.publicado_em,
+    imagemUrl: row.imagem_url,
     lotesCount: row.lotes_count,
     pedidosCount: row.pedidos_count,
     ingressosCount: row.ingressos_count

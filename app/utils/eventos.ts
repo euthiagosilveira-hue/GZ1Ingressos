@@ -13,7 +13,7 @@ export function mapearEventoAdminParaListItem(evento: AdminEventListItem): Event
     id: evento.eventoId,
     nome: evento.nome,
     slug: evento.slug,
-    imagemUrl: null,
+    imagemUrl: imagemValida(evento.imagemUrl),
     inicioEm: evento.inicioEm,
     local: evento.local,
     status: evento.status,

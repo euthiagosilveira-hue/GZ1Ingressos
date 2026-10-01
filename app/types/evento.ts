@@ -95,6 +95,7 @@ export interface AdminEventListItem {
   capacidadeTotal: number
   estoqueAntecipado: number
   publicadoEm: string | null
+  imagemUrl: string | null
   lotesCount: number
   pedidosCount: number
   ingressosCount: number
