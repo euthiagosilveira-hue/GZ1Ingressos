@@ -2,6 +2,7 @@ import { MercadoPagoHttpError } from './mercado-pago-client.ts'
 
 export interface MpErroSanitizado {
   httpStatus: number | null
+  requestId: string | null
   code: string | null
   message: string | null
   cause: unknown
@@ -82,6 +83,7 @@ export function sanitizarErroMercadoPago(erro: unknown): MpErroSanitizado {
 
   return {
     httpStatus,
+    requestId: erro instanceof MercadoPagoHttpError ? texto(erro.requestId) : null,
     code: json ? texto(json.error) ?? texto(json.code) : null,
     message: json ? texto(json.message) : texto(bruto),
     cause: json ? objetoSeguro(json.cause ?? null, 0) : null,

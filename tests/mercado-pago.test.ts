@@ -288,6 +288,32 @@ test('sanitizarErroMercadoPago lida com corpo nao-JSON e erro generico', () => {
   assert.equal(generico.httpStatus, null)
 })
 
+test('sanitizarErroMercadoPago inclui requestId somente quando presente', () => {
+  const comId = sanitizarErroMercadoPago(
+    new MercadoPagoHttpError(402, JSON.stringify({ errors: [] }), 'REQ-BR-123')
+  )
+  assert.equal(comId.requestId, 'REQ-BR-123')
+
+  const semId = sanitizarErroMercadoPago(new MercadoPagoHttpError(402, JSON.stringify({ errors: [] })))
+  assert.equal(semId.requestId, null)
+})
+
+test('log expõe requestId e nenhum outro header/cookie', () => {
+  const linha = serializarLogErroMercadoPago(
+    {
+      endpoint: 'POST /v1/orders',
+      operation: 'createOrder',
+      pagamentoId: 'pay-1',
+      pedidoCodigo: 'GZ100155'
+    },
+    new MercadoPagoHttpError(402, JSON.stringify({ errors: [] }), 'REQ-9')
+  )
+  assert.ok(linha.includes('"requestId":"REQ-9"'))
+  assert.ok(!linha.toLowerCase().includes('cookie'))
+  assert.ok(!linha.toLowerCase().includes('set-cookie'))
+  assert.ok(!linha.toLowerCase().includes('authorization'))
+})
+
 test('sanitizarErroMercadoPago nunca inclui headers/tokens/segredos', () => {
   const corpo = JSON.stringify({
     message: 'forbidden',
@@ -299,7 +325,7 @@ test('sanitizarErroMercadoPago nunca inclui headers/tokens/segredos', () => {
     cause: [{ code: 'policy', description: 'negado para APP_USR-SECRET' }]
   })
   const s = sanitizarErroMercadoPago(new MercadoPagoHttpError(403, corpo))
-  assert.deepEqual(Object.keys(s).sort(), ['cause', 'code', 'errors', 'httpStatus', 'message'])
+  assert.deepEqual(Object.keys(s).sort(), ['cause', 'code', 'errors', 'httpStatus', 'message', 'requestId'])
   assert.equal(s.httpStatus, 403)
   assert.equal(s.code, 'unauthorized')
   const serializado = JSON.stringify(s)

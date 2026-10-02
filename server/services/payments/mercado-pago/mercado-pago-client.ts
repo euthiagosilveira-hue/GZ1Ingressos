@@ -23,11 +23,13 @@ export async function verificarCredencialDeTeste(accessToken: string): Promise<b
 
 export class MercadoPagoHttpError extends Error {
   status: number
+  requestId: string | null
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, requestId: string | null = null) {
     super(message)
     this.name = 'MercadoPagoHttpError'
     this.status = status
+    this.requestId = requestId
   }
 }
 
@@ -51,7 +53,12 @@ export class MercadoPagoClient {
 
     if (!response.ok) {
       const texto = await response.text().catch(() => '')
-      throw new MercadoPagoHttpError(response.status, texto.slice(0, 2000))
+      // Captura SOMENTE o x-request-id (para suporte MP). Nunca outros headers.
+      throw new MercadoPagoHttpError(
+        response.status,
+        texto.slice(0, 2000),
+        response.headers.get('x-request-id')
+      )
     }
 
     return (await response.json()) as T
