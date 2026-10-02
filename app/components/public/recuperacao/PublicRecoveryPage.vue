@@ -48,7 +48,7 @@ async function enviar() {
         </span>
         <h1 class="text-lg font-bold uppercase tracking-wide text-amber-400">Recuperar ingressos</h1>
         <p class="text-sm text-zinc-400">
-          Informe o código do pedido e o telefone usado na compra.
+          Informe o código do pedido e o telefone usado na compra para acessar seus ingressos.
         </p>
       </header>
 

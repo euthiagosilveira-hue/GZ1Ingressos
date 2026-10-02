@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { PUBLIC_NAV_ITEMS } from '~/utils/publicNav'
 </script>
 
 <template>
@@ -11,20 +12,15 @@
         <img src="/Logo horizontal.png" alt="Galeria Zero 1" class="h-8 w-auto" />
       </NuxtLink>
 
-      <nav class="flex items-center gap-5 text-sm">
+      <nav class="flex items-center gap-4 text-sm sm:gap-5">
         <NuxtLink
-          to="/eventos-publicos"
+          v-for="item in PUBLIC_NAV_ITEMS"
+          :key="item.to"
+          :to="item.to"
           class="text-zinc-300 transition-colors hover:text-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
         >
-          Eventos
+          {{ item.label }}
         </NuxtLink>
-        <span
-          class="hidden cursor-not-allowed text-zinc-600 sm:inline"
-          aria-disabled="true"
-          title="Disponível em breve"
-        >
-          Meus ingressos
-        </span>
       </nav>
     </div>
   </header>
