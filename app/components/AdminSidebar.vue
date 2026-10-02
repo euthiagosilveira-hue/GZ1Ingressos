@@ -22,10 +22,8 @@ import { useOperatorAuth } from '~/composables/useOperatorAuth'
 const props = withDefaults(
   defineProps<{
     mobile?: boolean
-    pedidosCount?: number | null
-    entradasCount?: number | null
   }>(),
-  { mobile: false, pedidosCount: null, entradasCount: null }
+  { mobile: false }
 )
 
 const emit = defineEmits<{
@@ -37,7 +35,6 @@ interface NavItem {
   to: string
   icon: Component
   label: string
-  badge?: string | number
 }
 
 const route = useRoute()
@@ -60,18 +57,18 @@ const activeLabel = computed(() => {
   return typeof meta === 'string' ? meta : 'Dashboard'
 })
 
-const items = computed<NavItem[]>(() => [
+const items: NavItem[] = [
   { to: '/', icon: Squares2X2Icon, label: 'Dashboard' },
   { to: '/eventos', icon: CalendarDaysIcon, label: 'Eventos' },
-  { to: '/pedidos', icon: RectangleStackIcon, label: 'Pedidos', badge: props.pedidosCount ?? undefined },
+  { to: '/pedidos', icon: RectangleStackIcon, label: 'Pedidos' },
   { to: '/ingressos', icon: TicketIcon, label: 'Ingressos' },
-  { to: '/entradas', icon: ArrowRightOnRectangleIcon, label: 'Entradas', badge: props.entradasCount ?? undefined },
+  { to: '/entradas', icon: ArrowRightOnRectangleIcon, label: 'Entradas' },
   { to: '/portaria', icon: QrCodeIcon, label: 'Portaria' },
   { to: '#', icon: UsersIcon, label: 'Participantes' },
   { to: '/financeiro', icon: BanknotesIcon, label: 'Financeiro' },
   { to: '#', icon: ChartBarIcon, label: 'Relatórios' },
   { to: '#', icon: Cog6ToothIcon, label: 'Configurações' }
-])
+]
 
 const raizClasses = computed(() =>
   props.mobile
@@ -102,7 +99,6 @@ const raizClasses = computed(() =>
         :to="item.to"
         :icon="item.icon"
         :label="item.label"
-        :badge="item.badge"
         :active="item.label === activeLabel"
         size="lg"
         @click="emit('navigate')"

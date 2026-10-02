@@ -4,7 +4,6 @@ import { useRoute } from '#imports'
 
 import AdminMobileHeader from '~/components/AdminMobileHeader.vue'
 import AdminSidebar from '~/components/AdminSidebar.vue'
-import { useAdminSidebarCounts } from '~/composables/useAdminSidebarCounts'
 
 const props = withDefaults(
   defineProps<{
@@ -15,8 +14,6 @@ const props = withDefaults(
 
 const route = useRoute()
 const sidebarOpen = ref(false)
-
-const { pedidos: pedidosCount, entradas: entradasCount } = useAdminSidebarCounts()
 
 const titulo = computed(() => props.title || String(route.meta.title ?? ''))
 
@@ -71,11 +68,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex h-screen overflow-hidden bg-zinc-950 text-white">
-    <AdminSidebar
-      class="hidden lg:flex"
-      :pedidos-count="pedidosCount"
-      :entradas-count="entradasCount"
-    />
+    <AdminSidebar class="hidden lg:flex" />
 
     <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
       <AdminMobileHeader :title="titulo" :expanded="sidebarOpen" @open-menu="abrirMenu" />
@@ -114,13 +107,7 @@ onBeforeUnmount(() => {
         aria-label="Menu de navegação"
         :inert="!sidebarOpen"
       >
-        <AdminSidebar
-          mobile
-          :pedidos-count="pedidosCount"
-          :entradas-count="entradasCount"
-          @close="fecharMenu"
-          @navigate="fecharMenu"
-        />
+        <AdminSidebar mobile @close="fecharMenu" @navigate="fecharMenu" />
       </aside>
     </div>
   </div>
