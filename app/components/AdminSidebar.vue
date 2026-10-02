@@ -7,7 +7,6 @@ import {
   CalendarDaysIcon,
   ChartBarIcon,
   Cog6ToothIcon,
-  PhoneIcon,
   QrCodeIcon,
   RectangleStackIcon,
   Squares2X2Icon,
@@ -23,8 +22,10 @@ import { useOperatorAuth } from '~/composables/useOperatorAuth'
 const props = withDefaults(
   defineProps<{
     mobile?: boolean
+    pedidosCount?: number | null
+    entradasCount?: number | null
   }>(),
-  { mobile: false }
+  { mobile: false, pedidosCount: null, entradasCount: null }
 )
 
 const emit = defineEmits<{
@@ -36,7 +37,7 @@ interface NavItem {
   to: string
   icon: Component
   label: string
-  badge?: string
+  badge?: string | number
 }
 
 const route = useRoute()
@@ -59,18 +60,18 @@ const activeLabel = computed(() => {
   return typeof meta === 'string' ? meta : 'Dashboard'
 })
 
-const items: NavItem[] = [
+const items = computed<NavItem[]>(() => [
   { to: '/', icon: Squares2X2Icon, label: 'Dashboard' },
   { to: '/eventos', icon: CalendarDaysIcon, label: 'Eventos' },
-  { to: '/pedidos', icon: RectangleStackIcon, label: 'Pedidos', badge: '128' },
+  { to: '/pedidos', icon: RectangleStackIcon, label: 'Pedidos', badge: props.pedidosCount ?? undefined },
   { to: '/ingressos', icon: TicketIcon, label: 'Ingressos' },
-  { to: '/entradas', icon: ArrowRightOnRectangleIcon, label: 'Entradas', badge: '281' },
+  { to: '/entradas', icon: ArrowRightOnRectangleIcon, label: 'Entradas', badge: props.entradasCount ?? undefined },
   { to: '/portaria', icon: QrCodeIcon, label: 'Portaria' },
   { to: '#', icon: UsersIcon, label: 'Participantes' },
   { to: '/financeiro', icon: BanknotesIcon, label: 'Financeiro' },
   { to: '#', icon: ChartBarIcon, label: 'Relatórios' },
   { to: '#', icon: Cog6ToothIcon, label: 'Configurações' }
-]
+])
 
 const raizClasses = computed(() =>
   props.mobile
@@ -124,14 +125,6 @@ const raizClasses = computed(() =>
         <ArrowRightOnRectangleIcon class="h-4 w-4" />
         Sair
       </button>
-    </div>
-
-    <div class="mt-5 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-      <div class="flex items-center gap-2.5 text-amber-400">
-        <PhoneIcon class="h-6 w-6" />
-        <span class="text-sm font-semibold">Precisa de ajuda?</span>
-      </div>
-      <p class="mt-1.5 text-xs text-zinc-400">Fale com o suporte</p>
     </div>
   </aside>
 </template>
