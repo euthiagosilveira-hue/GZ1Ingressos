@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import { CalendarDaysIcon, ClockIcon, MapPinIcon } from '@heroicons/vue/24/outline'
 
 import AppButton from '~/components/AppButton.vue'
@@ -7,43 +8,60 @@ import type { TodayEvent } from '~/types/dashboard'
 const props = defineProps<{
   event: TodayEvent
 }>()
+
+const imagemOk = ref(true)
+
+watch(
+  () => props.event.imageUrl,
+  () => {
+    imagemOk.value = true
+  }
+)
 </script>
 
 <template>
   <BaseCard :padded="false" class="flex h-full flex-col p-5 sm:p-6">
     <h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-zinc-400">
-      Evento de hoje
+      Próximo evento
     </h3>
 
-    <div class="mt-5 flex flex-1 gap-5">
+    <div v-if="props.event.hasEvent" class="mt-5 flex flex-1 gap-5">
       <div
-        class="relative w-32 shrink-0 overflow-hidden rounded-xl border border-zinc-800 sm:w-40"
-        style="aspect-ratio: 3 / 4"
+        class="relative aspect-[3/4] w-32 shrink-0 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 sm:w-40"
       >
-        <div class="absolute inset-0 bg-gradient-to-b from-zinc-700 via-zinc-900 to-black"></div>
-        <div
-          class="absolute inset-0"
-          style="background: radial-gradient(circle at 50% 22%, rgba(251, 191, 36, 0.22), transparent 64%)"
-        ></div>
-        <div class="relative flex h-full flex-col items-center justify-center px-3 text-center">
-          <p class="text-xs font-semibold tracking-[0.3em] text-amber-400">
-            {{ props.event.poster.weekday }}
-          </p>
-          <p class="text-5xl font-black leading-none text-white">
-            {{ props.event.poster.day }}
-          </p>
-          <p class="mt-1 text-xs tracking-[0.3em] text-zinc-400">
-            {{ props.event.poster.month }}
-          </p>
-          <div class="mt-4 w-full border-t border-amber-400/30 pt-3">
-            <p class="text-[10px] tracking-[0.3em] text-zinc-500">
-              {{ props.event.poster.label }}
+        <img
+          v-if="props.event.imageUrl && imagemOk"
+          :src="props.event.imageUrl"
+          :alt="props.event.title"
+          class="h-full w-full object-cover object-center"
+          @error="imagemOk = false"
+        />
+        <template v-else>
+          <div class="absolute inset-0 bg-gradient-to-b from-zinc-700 via-zinc-900 to-black"></div>
+          <div
+            class="absolute inset-0"
+            style="background: radial-gradient(circle at 50% 22%, rgba(251, 191, 36, 0.22), transparent 64%)"
+          ></div>
+          <div class="relative flex h-full flex-col items-center justify-center px-3 text-center">
+            <p class="text-xs font-semibold tracking-[0.3em] text-amber-400">
+              {{ props.event.poster.weekday }}
             </p>
-            <p class="text-sm font-bold tracking-wide text-white">
-              {{ props.event.poster.name }}
+            <p class="text-5xl font-black leading-none text-white">
+              {{ props.event.poster.day }}
             </p>
+            <p class="mt-1 text-xs tracking-[0.3em] text-zinc-400">
+              {{ props.event.poster.month }}
+            </p>
+            <div class="mt-4 w-full border-t border-amber-400/30 pt-3">
+              <p class="text-[10px] tracking-[0.3em] text-zinc-500">
+                {{ props.event.poster.label }}
+              </p>
+              <p class="text-sm font-bold tracking-wide text-white">
+                {{ props.event.poster.name }}
+              </p>
+            </div>
           </div>
-        </div>
+        </template>
       </div>
 
       <div class="flex min-w-0 flex-1 flex-col">
@@ -72,9 +90,21 @@ const props = defineProps<{
         </div>
 
         <div class="mt-auto pt-6">
-          <AppButton variant="outlineAccent" size="md" class="w-fit">Ver evento</AppButton>
+          <AppButton
+            v-if="props.event.href"
+            :to="props.event.href"
+            variant="outlineAccent"
+            size="md"
+            class="w-fit"
+          >
+            Ver evento
+          </AppButton>
         </div>
       </div>
+    </div>
+
+    <div v-else class="mt-5 flex flex-1 items-center justify-center">
+      <p class="text-center text-sm text-zinc-500">{{ props.event.title }}</p>
     </div>
   </BaseCard>
 </template>

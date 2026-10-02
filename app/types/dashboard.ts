@@ -7,9 +7,10 @@ export interface AdminDashboardMetrics {
 }
 
 export interface AdminDashboardEvento {
-  id: string
+  evento_id: string
   nome: string
   slug: string
+  imagem_url: string | null
   inicio_em: string
   local: string | null
   status: string
@@ -88,11 +89,14 @@ export interface RecentEntry {
 }
 
 export interface TodayEvent {
+  hasEvent: boolean
   badge: string
   title: string
   date: string
   time: string
   venue: string
+  imageUrl: string | null
+  href: string
   poster: {
     weekday: string
     day: string

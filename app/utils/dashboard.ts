@@ -8,6 +8,7 @@ import type {
   RecentOrder,
   TodayEvent
 } from '~/types/dashboard'
+import { imagemValida } from './imagem.ts'
 
 const moedaBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -69,15 +70,21 @@ function diaMes(iso: string): { dia: string; mes: string } {
   return { dia, mes }
 }
 
-/** Converte o evento real no view-model do card de evento. */
+/**
+ * Converte o evento real (EM_ANDAMENTO ou proximo AGENDADO) no view-model do
+ * card. A capa usa imagem_url real validada; sem imagem, usa o fallback atual.
+ */
 export function mapearDashboardEvento(evento: AdminDashboardEvento | null): TodayEvent {
   if (!evento) {
     return {
-      badge: 'SEM EVENTO',
-      title: 'Nenhum evento em andamento',
+      hasEvent: false,
+      badge: '',
+      title: 'Nenhum próximo evento agendado.',
       date: '—',
       time: '—',
       venue: '—',
+      imageUrl: null,
+      href: '',
       poster: { weekday: '', day: '--', month: '', label: 'EVENTO', name: '—' }
     }
   }
@@ -85,11 +92,14 @@ export function mapearDashboardEvento(evento: AdminDashboardEvento | null): Toda
   const { dia, mes } = diaMes(evento.inicio_em)
   const semana = nomeDiaSemana(evento.inicio_em)
   return {
+    hasEvent: true,
     badge: evento.status === 'EM_ANDAMENTO' ? 'AO VIVO' : 'PRÓXIMO',
     title: evento.nome,
     date: formatData(evento.inicio_em),
     time: formatHora(evento.inicio_em),
     venue: evento.local ?? '—',
+    imageUrl: imagemValida(evento.imagem_url),
+    href: `/eventos/${evento.slug}`,
     poster: {
       weekday: semana ? semana.slice(0, 3).toUpperCase() : '',
       day: dia,

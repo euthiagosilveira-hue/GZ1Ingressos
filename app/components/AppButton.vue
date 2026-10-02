@@ -8,13 +8,15 @@ const props = withDefaults(
     block?: boolean
     disabled?: boolean
     type?: 'button' | 'submit'
+    to?: string
   }>(),
   {
     variant: 'outline',
     size: 'md',
     block: false,
     disabled: false,
-    type: 'button'
+    type: 'button',
+    to: ''
   }
 )
 
@@ -43,7 +45,10 @@ const classes = computed(() => [
 </script>
 
 <template>
-  <button :type="type" :disabled="disabled" :class="classes">
+  <NuxtLink v-if="to" :to="to" :class="classes">
+    <slot />
+  </NuxtLink>
+  <button v-else :type="type" :disabled="disabled" :class="classes">
     <slot />
   </button>
 </template>
