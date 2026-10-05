@@ -67,7 +67,7 @@ const items: NavItem[] = [
   { to: '#', icon: UsersIcon, label: 'Participantes' },
   { to: '/financeiro', icon: BanknotesIcon, label: 'Financeiro' },
   { to: '#', icon: ChartBarIcon, label: 'Relatórios' },
-  { to: '#', icon: Cog6ToothIcon, label: 'Configurações' }
+  { to: '/configuracoes', icon: Cog6ToothIcon, label: 'Configurações' }
 ]
 
 const raizClasses = computed(() =>
