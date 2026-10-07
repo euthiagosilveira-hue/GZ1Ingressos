@@ -71,66 +71,94 @@ async function entrar() {
 
 <template>
   <main
-    class="relative flex min-h-[100dvh] w-full items-center justify-center overflow-x-hidden bg-zinc-950 text-white"
-    style="padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom)"
+    class="relative flex min-h-[100dvh] w-full overflow-x-hidden bg-[#050505] text-white"
   >
-    <!-- Foto real da fachada (background full-bleed) -->
-    <div class="absolute inset-0" aria-hidden="true">
-      <div
-        class="absolute inset-0 bg-[radial-gradient(120%_90%_at_15%_10%,rgba(251,191,36,0.10),transparent_55%)]"
-      />
+    <!-- MOBILE / TABLET: fotografia em tela cheia como background -->
+    <div class="absolute inset-0 lg:hidden" aria-hidden="true">
       <img
         v-if="fotoOk"
         :src="fotoSrc"
         alt=""
+        fetchpriority="high"
         loading="eager"
         decoding="async"
-        class="h-full w-full object-cover object-[50%_40%]"
+        class="h-full w-full object-cover object-[50%_36%]"
         @error="fotoOk = false"
       />
-      <div class="absolute inset-0 bg-black/65 lg:bg-black/45" />
-      <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />
+      <!-- Overlay escuro sutil: preserva o brilho da placa e da fachada -->
+      <div class="absolute inset-0 bg-black/45" />
+      <div class="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/75" />
+      <div
+        class="absolute inset-0 bg-[radial-gradient(120%_70%_at_50%_0%,rgba(217,177,56,0.12),transparent_60%)]"
+      />
     </div>
 
-    <!-- Conteudo: 2 colunas no desktop; coluna unica (card sobre a foto) no mobile -->
-    <div class="relative z-10 grid w-full lg:min-h-screen lg:grid-cols-[58%_42%]">
-      <div class="hidden lg:block" />
+    <!-- DESKTOP: composicao em duas areas -->
+    <div class="relative z-10 grid w-full lg:min-h-[100dvh] lg:grid-cols-[55%_45%]">
+      <!-- ESQUERDA: fotografia da Galeria Zero 1 -->
+      <div class="relative hidden overflow-hidden lg:block">
+        <img
+          v-if="fotoOk"
+          :src="fotoSrc"
+          alt=""
+          fetchpriority="high"
+          loading="eager"
+          decoding="async"
+          class="h-full w-full object-cover object-[50%_45%]"
+          @error="fotoOk = false"
+        />
+        <!-- Contraste premium: overlay leve + blend suave para o painel direito -->
+        <div class="absolute inset-0 bg-black/15" />
+        <div class="absolute inset-0 bg-gradient-to-r from-black/35 via-transparent to-[#080808]" />
+        <div class="absolute inset-0 bg-gradient-to-t from-[#050505]/70 via-transparent to-black/15" />
+        <div
+          class="absolute inset-0 bg-[radial-gradient(90%_70%_at_35%_45%,transparent_40%,rgba(0,0,0,0.35)_100%)]"
+        />
+      </div>
 
+      <!-- DIREITA: area escura com o card centralizado -->
       <div
-        class="flex min-h-[100dvh] items-end justify-center px-5 pb-8 pt-10 sm:px-8 lg:min-h-screen lg:items-center lg:bg-zinc-950 lg:px-12 lg:py-14"
+        class="relative flex min-h-[100dvh] items-center justify-center px-5 py-10 sm:px-8 lg:min-h-[100dvh] lg:bg-[#080808] lg:px-12 lg:py-16"
+        style="padding-top: max(2.5rem, env(safe-area-inset-top)); padding-bottom: max(2.5rem, env(safe-area-inset-bottom))"
       >
+        <div
+          class="pointer-events-none absolute inset-0 hidden bg-[radial-gradient(70%_55%_at_50%_35%,rgba(217,177,56,0.08),transparent_70%)] lg:block"
+          aria-hidden="true"
+        />
+
         <section
-          class="w-full max-w-sm rounded-3xl border border-amber-400/20 bg-zinc-950/80 p-7 shadow-2xl shadow-black/60 backdrop-blur-md sm:p-9"
+          class="relative w-full max-w-md rounded-[28px] border border-[#D9B138]/45 bg-[#0b0b0c]/95 p-6 shadow-[0_30px_90px_-25px_rgba(0,0,0,0.95)] ring-1 ring-white/5 backdrop-blur-md sm:p-9 lg:bg-[#0b0b0c]"
         >
-          <header class="space-y-3 text-center">
+          <header class="space-y-2 text-center">
             <img
               src="/Logo horizontal.png"
               alt="Galeria Zero 1"
-              class="mx-auto h-11 w-auto"
+              class="mx-auto h-12 w-auto sm:h-14"
             />
-            <div class="space-y-1">
-              <h1 class="text-2xl font-bold text-white">Entrar</h1>
-              <p class="text-sm text-zinc-400">Acesse o painel da Galeria Zero 1</p>
-            </div>
+            <h1 class="pt-4 text-3xl font-bold tracking-tight text-white">Entrar</h1>
+            <p class="text-sm text-zinc-400">Acesse o painel da Galeria Zero 1</p>
           </header>
 
           <p
             v-if="erroQuery || erro"
             role="alert"
-            class="mt-6 flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/5 p-3 text-sm text-red-300"
+            class="mt-6 flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300"
           >
             <ExclamationTriangleIcon class="mt-0.5 h-5 w-5 shrink-0" />
             <span>{{ erro || erroQuery }}</span>
           </p>
 
-          <form class="mt-6 space-y-4" novalidate @submit.prevent="entrar">
-            <div class="space-y-1.5">
-              <label for="email" class="block text-xs font-semibold uppercase tracking-wide text-zinc-400">
+          <form class="mt-7 space-y-5" novalidate @submit.prevent="entrar">
+            <div class="space-y-2">
+              <label
+                for="email"
+                class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-300"
+              >
                 E-mail
               </label>
               <div class="relative">
                 <EnvelopeIcon
-                  class="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500"
+                  class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500"
                 />
                 <input
                   id="email"
@@ -139,19 +167,22 @@ async function entrar() {
                   name="email"
                   autocomplete="email"
                   required
-                  class="w-full rounded-xl border border-zinc-700 bg-zinc-900/80 py-3 pl-11 pr-4 text-sm text-zinc-100 placeholder:text-zinc-600 transition-colors focus:border-amber-400/70 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                  class="w-full rounded-xl border border-zinc-300 bg-zinc-100 py-3.5 pl-12 pr-4 text-sm font-medium text-zinc-900 shadow-inner shadow-black/5 outline-none transition-colors placeholder:text-zinc-500 focus:border-[#D9B138] focus:bg-white focus:ring-2 focus:ring-[#D9B138]/40"
                   placeholder="seu@email.com"
                 />
               </div>
             </div>
 
-            <div class="space-y-1.5">
-              <label for="senha" class="block text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            <div class="space-y-2">
+              <label
+                for="senha"
+                class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-300"
+              >
                 Senha
               </label>
               <div class="relative">
                 <LockClosedIcon
-                  class="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500"
+                  class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500"
                 />
                 <input
                   id="senha"
@@ -160,12 +191,12 @@ async function entrar() {
                   name="password"
                   autocomplete="current-password"
                   required
-                  class="w-full rounded-xl border border-zinc-700 bg-zinc-900/80 py-3 pl-11 pr-11 text-sm text-zinc-100 placeholder:text-zinc-600 transition-colors focus:border-amber-400/70 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                  class="w-full rounded-xl border border-zinc-300 bg-zinc-100 py-3.5 pl-12 pr-12 text-sm font-medium text-zinc-900 shadow-inner shadow-black/5 outline-none transition-colors placeholder:text-zinc-500 focus:border-[#D9B138] focus:bg-white focus:ring-2 focus:ring-[#D9B138]/40"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
-                  class="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-zinc-500 transition-colors hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+                  class="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-zinc-500 transition-colors hover:text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D9B138]/50"
                   :aria-label="mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'"
                   :aria-pressed="mostrarSenha"
                   @click="mostrarSenha = !mostrarSenha"
@@ -179,11 +210,11 @@ async function entrar() {
             <button
               type="submit"
               :disabled="carregando"
-              class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-amber-400 px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-zinc-950 transition-colors duration-150 hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 disabled:pointer-events-none disabled:opacity-60"
+              class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#D9B138] px-6 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-[#1a1405] shadow-lg shadow-[#D9B138]/25 transition duration-150 hover:bg-[#e6c452] active:bg-[#c9a12f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D9B138]/60 disabled:pointer-events-none disabled:opacity-60"
             >
               <span
                 v-if="carregando"
-                class="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950/40 border-t-zinc-950"
+                class="h-4 w-4 animate-spin rounded-full border-2 border-[#1a1405]/40 border-t-[#1a1405]"
               />
               {{ carregando ? 'Entrando...' : 'Entrar' }}
             </button>
@@ -191,7 +222,7 @@ async function entrar() {
 
           <NuxtLink
             to="/eventos-publicos"
-            class="mt-6 flex items-center justify-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500 transition-colors hover:text-amber-300"
+            class="mt-7 flex items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 transition-colors hover:text-[#D9B138] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D9B138]/50"
           >
             <ArrowLeftIcon class="h-4 w-4" />
             Voltar ao site
