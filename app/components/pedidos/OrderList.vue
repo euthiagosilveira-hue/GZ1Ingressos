@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import AppButton from '~/components/AppButton.vue'
 import BaseSelect from '~/components/BaseSelect.vue'
 import OrderEmptyState from '~/components/pedidos/OrderEmptyState.vue'
 import OrderFilters from '~/components/pedidos/OrderFilters.vue'
@@ -10,8 +11,12 @@ import OrderSummary from '~/components/pedidos/OrderSummary.vue'
 import OrderTable from '~/components/pedidos/OrderTable.vue'
 import PageHeader from '~/components/PageHeader.vue'
 import { useAdminOrders } from '~/composables/useAdminOrders'
+import { useOperatorAuth } from '~/composables/useOperatorAuth'
 import type { SelectOption } from '~/types/ui'
 import type { OrderFiltersState, OrderSort } from '~/types/pedido'
+
+const { operador } = useOperatorAuth()
+const isAdmin = computed(() => operador.value?.perfil === 'ADMINISTRADOR')
 
 const {
   filtros,
@@ -60,7 +65,13 @@ function acaoPedido(payload: { id: string; action: string }) {
 
 <template>
   <div class="space-y-6">
-    <PageHeader title="Pedidos" subtitle="Acompanhe reservas, pagamentos e vendas dos eventos." />
+    <PageHeader title="Pedidos" subtitle="Acompanhe reservas, pagamentos e vendas dos eventos.">
+      <template #actions>
+        <AppButton v-if="isAdmin" variant="primary" to="/pedidos/nova-venda">
+          Nova venda manual
+        </AppButton>
+      </template>
+    </PageHeader>
 
     <OrderSummary :resumo="resumo" />
 

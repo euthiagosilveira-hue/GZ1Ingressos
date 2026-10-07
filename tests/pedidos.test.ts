@@ -37,6 +37,7 @@ test('mapearPedidoAdminParaListItem adapta a linha real ao view-model', () => {
     motivo_valor_avulso: null,
     autorizado_por_nome: null,
     pagamento_status: 'APROVADO',
+    pagamento_provedor: 'MERCADO_PAGO',
     pagamento_valor: '80.00'
   })
 
@@ -46,6 +47,40 @@ test('mapearPedidoAdminParaListItem adapta a linha real ao view-model', () => {
   assert.equal(item.valorTotal, 80)
   assert.equal(item.tipoPreco, 'LOTE')
   assert.equal(item.status, 'PAGO')
+  assert.equal(item.pagamentoProvedor, 'MERCADO_PAGO')
+})
+
+test('mapearPedidoAdminParaListItem expoe pagamento em DINHEIRO', () => {
+  const item = mapearPedidoAdminParaListItem({
+    id: 'ped-dinheiro',
+    codigo: 'GZ100999',
+    evento_id: 'e1',
+    evento_nome: 'Evento',
+    lote_id: 'l1',
+    lote_nome: 'Lote',
+    comprador_nome: 'Comprador',
+    comprador_telefone: '11999990000',
+    comprador_email: null,
+    quantidade: 1,
+    tipo_preco: 'LOTE',
+    valor_unitario: '30.00',
+    valor_total: '30.00',
+    status: 'PAGO',
+    reserva_expira_em: null,
+    pago_em: '2026-10-07T12:00:00Z',
+    cancelado_em: null,
+    criado_em: '2026-10-07T12:00:00Z',
+    atualizado_em: null,
+    motivo_valor_avulso: null,
+    autorizado_por_nome: null,
+    pagamento_status: 'APROVADO',
+    pagamento_provedor: 'DINHEIRO',
+    pagamento_valor: '30.00'
+  })
+
+  assert.equal(item.pagamentoProvedor, 'DINHEIRO')
+  assert.equal(item.valorTotal, 30)
+  assert.equal(item.reservaExpiraEm, null)
 })
 
 test('mapearPedidoAdminParaDetalhe monta pagamento, ingressos e historico', () => {
@@ -72,6 +107,7 @@ test('mapearPedidoAdminParaDetalhe monta pagamento, ingressos e historico', () =
     motivo_valor_avulso: null,
     autorizado_por_nome: null,
     pagamento_status: 'APROVADO',
+    pagamento_provedor: 'MERCADO_PAGO',
     pagamento_valor: '40.00',
     evento_inicio_em: '2026-10-25T19:19:10Z',
     evento_local: 'Galeria Zero 1',
@@ -133,6 +169,7 @@ test('mapearPedidoAdminParaDetalhe preserva evento real (nome/data/local)', () =
     motivo_valor_avulso: null,
     autorizado_por_nome: null,
     pagamento_status: 'APROVADO',
+    pagamento_provedor: 'MERCADO_PAGO',
     pagamento_valor: '40.00',
     evento_inicio_em: '2026-10-25T19:19:10Z',
     evento_local: 'Galeria Zero 1',

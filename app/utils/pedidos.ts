@@ -42,7 +42,8 @@ export function mapearPedidoAdminParaListItem(row: AdminPedidoRow): OrderListIte
     reservaExpiraEm: row.reserva_expira_em,
     pagoEm: row.pago_em,
     canceladoEm: row.cancelado_em,
-    criadoEm: row.criado_em
+    criadoEm: row.criado_em,
+    pagamentoProvedor: (row.pagamento_provedor as PaymentProvider | null) ?? null
   }
 }
 

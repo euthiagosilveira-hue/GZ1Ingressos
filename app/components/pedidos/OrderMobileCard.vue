@@ -37,6 +37,12 @@ const ehReservado = computed(() => props.pedido.status === 'RESERVADO')
       <div>
         <p class="text-sm text-zinc-200">{{ formatNumero(props.pedido.quantidade) }} ingressos</p>
         <p class="text-xs text-zinc-500">{{ props.pedido.loteNome ?? 'Venda avulsa' }}</p>
+        <p
+          v-if="props.pedido.pagamentoProvedor === 'DINHEIRO'"
+          class="text-[11px] font-semibold uppercase tracking-wide text-emerald-400"
+        >
+          Dinheiro
+        </p>
       </div>
       <p class="text-lg font-bold text-amber-400">{{ formatMoeda(props.pedido.valorTotal) }}</p>
     </div>

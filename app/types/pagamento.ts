@@ -21,7 +21,11 @@ export interface OrderPayment {
   valorReembolsado: number
 }
 
-export type PaymentProvider = 'STONE' | 'MERCADO_PAGO'
+/**
+ * Origem/forma de pagamento. DINHEIRO representa a venda manual registrada
+ * pelo administrador (sem gateway externo).
+ */
+export type PaymentProvider = 'STONE' | 'MERCADO_PAGO' | 'DINHEIRO'
 
 /**
  * Status financeiro normalizado do GZ1.

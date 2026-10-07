@@ -2,7 +2,8 @@ import type { PaymentProvider } from '~/types/pagamento'
 
 const ROTULOS: Record<PaymentProvider, string> = {
   STONE: 'Stone',
-  MERCADO_PAGO: 'Mercado Pago'
+  MERCADO_PAGO: 'Mercado Pago',
+  DINHEIRO: 'Dinheiro'
 }
 
 export function rotuloProvider(provider: PaymentProvider): string {

@@ -55,6 +55,12 @@ const ehReservado = computed(() => props.pedido.status === 'RESERVADO')
       >
         Expira às {{ formatHora(props.pedido.reservaExpiraEm) }}
       </p>
+      <p
+        v-if="props.pedido.pagamentoProvedor === 'DINHEIRO'"
+        class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-400"
+      >
+        Dinheiro
+      </p>
     </td>
 
     <td class="px-4 py-3">

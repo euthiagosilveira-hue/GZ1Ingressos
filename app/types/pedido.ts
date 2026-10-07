@@ -1,5 +1,5 @@
 import type { OrderTicket } from '~/types/ingresso'
-import type { OrderPayment } from '~/types/pagamento'
+import type { OrderPayment, PaymentProvider } from '~/types/pagamento'
 
 export type OrderStatus = 'RESERVADO' | 'PAGO' | 'EXPIRADO' | 'CANCELADO'
 
@@ -24,6 +24,7 @@ export interface OrderListItem {
   pagoEm: string | null
   canceladoEm: string | null
   criadoEm: string
+  pagamentoProvedor: PaymentProvider | null
 }
 
 export type OrderStatusFilter = 'TODOS' | OrderStatus
@@ -104,6 +105,7 @@ export interface AdminPedidoRow {
   autorizado_por_nome: string | null
   pagamento_status: string | null
   pagamento_valor: number | string | null
+  pagamento_provedor: string | null
 }
 
 export interface AdminPedidoPagamentoRaw {
