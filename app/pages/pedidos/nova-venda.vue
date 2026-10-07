@@ -11,13 +11,20 @@ import FormField from '~/components/FormField.vue'
 import PageHeader from '~/components/PageHeader.vue'
 import { criarVendaManualAdmin, listarEventosVendaManualAdmin } from '~/services/admin/vendaManual'
 import type { SelectOption } from '~/types/ui'
-import type { CriarVendaManualResult, EventoVendaManual, VendaManualForm } from '~/types/vendaManual'
+import type {
+  CriarVendaManualResult,
+  EventoVendaManual,
+  TipoVendaManual,
+  VendaManualForm
+} from '~/types/vendaManual'
 import { formatData, formatMoeda } from '~/utils/format'
 import {
   ajustarParticipantes,
   calcularTotalVendaManual,
+  loteSelecionado,
   montarPayloadVendaManual,
   validarVendaManual,
+  valorUnitarioEfetivo,
   VENDA_MANUAL_QUANTIDADE_MAX
 } from '~/utils/vendaManual'
 
@@ -39,21 +46,30 @@ const erros = reactive<Record<string, string>>({})
 
 const form = reactive<VendaManualForm>({
   eventoId: '',
+  tipo: 'LOTE',
   loteId: '',
   compradorNome: '',
   compradorTelefone: '',
   compradorEmail: '',
   quantidade: 1,
+  valorUnitario: '',
   participantes: ['']
 })
+
+const tipoOptions: SelectOption[] = [
+  { value: 'LOTE', label: 'Venda por lote' },
+  { value: 'AVULSO', label: 'Valor especial' }
+]
 
 const eventoSelecionado = computed(
   () => eventos.value.find((evento) => evento.id === form.eventoId) ?? null
 )
-const loteAtivo = computed(() => eventoSelecionado.value?.loteAtivo ?? null)
-const precoUnitario = computed(() => loteAtivo.value?.preco ?? 0)
+const lotesAtivos = computed(() => eventoSelecionado.value?.lotesAtivos ?? [])
+const loteAtual = computed(() => loteSelecionado(form, eventoSelecionado.value))
+const precoUnitario = computed(() => valorUnitarioEfetivo(form, eventoSelecionado.value))
 const total = computed(() => calcularTotalVendaManual(precoUnitario.value, form.quantidade))
-const disponibilidade = computed(() => loteAtivo.value?.disponiveis ?? 0)
+const disponibilidadeLote = computed(() => loteAtual.value?.disponiveis ?? 0)
+const disponibilidadeEvento = computed(() => eventoSelecionado.value?.disponiveisEvento ?? 0)
 
 const eventoOptions = computed<SelectOption[]>(() => [
   { value: '', label: 'Selecione um evento' },
@@ -62,6 +78,16 @@ const eventoOptions = computed<SelectOption[]>(() => [
     label: `${evento.nome} — ${formatData(evento.inicioEm)} (${evento.status})`
   }))
 ])
+
+const loteOptions = computed<SelectOption[]>(() => {
+  const opcoes = lotesAtivos.value.map((lote) => ({
+    value: lote.id,
+    label: `${lote.nome} — ${formatMoeda(lote.preco)}`
+  }))
+  if (opcoes.length === 0) return [{ value: '', label: 'Nenhum lote ativo' }]
+  if (opcoes.length === 1) return opcoes
+  return [{ value: '', label: 'Selecione um lote' }, ...opcoes]
+})
 
 const quantidadeOptions: SelectOption[] = Array.from(
   { length: VENDA_MANUAL_QUANTIDADE_MAX },
@@ -75,11 +101,30 @@ const quantidadeSelecionada = computed({
   }
 })
 
+function rotuloTipo(tipo: TipoVendaManual): string {
+  return tipo === 'AVULSO' ? 'Valor especial' : 'Venda por lote'
+}
+
+function sincronizarLote() {
+  if (form.tipo !== 'LOTE') return
+  if (!lotesAtivos.value.some((lote) => lote.id === form.loteId)) {
+    form.loteId = lotesAtivos.value[0]?.id ?? ''
+  }
+}
+
 watch(
   () => form.eventoId,
   () => {
-    form.loteId = loteAtivo.value?.id ?? ''
+    form.loteId = ''
+    sincronizarLote()
     form.participantes = ajustarParticipantes([], form.quantidade, form.compradorNome)
+  }
+)
+
+watch(
+  () => form.tipo,
+  () => {
+    sincronizarLote()
   }
 )
 
@@ -132,11 +177,13 @@ async function confirmarVenda() {
 function novaVenda() {
   Object.assign(form, {
     eventoId: '',
+    tipo: 'LOTE',
     loteId: '',
     compradorNome: '',
     compradorTelefone: '',
     compradorEmail: '',
     quantidade: 1,
+    valorUnitario: '',
     participantes: ['']
   })
   resultado.value = null
@@ -179,7 +226,8 @@ onMounted(async () => {
         <p class="text-sm text-zinc-400">
           Pedido
           <span class="font-semibold text-amber-400">{{ resultado.codigoPedido }}</span>
-          • {{ resultado.quantidade }} ingresso(s) • {{ formatMoeda(resultado.valorTotal) }}
+          • {{ rotuloTipo(resultado.tipoPreco) }} • {{ resultado.quantidade }} ingresso(s) •
+          {{ formatMoeda(resultado.valorTotal) }}
         </p>
         <p class="text-xs text-zinc-500">Forma de pagamento: Dinheiro (recebido).</p>
       </div>
@@ -195,7 +243,9 @@ onMounted(async () => {
 
     <form v-else class="space-y-6" novalidate @submit.prevent="revisar">
       <BaseCard class="space-y-5">
-        <h2 class="text-sm font-semibold uppercase tracking-[0.15em] text-zinc-400">Evento e lote</h2>
+        <h2 class="text-sm font-semibold uppercase tracking-[0.15em] text-zinc-400">
+          Evento e tipo da venda
+        </h2>
 
         <FormField label="Evento" required :error="erros.eventoId">
           <BaseSelect v-model="form.eventoId" :options="eventoOptions" />
@@ -205,31 +255,36 @@ onMounted(async () => {
           Nenhum evento elegível para venda manual no momento.
         </p>
 
-        <template v-if="eventoSelecionado">
+        <FormField label="Tipo da venda" required :error="erros.tipo">
+          <BaseSelect v-model="form.tipo" :options="tipoOptions" />
+        </FormField>
+
+        <template v-if="eventoSelecionado && form.tipo === 'LOTE'">
           <FormField
             label="Lote"
             required
             :error="erros.loteId"
             :hint="
-              loteAtivo
-                ? `${disponibilidade} disponível(is) • ${formatMoeda(precoUnitario)}`
+              loteAtual
+                ? `${disponibilidadeLote} disponível(is) • ${formatMoeda(loteAtual.preco)}`
                 : undefined
             "
           >
-            <BaseSelect
-              v-model="form.loteId"
-              :options="
-                loteAtivo
-                  ? [{ value: loteAtivo.id, label: `${loteAtivo.nome} — ${formatMoeda(loteAtivo.preco)}` }]
-                  : []
-              "
-            />
+            <BaseSelect v-model="form.loteId" :options="loteOptions" />
           </FormField>
 
-          <p v-if="!loteAtivo" class="text-sm text-amber-300">
-            Este evento não possui lote ativo.
+          <p v-if="lotesAtivos.length === 0" class="text-sm text-amber-300">
+            Este evento não possui lote ativo. Use o tipo "Valor especial" para vender sem lote.
           </p>
         </template>
+
+        <p
+          v-if="eventoSelecionado && form.tipo === 'AVULSO'"
+          class="rounded-lg border border-amber-400/30 bg-amber-400/5 p-3 text-sm text-amber-200"
+        >
+          Venda sem lote. Disponibilidade global do evento:
+          {{ disponibilidadeEvento }} ingresso(s).
+        </p>
       </BaseCard>
 
       <BaseCard class="space-y-5">
@@ -239,7 +294,7 @@ onMounted(async () => {
           <BaseInput v-model="form.compradorNome" placeholder="Ex.: Maria Silva" />
         </FormField>
 
-        <FormField label="Telefone" required :error="erros.compradorTelefone">
+        <FormField label="Telefone (opcional)">
           <BaseInput v-model="form.compradorTelefone" placeholder="(11) 99999-0000" />
         </FormField>
 
@@ -272,15 +327,51 @@ onMounted(async () => {
         </div>
       </BaseCard>
 
+      <BaseCard class="space-y-5">
+        <h2 class="text-sm font-semibold uppercase tracking-[0.15em] text-zinc-400">Valores</h2>
+
+        <FormField
+          v-if="form.tipo === 'LOTE'"
+          label="Valor unitário (do lote)"
+          hint="Definido pelo lote; não editável."
+        >
+          <BaseInput :model-value="formatMoeda(precoUnitario)" disabled />
+        </FormField>
+
+        <FormField v-else label="Valor unitário" required :error="erros.valorUnitario">
+          <BaseInput
+            v-model="form.valorUnitario"
+            type="text"
+            prefix="R$"
+            placeholder="0,00"
+          />
+        </FormField>
+      </BaseCard>
+
       <BaseCard class="space-y-3">
         <h2 class="text-sm font-semibold uppercase tracking-[0.15em] text-zinc-400">Resumo</h2>
         <div class="flex items-center justify-between gap-3 text-sm">
-          <span class="text-zinc-500">Valor unitário</span>
-          <span class="text-zinc-200">{{ formatMoeda(precoUnitario) }}</span>
+          <span class="text-zinc-500">Evento</span>
+          <span class="text-zinc-200">{{ eventoSelecionado?.nome ?? '—' }}</span>
+        </div>
+        <div class="flex items-center justify-between gap-3 text-sm">
+          <span class="text-zinc-500">Tipo</span>
+          <span class="text-zinc-200">{{ rotuloTipo(form.tipo) }}</span>
+        </div>
+        <div
+          v-if="form.tipo === 'LOTE' && loteAtual"
+          class="flex items-center justify-between gap-3 text-sm"
+        >
+          <span class="text-zinc-500">Lote</span>
+          <span class="text-zinc-200">{{ loteAtual.nome }}</span>
         </div>
         <div class="flex items-center justify-between gap-3 text-sm">
           <span class="text-zinc-500">Quantidade</span>
           <span class="text-zinc-200">{{ form.quantidade }}</span>
+        </div>
+        <div class="flex items-center justify-between gap-3 text-sm">
+          <span class="text-zinc-500">Valor unitário</span>
+          <span class="text-zinc-200">{{ formatMoeda(precoUnitario) }}</span>
         </div>
         <div class="flex items-center justify-between gap-3 text-sm">
           <span class="text-zinc-500">Forma de pagamento</span>
@@ -296,7 +387,9 @@ onMounted(async () => {
 
       <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <AppButton variant="ghost" to="/pedidos">Cancelar</AppButton>
-        <AppButton variant="primary" type="submit" :disabled="!loteAtivo">Confirmar venda</AppButton>
+        <AppButton variant="primary" type="submit" :disabled="!eventoSelecionado">
+          Confirmar venda
+        </AppButton>
       </div>
     </form>
 

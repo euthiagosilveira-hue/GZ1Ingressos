@@ -2,13 +2,15 @@ import type {
   AdminEventoVendaManualRow,
   CriarVendaManualInput,
   CriarVendaManualResult,
-  EventoVendaManual
+  EventoVendaManual,
+  TipoVendaManual
 } from '~/types/vendaManual'
 import { mapearEventoVendaManual, mensagemErroVendaManual } from '~/utils/vendaManual'
 
 interface CriarVendaManualRpc {
   pedido_id: string
   codigo_pedido: string
+  tipo_preco: string
   quantidade: number
   valor_unitario: number | string
   valor_total: number | string
@@ -35,7 +37,9 @@ export async function criarVendaManualAdmin(
     p_comprador_nome: input.compradorNome,
     p_comprador_telefone: input.compradorTelefone,
     p_participantes: input.participantes,
-    p_comprador_email: input.compradorEmail
+    p_comprador_email: input.compradorEmail,
+    p_tipo_preco: input.tipoPreco,
+    p_valor_unitario: input.valorUnitario
   })
 
   if (error) {
@@ -46,6 +50,7 @@ export async function criarVendaManualAdmin(
   return {
     pedidoId: r.pedido_id,
     codigoPedido: r.codigo_pedido,
+    tipoPreco: r.tipo_preco as TipoVendaManual,
     quantidade: Number(r.quantidade),
     valorUnitario: Number(r.valor_unitario),
     valorTotal: Number(r.valor_total)

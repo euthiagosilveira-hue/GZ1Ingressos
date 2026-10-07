@@ -4,32 +4,48 @@ import assert from 'node:assert/strict'
 import {
   ajustarParticipantes,
   calcularTotalVendaManual,
+  loteSelecionado,
   mapearEventoVendaManual,
   mensagemErroVendaManual,
   montarPayloadVendaManual,
-  validarVendaManual
+  normalizarValorMonetario,
+  validarVendaManual,
+  valorUnitarioEfetivo
 } from '../app/utils/vendaManual.ts'
-import type { EventoVendaManual, VendaManualForm } from '../app/types/vendaManual.ts'
+import type {
+  EventoVendaManual,
+  VendaManualForm,
+  VendaManualLoteAtivo
+} from '../app/types/vendaManual.ts'
 
-function eventoBase(lote: EventoVendaManual['loteAtivo']): EventoVendaManual {
+const lote1: VendaManualLoteAtivo = { id: 'l1', nome: 'Lote 1', preco: 37.5, disponiveis: 5 }
+
+function eventoBase(
+  lotes: VendaManualLoteAtivo[] = [lote1],
+  disponiveisEvento = 10
+): EventoVendaManual {
   return {
     id: 'e1',
     nome: 'Evento Teste',
     inicioEm: '2026-10-25T19:00:00Z',
     local: 'Galeria',
     status: 'AGENDADO',
-    loteAtivo: lote
+    disponiveisEvento,
+    lotesAtivos: lotes,
+    loteAtivo: lotes[0] ?? null
   }
 }
 
 function formBase(overrides: Partial<VendaManualForm> = {}): VendaManualForm {
   return {
     eventoId: 'e1',
+    tipo: 'LOTE',
     loteId: 'l1',
     compradorNome: 'Maria',
     compradorTelefone: '11999990000',
     compradorEmail: '',
     quantidade: 2,
+    valorUnitario: '',
     participantes: ['Maria', 'João'],
     ...overrides
   }
@@ -42,26 +58,39 @@ test('calcularTotalVendaManual multiplica preco por quantidade', () => {
   assert.equal(calcularTotalVendaManual(0, 5), 0)
 })
 
+test('normalizarValorMonetario aceita virgula e ponto', () => {
+  assert.equal(normalizarValorMonetario('25'), 25)
+  assert.equal(normalizarValorMonetario('25,50'), 25.5)
+  assert.equal(normalizarValorMonetario('25.5'), 25.5)
+  assert.equal(normalizarValorMonetario('1.234,56'), 1234.56)
+  assert.equal(normalizarValorMonetario(''), 0)
+  assert.equal(normalizarValorMonetario(null), 0)
+})
+
 test('ajustarParticipantes cresce com vazio e corta excedente', () => {
   assert.deepEqual(ajustarParticipantes([], 3, 'Maria'), ['Maria', '', ''])
   assert.deepEqual(ajustarParticipantes(['A', 'B', 'C'], 2, 'Maria'), ['A', 'B'])
 })
 
-test('mapearEventoVendaManual converte a linha real', () => {
+test('mapearEventoVendaManual converte a linha real (lotes + disponibilidade global)', () => {
   const evento = mapearEventoVendaManual({
     evento_id: 'e1',
     nome: 'Festa',
     inicio_em: '2026-10-25T19:00:00Z',
     local: 'Galeria Zero',
     status: 'EM_ANDAMENTO',
-    lote_ativo_id: 'l1',
-    lote_ativo_nome: 'Lote 1',
-    lote_ativo_preco: '37.50',
-    lote_ativo_disponiveis: 5
+    estoque_antecipado: 100,
+    disponiveis_evento: 42,
+    lotes_ativos: [
+      { id: 'l1', nome: 'Lote 1', preco: '37.50', disponiveis: 5 },
+      { id: 'l2', nome: 'Lote 2', preco: '50.00', disponiveis: 3 }
+    ]
   })
   assert.equal(evento.status, 'EM_ANDAMENTO')
-  assert.equal(evento.loteAtivo?.preco, 37.5)
-  assert.equal(evento.loteAtivo?.disponiveis, 5)
+  assert.equal(evento.disponiveisEvento, 42)
+  assert.equal(evento.lotesAtivos.length, 2)
+  assert.equal(evento.loteAtivo?.id, 'l1')
+  assert.equal(evento.lotesAtivos[1].preco, 50)
 })
 
 test('mapearEventoVendaManual trata ausencia de lote ativo', () => {
@@ -71,35 +100,72 @@ test('mapearEventoVendaManual trata ausencia de lote ativo', () => {
     inicio_em: '2026-10-25T19:00:00Z',
     local: 'Galeria Zero',
     status: 'AGENDADO',
-    lote_ativo_id: null,
-    lote_ativo_nome: null,
-    lote_ativo_preco: null,
-    lote_ativo_disponiveis: null
+    estoque_antecipado: 100,
+    disponiveis_evento: 10,
+    lotes_ativos: null
   })
   assert.equal(evento.loteAtivo, null)
+  assert.deepEqual(evento.lotesAtivos, [])
 })
 
-test('validarVendaManual aceita formulario consistente', () => {
+test('loteSelecionado e valorUnitarioEfetivo respeitam o modo', () => {
+  const evento = eventoBase()
+  assert.equal(loteSelecionado(formBase(), evento)?.id, 'l1')
+  assert.equal(valorUnitarioEfetivo(formBase(), evento), 37.5)
+  assert.equal(
+    valorUnitarioEfetivo(formBase({ tipo: 'AVULSO', valorUnitario: '25,00' }), evento),
+    25
+  )
+})
+
+test('validarVendaManual aceita venda por lote com telefone vazio (opcional)', () => {
   const erros = validarVendaManual(
-    formBase(),
-    eventoBase({ id: 'l1', nome: 'Lote', preco: 37.5, disponiveis: 5 })
+    formBase({ compradorTelefone: '' }),
+    eventoBase()
   )
   assert.deepEqual(erros, {})
 })
 
-test('validarVendaManual aponta campos obrigatorios', () => {
+test('validarVendaManual aceita valor especial sem lote com telefone vazio', () => {
   const erros = validarVendaManual(
-    formBase({ eventoId: '', compradorNome: '  ', compradorTelefone: '' }),
+    formBase({ tipo: 'AVULSO', loteId: '', valorUnitario: '25', compradorTelefone: '' }),
+    eventoBase([])
+  )
+  assert.deepEqual(erros, {})
+})
+
+test('validarVendaManual exige valor maior que zero no valor especial', () => {
+  const evento = eventoBase()
+  assert.ok(
+    validarVendaManual(formBase({ tipo: 'AVULSO', loteId: '', valorUnitario: '0' }), evento)
+      .valorUnitario
+  )
+  assert.ok(
+    validarVendaManual(formBase({ tipo: 'AVULSO', loteId: '', valorUnitario: '' }), evento)
+      .valorUnitario
+  )
+})
+
+test('validarVendaManual exige lote ativo no modo lote', () => {
+  assert.ok(
+    validarVendaManual(formBase({ loteId: '' }), eventoBase()).loteId
+  )
+  assert.ok(
+    validarVendaManual(formBase(), eventoBase([])).loteId
+  )
+})
+
+test('validarVendaManual aponta evento e comprador obrigatorios', () => {
+  const erros = validarVendaManual(
+    formBase({ eventoId: '', compradorNome: '  ' }),
     null
   )
   assert.ok(erros.eventoId)
-  assert.ok(erros.loteId)
   assert.ok(erros.compradorNome)
-  assert.ok(erros.compradorTelefone)
 })
 
 test('validarVendaManual rejeita quantidade fora de 1..10', () => {
-  const evento = eventoBase({ id: 'l1', nome: 'Lote', preco: 10, disponiveis: 50 })
+  const evento = eventoBase()
   assert.ok(validarVendaManual(formBase({ quantidade: 0, participantes: [] }), evento).quantidade)
   assert.ok(
     validarVendaManual(
@@ -110,7 +176,7 @@ test('validarVendaManual rejeita quantidade fora de 1..10', () => {
 })
 
 test('validarVendaManual exige participantes e nomes nao vazios', () => {
-  const evento = eventoBase({ id: 'l1', nome: 'Lote', preco: 10, disponiveis: 50 })
+  const evento = eventoBase()
   assert.ok(
     validarVendaManual(formBase({ quantidade: 2, participantes: ['Maria'] }), evento).participantes
   )
@@ -120,11 +186,11 @@ test('validarVendaManual exige participantes e nomes nao vazios', () => {
   )
 })
 
-test('montarPayloadVendaManual trims, converte email vazio em null e corta participantes', () => {
+test('montarPayloadVendaManual modo LOTE: lote preenchido, valor nulo, telefone nulo', () => {
   const payload = montarPayloadVendaManual(
     formBase({
       compradorNome: '  Maria  ',
-      compradorTelefone: ' 11999990000 ',
+      compradorTelefone: '   ',
       compradorEmail: '   ',
       quantidade: 1,
       participantes: ['  Maria  ', 'ignorado']
@@ -134,13 +200,24 @@ test('montarPayloadVendaManual trims, converte email vazio em null e corta parti
     eventoId: 'e1',
     loteId: 'l1',
     compradorNome: 'Maria',
-    compradorTelefone: '11999990000',
+    compradorTelefone: null,
     compradorEmail: null,
+    tipoPreco: 'LOTE',
+    valorUnitario: null,
     participantes: ['Maria']
   })
 })
 
-test('mensagemErroVendaManual traduz permissao e estoque', () => {
+test('montarPayloadVendaManual modo AVULSO: sem lote, com valor especial', () => {
+  const payload = montarPayloadVendaManual(
+    formBase({ tipo: 'AVULSO', loteId: 'l1', valorUnitario: '25,50', quantidade: 2 })
+  )
+  assert.equal(payload.loteId, null)
+  assert.equal(payload.tipoPreco, 'AVULSO')
+  assert.equal(payload.valorUnitario, 25.5)
+})
+
+test('mensagemErroVendaManual traduz permissao, estoque e valor', () => {
   assert.equal(
     mensagemErroVendaManual({ code: '42501', message: 'Permissao negada' }),
     'Você não tem permissão para registrar vendas manuais.'
@@ -152,6 +229,10 @@ test('mensagemErroVendaManual traduz permissao e estoque', () => {
   assert.equal(
     mensagemErroVendaManual({ message: 'Limite do lote insuficiente (disponivel=0, solicitado=1)' }),
     'Estoque insuficiente no lote selecionado.'
+  )
+  assert.equal(
+    mensagemErroVendaManual({ message: 'Informe um valor unitario maior que zero' }),
+    'Informe um valor unitário maior que zero.'
   )
   assert.equal(
     mensagemErroVendaManual({ message: 'Lote x nao esta ATIVO (status=INATIVO)' }),

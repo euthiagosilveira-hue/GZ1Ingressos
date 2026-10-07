@@ -37,7 +37,7 @@ do $$
 begin
   if has_function_privilege(
     'anon',
-    'public.criar_venda_manual_admin(uuid, uuid, text, text, text[], text)',
+    'public.criar_venda_manual_admin(uuid, uuid, text, text, text[], text, public.tipo_preco_pedido, numeric)',
     'EXECUTE'
   ) then
     raise exception 'A: anon nao pode executar criar_venda_manual_admin';
