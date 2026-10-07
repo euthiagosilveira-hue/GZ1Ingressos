@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 function ler(caminho: string): string {
@@ -47,6 +47,11 @@ test('usa a foto real da fachada com fallback gracioso', () => {
   assert.ok(page.includes('/login-fachada.jpg'))
   assert.ok(page.includes('object-cover'))
   assert.ok(page.includes('@error="fotoOk = false"'))
+})
+
+test('asset da fachada existe em public/', () => {
+  const caminho = fileURLToPath(new URL('../public/login-fachada.jpg', import.meta.url))
+  assert.ok(existsSync(caminho), 'public/login-fachada.jpg deve existir')
 })
 
 test('loading bloqueia multiplos submits', () => {

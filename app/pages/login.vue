@@ -85,7 +85,7 @@ async function entrar() {
         alt=""
         loading="eager"
         decoding="async"
-        class="h-full w-full object-cover object-[50%_32%]"
+        class="h-full w-full object-cover object-[50%_40%]"
         @error="fotoOk = false"
       />
       <div class="absolute inset-0 bg-black/65 lg:bg-black/45" />
@@ -97,7 +97,7 @@ async function entrar() {
       <div class="hidden lg:block" />
 
       <div
-        class="flex min-h-[100dvh] items-center justify-center px-5 py-10 sm:px-8 lg:min-h-screen lg:bg-zinc-950 lg:px-12 lg:py-14"
+        class="flex min-h-[100dvh] items-end justify-center px-5 pb-8 pt-10 sm:px-8 lg:min-h-screen lg:items-center lg:bg-zinc-950 lg:px-12 lg:py-14"
       >
         <section
           class="w-full max-w-sm rounded-3xl border border-amber-400/20 bg-zinc-950/80 p-7 shadow-2xl shadow-black/60 backdrop-blur-md sm:p-9"
