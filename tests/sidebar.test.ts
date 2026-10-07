@@ -47,3 +47,14 @@ test('layout desktop/mobile preservado e sem camada de contadores', () => {
   assert.ok(!shell.includes('pedidosCount'))
   assert.ok(!shell.includes('entradasCount'))
 })
+
+test('Lista VIP aparece no sidebar apenas para ADMIN', () => {
+  assert.ok(
+    sidebar.includes(
+      "{ to: '/lista-vip', icon: UserGroupIcon, label: 'Lista VIP', adminOnly: true }"
+    )
+  )
+  assert.ok(sidebar.includes('UserGroupIcon'))
+  assert.ok(sidebar.includes('adminOnly'))
+  assert.ok(sidebar.includes('podeVerListaVip'))
+})

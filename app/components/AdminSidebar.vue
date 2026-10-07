@@ -11,6 +11,7 @@ import {
   RectangleStackIcon,
   Squares2X2Icon,
   TicketIcon,
+  UserGroupIcon,
   UsersIcon,
   XMarkIcon
 } from '@heroicons/vue/24/outline'
@@ -18,6 +19,7 @@ import { useRoute } from '#imports'
 
 import SidebarItem from '~/components/SidebarItem.vue'
 import { useOperatorAuth } from '~/composables/useOperatorAuth'
+import { podeVerListaVip } from '~/utils/navegacao'
 
 const props = withDefaults(
   defineProps<{
@@ -35,6 +37,7 @@ interface NavItem {
   to: string
   icon: Component
   label: string
+  adminOnly?: boolean
 }
 
 const route = useRoute()
@@ -57,11 +60,12 @@ const activeLabel = computed(() => {
   return typeof meta === 'string' ? meta : 'Dashboard'
 })
 
-const items: NavItem[] = [
+const itens: NavItem[] = [
   { to: '/', icon: Squares2X2Icon, label: 'Dashboard' },
   { to: '/eventos', icon: CalendarDaysIcon, label: 'Eventos' },
   { to: '/pedidos', icon: RectangleStackIcon, label: 'Pedidos' },
   { to: '/ingressos', icon: TicketIcon, label: 'Ingressos' },
+  { to: '/lista-vip', icon: UserGroupIcon, label: 'Lista VIP', adminOnly: true },
   { to: '/entradas', icon: ArrowRightOnRectangleIcon, label: 'Entradas' },
   { to: '/portaria', icon: QrCodeIcon, label: 'Portaria' },
   { to: '#', icon: UsersIcon, label: 'Participantes' },
@@ -69,6 +73,9 @@ const items: NavItem[] = [
   { to: '#', icon: ChartBarIcon, label: 'Relatórios' },
   { to: '/configuracoes', icon: Cog6ToothIcon, label: 'Configurações' }
 ]
+
+const podeVerAdministracaoVip = computed(() => podeVerListaVip(operador.value?.perfil ?? null))
+const items = computed(() => itens.filter((item) => !item.adminOnly || podeVerAdministracaoVip.value))
 
 const raizClasses = computed(() =>
   props.mobile
