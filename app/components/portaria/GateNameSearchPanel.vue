@@ -12,7 +12,7 @@ import BaseCard from '~/components/BaseCard.vue'
 import { useGateNameSearch } from '~/composables/useGateNameSearch'
 import type { GateScanErroCode } from '~/types/gate'
 import { formatDataHoraCompleta } from '~/utils/format'
-import { descricaoResultadoEntrada, ingressoRegistravel, rotuloResultadoEntrada, uuidValido } from '~/utils/gate'
+import { descricaoResultadoEntrada, chaveBuscaPortaria, ingressoRegistravel, rotuloResultadoEntrada, uuidValido } from '~/utils/gate'
 
 const props = defineProps<{
   eventoId: string
@@ -162,30 +162,39 @@ function rotuloStatus(status: string): string {
       </div>
 
       <ul v-if="resultados.length > 0" class="space-y-3" aria-live="polite">
-        <li v-for="ingresso in resultados" :key="ingresso.ingressoId">
+        <li v-for="item in resultados" :key="chaveBuscaPortaria(item)">
           <div class="flex items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
             <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-white">{{ ingresso.participanteNome }}</p>
-              <p class="text-xs text-zinc-500">Ingresso {{ ingresso.codigo }}</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <p class="truncate text-sm font-semibold text-white">{{ item.participanteNome }}</p>
+                <span
+                  v-if="item.origem === 'VIP'"
+                  class="inline-flex items-center rounded-full border border-amber-400/50 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300"
+                >
+                  VIP
+                </span>
+              </div>
+              <p v-if="item.origem === 'VIP'" class="text-xs text-zinc-500">Lista VIP</p>
+              <p v-else class="text-xs text-zinc-500">Ingresso {{ item.codigo }}</p>
               <span class="mt-1 inline-flex items-center rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
-                {{ rotuloStatus(ingresso.status) }}
+                {{ rotuloStatus(item.status) }}
               </span>
             </div>
             <AppButton
-              v-if="ingressoRegistravel(ingresso.status)"
+              v-if="ingressoRegistravel(item.status)"
               variant="primary"
               :disabled="registrando"
-              @click="registrar(ingresso)"
+              @click="registrar(item)"
             >
               <TicketIcon class="h-4 w-4" />
               Registrar
             </AppButton>
             <div v-else class="shrink-0 text-right">
               <span class="inline-flex items-center rounded-full border border-zinc-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-                {{ ingresso.status === 'UTILIZADO' ? 'Já utilizado' : rotuloStatus(ingresso.status) }}
+                {{ item.status === 'UTILIZADO' ? 'Já utilizado' : rotuloStatus(item.status) }}
               </span>
-              <p v-if="ingresso.utilizadoEm" class="mt-1 text-[11px] text-zinc-500">
-                {{ formatDataHoraCompleta(ingresso.utilizadoEm) }}
+              <p v-if="item.entradaEm ?? item.utilizadoEm" class="mt-1 text-[11px] text-zinc-500">
+                {{ formatDataHoraCompleta(item.entradaEm ?? item.utilizadoEm ?? '') }}
               </p>
             </div>
           </div>

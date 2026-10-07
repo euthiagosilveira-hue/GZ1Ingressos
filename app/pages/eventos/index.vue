@@ -42,6 +42,10 @@ function acaoEvento(payload: { id: string; action: string }) {
     navigateTo(`/eventos/${payload.id}/lotes`)
     return
   }
+  if (payload.action === 'vip') {
+    navigateTo(`/eventos/${payload.id}/vip`)
+    return
+  }
   if (payload.action === 'editar') {
     editarEvento(payload.id)
     return

@@ -1,4 +1,4 @@
-import type { GateRpcResultado, RegistrarEntradaQrResult } from '~/types/gate'
+import type { GateRpcResultado, IngressoBuscaNome, RegistrarEntradaQrResult } from '~/types/gate'
 
 /**
  * Validacao apenas de FORMATO (nao decide negocio).
@@ -54,12 +54,20 @@ export function mapearResultadoEntradaRpc(raw: Record<string, unknown>): Registr
   return {
     resultado: (raw?.resultado as GateRpcResultado) ?? 'INVALIDO',
     ingressoId: (raw?.ingresso_id as string) ?? null,
+    vipId: (raw?.vip_id as string) ?? null,
     codigo: (raw?.codigo as string) ?? null,
     participanteNome: (raw?.participante_nome as string) ?? null,
     entradaId: (raw?.entrada_id as string) ?? null,
     entradaEm: (raw?.entrada_em as string) ?? null,
     mensagem: (raw?.mensagem as string) ?? ''
   }
+}
+
+/** Chave estavel de um resultado de busca (ingresso ou VIP). */
+export function chaveBuscaPortaria(item: IngressoBuscaNome): string {
+  return item.origem === 'VIP'
+    ? `VIP-${item.vipId ?? ''}`
+    : `INGRESSO-${item.ingressoId ?? ''}`
 }
 
 export interface ResultadoEntradaRotulo {

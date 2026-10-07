@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   LeituraLock,
+  chaveBuscaPortaria,
   descricaoResultadoEntrada,
   ingressoRegistravel,
   mapearResultadoEntradaRpc,
@@ -175,4 +176,46 @@ test('ingressoRegistravel: somente VALIDO e registravel (UTILIZADO visivel mas n
   assert.equal(ingressoRegistravel('CANCELADO'), false)
   assert.equal(ingressoRegistravel('EXPIRADO'), false)
   assert.equal(ingressoRegistravel('RESERVADO'), false)
+})
+
+test('mapearResultadoEntradaRpc expoe vip_id quando presente', () => {
+  const r = mapearResultadoEntradaRpc({
+    resultado: 'LIBERADO',
+    vip_id: 'vvvvvvvv-1111-2222-3333-444444444444',
+    participante_nome: 'Convidado VIP',
+    entrada_id: 'eeeeeeee-1111-2222-3333-444444444444',
+    entrada_em: '2026-10-07T22:00:00Z',
+    mensagem: 'Entrada liberada'
+  })
+  assert.equal(r.vipId, 'vvvvvvvv-1111-2222-3333-444444444444')
+  assert.equal(r.ingressoId, null)
+})
+
+test('chaveBuscaPortaria distingue ingresso e VIP', () => {
+  assert.equal(
+    chaveBuscaPortaria({
+      origem: 'VIP',
+      ingressoId: null,
+      vipId: 'v1',
+      codigo: null,
+      participanteNome: 'VIP',
+      status: 'VALIDO',
+      utilizadoEm: null,
+      entradaEm: null
+    }),
+    'VIP-v1'
+  )
+  assert.equal(
+    chaveBuscaPortaria({
+      origem: 'INGRESSO',
+      ingressoId: 'i1',
+      vipId: null,
+      codigo: 'GZ1-01',
+      participanteNome: 'Cliente',
+      status: 'VALIDO',
+      utilizadoEm: null,
+      entradaEm: null
+    }),
+    'INGRESSO-i1'
+  )
 })

@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import { GateError, buscarIngressosPorNome, registrarEntradaNome } from '~/services/gate/ingressos'
+import { GateError, buscarIngressosPorNome, registrarEntradaNome, registrarEntradaVip } from '~/services/gate/ingressos'
 import type { GateScanErroCode, IngressoBuscaNome, RegistrarEntradaQrResult } from '~/types/gate'
 import { nomeBuscaValido, uuidValido } from '~/utils/gate'
 
@@ -51,10 +51,25 @@ export function useGateNameSearch(eventoId: () => string) {
     }
     registrando.value = true
     try {
-      resultado.value = await registrarEntradaNome({
-        eventoId: eventoId(),
-        ingressoId: ingresso.ingressoId
-      })
+      if (ingresso.origem === 'VIP') {
+        if (!ingresso.vipId) {
+          erro.value = 'ERRO_TEMPORARIO'
+          return
+        }
+        resultado.value = await registrarEntradaVip({
+          eventoId: eventoId(),
+          vipId: ingresso.vipId
+        })
+      } else {
+        if (!ingresso.ingressoId) {
+          erro.value = 'ERRO_TEMPORARIO'
+          return
+        }
+        resultado.value = await registrarEntradaNome({
+          eventoId: eventoId(),
+          ingressoId: ingresso.ingressoId
+        })
+      }
     } catch (e) {
       resultado.value = null
       erro.value = e instanceof GateError ? e.code : 'ERRO_TEMPORARIO'

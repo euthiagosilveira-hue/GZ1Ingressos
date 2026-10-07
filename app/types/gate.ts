@@ -11,6 +11,7 @@ export type GateRpcResultado =
 export interface RegistrarEntradaQrResult {
   resultado: GateRpcResultado
   ingressoId: string | null
+  vipId: string | null
   codigo: string | null
   participanteNome: string | null
   entradaId: string | null
@@ -40,11 +41,17 @@ export interface EventoPortaria {
   status: string
 }
 
-/** Resultado de public.buscar_ingressos_por_nome. */
+/** Origem de um item no resultado da busca por nome da portaria. */
+export type OrigemBuscaPortaria = 'INGRESSO' | 'VIP'
+
+/** Resultado de public.buscar_ingressos_por_nome (ingressos + Lista VIP). */
 export interface IngressoBuscaNome {
-  ingressoId: string
-  codigo: string
+  origem: OrigemBuscaPortaria
+  ingressoId: string | null
+  vipId: string | null
+  codigo: string | null
   participanteNome: string
   status: string
   utilizadoEm: string | null
+  entradaEm: string | null
 }

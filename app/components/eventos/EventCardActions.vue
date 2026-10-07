@@ -6,6 +6,7 @@ import {
   EyeIcon,
   PencilSquareIcon,
   TicketIcon,
+  UserGroupIcon,
   XCircleIcon
 } from '@heroicons/vue/24/outline'
 
@@ -77,6 +78,14 @@ onBeforeUnmount(() => document.removeEventListener('click', aoClicarFora))
       >
         <TicketIcon class="h-4 w-4 text-zinc-500" />
         Gerenciar lotes
+      </button>
+      <button
+        type="button"
+        class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
+        @click.stop="selecionar('vip')"
+      >
+        <UserGroupIcon class="h-4 w-4 text-zinc-500" />
+        Lista VIP
       </button>
       <button
         type="button"
