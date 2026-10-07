@@ -14,7 +14,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { eventoNome, vips, carregando, erro, processando, criar, atualizar, remover, refresh } =
+const { eventoNome, vips, carregando, erro, processando, criar, criarLote, atualizar, remover, refresh } =
   useAdminVip(String(route.params.id))
 
 async function aoCriar(payload: VipPayload) {
@@ -23,6 +23,15 @@ async function aoCriar(payload: VipPayload) {
     toast.success('Convidado adicionado à lista VIP.')
   } catch (e) {
     toast.error(e instanceof Error ? e.message : 'Não foi possível adicionar o convidado.')
+  }
+}
+
+async function aoCriarLote(nomes: string[]) {
+  try {
+    const quantidade = await criarLote(nomes)
+    toast.success(`${quantidade} convidado${quantidade === 1 ? '' : 's'} adicionado${quantidade === 1 ? '' : 's'} à Lista VIP.`)
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Não foi possível adicionar os convidados.')
   }
 }
 
@@ -75,6 +84,7 @@ async function aoRemover(vipId: string) {
     :vips="vips"
     :processando="processando"
     @criar="aoCriar"
+    @criar-lote="aoCriarLote"
     @atualizar="aoAtualizar"
     @remover="aoRemover"
   />

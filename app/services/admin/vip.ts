@@ -1,5 +1,5 @@
 import type { AdminVipRow, VipConvidado, VipPayload } from '~/types/vip'
-import { mapearVipAdmin, mensagemErroVip } from '~/utils/vip'
+import { mapearVipAdmin, mensagemErroVip, mensagemLoteVip } from '~/utils/vip'
 
 /** Lista os convidados VIP do evento (RPC administrativa). */
 export async function listarListaVipAdmin(
@@ -41,4 +41,19 @@ export async function removerListaVipAdmin(vipId: string): Promise<void> {
   const client = useSupabaseClient()
   const { error } = await client.rpc('remover_lista_vip_admin', { p_vip_id: vipId })
   if (error) throw new Error(mensagemErroVip(error))
+}
+
+/** Inclui varios convidados VIP de uma vez (RPC em lote, ADMINISTRADOR). */
+export async function criarListaVipEmLoteAdmin(
+  eventoId: string,
+  nomes: string[]
+): Promise<number> {
+  const client = useSupabaseClient()
+  const { data, error } = await client.rpc('criar_lista_vip_em_lote_admin', {
+    p_evento_id: eventoId,
+    p_nomes: nomes
+  })
+  if (error) throw new Error(mensagemLoteVip(error))
+  const r = data as { quantidade_criada?: number } | null
+  return Number(r?.quantidade_criada ?? nomes.length)
 }

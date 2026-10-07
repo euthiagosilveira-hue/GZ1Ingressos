@@ -4,6 +4,7 @@ import { obterEventoAdmin } from '~/services/admin/eventos'
 import {
   atualizarListaVipAdmin,
   criarListaVipAdmin,
+  criarListaVipEmLoteAdmin,
   listarListaVipAdmin,
   removerListaVipAdmin
 } from '~/services/admin/vip'
@@ -48,6 +49,17 @@ export function useAdminVip(eventoId: string) {
     }
   }
 
+  async function criarLote(nomes: string[]): Promise<number> {
+    processando.value = true
+    try {
+      const quantidade = await criarListaVipEmLoteAdmin(eventoId, nomes)
+      await carregar()
+      return quantidade
+    } finally {
+      processando.value = false
+    }
+  }
+
   async function atualizar(vipId: string, payload: VipPayload): Promise<void> {
     processando.value = true
     try {
@@ -79,6 +91,7 @@ export function useAdminVip(eventoId: string) {
     carregar,
     refresh: carregar,
     criar,
+    criarLote,
     atualizar,
     remover
   }

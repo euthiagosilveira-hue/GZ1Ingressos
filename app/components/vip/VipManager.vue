@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import {
   ArrowLeftIcon,
+  ClipboardDocumentListIcon,
   PencilSquareIcon,
   PlusIcon,
   TrashIcon
@@ -12,6 +13,7 @@ import BaseCard from '~/components/BaseCard.vue'
 import BaseInput from '~/components/BaseInput.vue'
 import ConfirmDialog from '~/components/ConfirmDialog.vue'
 import PageHeader from '~/components/PageHeader.vue'
+import VipBulkAddModal from '~/components/vip/VipBulkAddModal.vue'
 import VipFormModal from '~/components/vip/VipFormModal.vue'
 import VipStatusBadge from '~/components/vip/VipStatusBadge.vue'
 import type { VipConvidado, VipFormValue, VipPayload } from '~/types/vip'
@@ -29,12 +31,14 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   criar: [payload: VipPayload]
+  criarLote: [nomes: string[]]
   atualizar: [vipId: string, payload: VipPayload]
   remover: [vipId: string]
 }>()
 
 const busca = ref('')
 const formAberto = ref(false)
+const bulkAberto = ref(false)
 const formModo = ref<'create' | 'edit'>('create')
 const vipEmEdicao = ref<VipConvidado | null>(null)
 const vipParaRemover = ref<VipConvidado | null>(null)
@@ -56,6 +60,15 @@ function abrirNovo() {
   formModo.value = 'create'
   vipEmEdicao.value = null
   formAberto.value = true
+}
+
+function abrirBulk() {
+  bulkAberto.value = true
+}
+
+function salvarLote(nomes: string[]) {
+  emit('criarLote', nomes)
+  bulkAberto.value = false
 }
 
 function abrirEdicao(vip: VipConvidado) {
@@ -112,6 +125,10 @@ function confirmarRemocao() {
       subtitle="Gerencie os convidados com acesso liberado para este evento."
     >
       <template #actions>
+        <AppButton variant="outline" :disabled="props.processando" @click="abrirBulk">
+          <ClipboardDocumentListIcon class="h-4 w-4" />
+          Adicionar vários
+        </AppButton>
         <AppButton variant="primary" :disabled="props.processando" @click="abrirNovo">
           <PlusIcon class="h-4 w-4" />
           Adicionar à lista VIP
@@ -192,6 +209,13 @@ function confirmarRemocao() {
       :submitting="props.processando"
       @submit="salvar"
       @cancel="fecharForm"
+    />
+
+    <VipBulkAddModal
+      :open="bulkAberto"
+      :submitting="props.processando"
+      @submit="salvarLote"
+      @cancel="bulkAberto = false"
     />
 
     <ConfirmDialog

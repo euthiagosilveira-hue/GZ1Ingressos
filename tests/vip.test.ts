@@ -3,12 +3,16 @@ import assert from 'node:assert/strict'
 
 import {
   filtrarVips,
+  LIMITE_VIP_LOTE,
   mapearVipAdmin,
   mensagemErroVip,
+  mensagemLoteVip,
   montarPayloadVip,
+  parseNomesVip,
   resumoVips,
   rotuloStatusVip,
   statusVip,
+  validarLoteVip,
   validarVip
 } from '../app/utils/vip.ts'
 import type { VipConvidado } from '../app/types/vip.ts'
@@ -96,4 +100,56 @@ test('mensagemErroVip traduz erros conhecidos', () => {
   )
   assert.equal(mensagemErroVip({ message: 'Informe o nome do convidado' }), 'Informe o nome do convidado.')
   assert.equal(mensagemErroVip(null), 'Não foi possível concluir a operação.')
+})
+
+// --- Cadastro em lote ---------------------------------------------------------
+
+test('parseNomesVip separa por linha, faz trim e remove vazias', () => {
+  const nomes = parseNomesVip('  João Silva \r\n\n Maria Souza\r\n   \nCarlos Ferreira  ')
+  assert.deepEqual(nomes, ['João Silva', 'Maria Souza', 'Carlos Ferreira'])
+  assert.deepEqual(parseNomesVip(''), [])
+  assert.deepEqual(parseNomesVip('   \n  \n'), [])
+})
+
+test('parseNomesVip preserva acentos e duplicados', () => {
+  const nomes = parseNomesVip('Ana\nAna\nJosé')
+  assert.deepEqual(nomes, ['Ana', 'Ana', 'José'])
+})
+
+test('validarLoteVip rejeita vazio, excedente e nomes invalidos', () => {
+  assert.equal(validarLoteVip([]), 'Informe pelo menos um nome.')
+  assert.equal(
+    validarLoteVip(Array(LIMITE_VIP_LOTE + 1).fill('Nome')),
+    `Você pode adicionar até ${LIMITE_VIP_LOTE} convidados por vez.`
+  )
+  assert.equal(validarLoteVip(['Ok', '   ']), 'Há um nome inválido na lista.')
+  assert.equal(validarLoteVip(['Ok', 'x'.repeat(121)]), 'Há um nome inválido na lista.')
+})
+
+test('validarLoteVip aceita exatamente o limite', () => {
+  assert.equal(validarLoteVip(Array(LIMITE_VIP_LOTE).fill('Nome')), null)
+  assert.equal(validarLoteVip(parseNomesVip('João\nMaria')), null)
+})
+
+test('mensagemLoteVip traduz erros conhecidos', () => {
+  assert.equal(
+    mensagemLoteVip({ code: '42501' }),
+    'Você não tem permissão para gerenciar a lista VIP.'
+  )
+  assert.equal(
+    mensagemLoteVip({ message: 'Informe pelo menos um nome' }),
+    'Informe pelo menos um nome.'
+  )
+  assert.equal(
+    mensagemLoteVip({ message: 'Limite de 100 convidados por inclusao excedido' }),
+    `Você pode adicionar até ${LIMITE_VIP_LOTE} convidados por vez.`
+  )
+  assert.equal(
+    mensagemLoteVip({ message: 'Ha um nome invalido na lista' }),
+    'Há um nome inválido na lista.'
+  )
+  assert.equal(
+    mensagemLoteVip(null),
+    'Não foi possível adicionar os convidados.'
+  )
 })
