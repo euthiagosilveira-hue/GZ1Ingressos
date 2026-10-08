@@ -44,14 +44,20 @@ test('Voltar ao site aponta para a rota publica', () => {
 })
 
 test('usa a foto real da fachada com fallback gracioso', () => {
-  assert.ok(page.includes('/login-fachada.jpg'))
+  assert.ok(page.includes('Galeria%20fachada.png'))
   assert.ok(page.includes('object-cover'))
   assert.ok(page.includes('@error="fotoOk = false"'))
 })
 
+test('background e um unico full-screen (sem painel lateral separado)', () => {
+  assert.ok(page.includes('absolute inset-0'))
+  assert.ok(!page.includes('lg:bg-[#080808]'))
+  assert.ok(!page.includes('object-[50%_45%]'))
+})
+
 test('asset da fachada existe em public/', () => {
-  const caminho = fileURLToPath(new URL('../public/login-fachada.jpg', import.meta.url))
-  assert.ok(existsSync(caminho), 'public/login-fachada.jpg deve existir')
+  const caminho = fileURLToPath(new URL('../public/Galeria fachada.png', import.meta.url))
+  assert.ok(existsSync(caminho), 'public/Galeria fachada.png deve existir')
 })
 
 test('loading bloqueia multiplos submits', () => {

@@ -30,11 +30,10 @@ const mostrarSenha = ref(false)
 const fotoOk = ref(true)
 
 /**
- * Foto real da fachada (colocada em public/login-fachada.jpg).
- * Referenciada dinamicamente para nao quebrar o build enquanto o arquivo
- * nao estiver presente; ha fallback grafico se a imagem faltar.
+ * Foto real da fachada (public/Galeria fachada.png).
+ * Referenciada dinamicamente; ha fallback grafico se a imagem faltar.
  */
-const fotoSrc = '/login-fachada.jpg'
+const fotoSrc = '/Galeria%20fachada.png'
 
 const erroQuery = computed(() => {
   const e = route.query.erro
@@ -73,8 +72,8 @@ async function entrar() {
   <main
     class="relative flex min-h-[100dvh] w-full overflow-x-hidden bg-[#050505] text-white"
   >
-    <!-- MOBILE / TABLET: fotografia em tela cheia como background -->
-    <div class="absolute inset-0 lg:hidden" aria-hidden="true">
+    <!-- Fotografia da fachada em tela cheia, atras do formulario -->
+    <div class="absolute inset-0" aria-hidden="true">
       <img
         v-if="fotoOk"
         :src="fotoSrc"
@@ -82,43 +81,24 @@ async function entrar() {
         fetchpriority="high"
         loading="eager"
         decoding="async"
-        class="h-full w-full object-cover object-[50%_36%]"
+        class="h-full w-full object-cover object-[38%_40%] lg:object-center"
         @error="fotoOk = false"
       />
-      <!-- Overlay escuro sutil: preserva o brilho da placa e da fachada -->
-      <div class="absolute inset-0 bg-black/45" />
-      <div class="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/75" />
+      <!-- Overlay leve: mantem o brilho da placa e da fachada -->
+      <div class="absolute inset-0 bg-black/30" />
+      <div class="absolute inset-0 bg-gradient-to-b from-black/45 via-black/15 to-black/60" />
       <div
-        class="absolute inset-0 bg-[radial-gradient(120%_70%_at_50%_0%,rgba(217,177,56,0.12),transparent_60%)]"
+        class="absolute inset-0 bg-[radial-gradient(120%_70%_at_50%_0%,rgba(217,177,56,0.10),transparent_60%)]"
       />
     </div>
 
-    <!-- DESKTOP: composicao em duas areas -->
+    <!-- Conteudo: card sobre a fotografia -->
     <div class="relative z-10 grid w-full lg:min-h-[100dvh] lg:grid-cols-[55%_45%]">
-      <!-- ESQUERDA: fotografia da Galeria Zero 1 -->
-      <div class="relative hidden overflow-hidden lg:block">
-        <img
-          v-if="fotoOk"
-          :src="fotoSrc"
-          alt=""
-          fetchpriority="high"
-          loading="eager"
-          decoding="async"
-          class="h-full w-full object-cover object-[50%_45%]"
-          @error="fotoOk = false"
-        />
-        <!-- Contraste premium: overlay leve + blend suave para o painel direito -->
-        <div class="absolute inset-0 bg-black/15" />
-        <div class="absolute inset-0 bg-gradient-to-r from-black/35 via-transparent to-[#080808]" />
-        <div class="absolute inset-0 bg-gradient-to-t from-[#050505]/70 via-transparent to-black/15" />
-        <div
-          class="absolute inset-0 bg-[radial-gradient(90%_70%_at_35%_45%,transparent_40%,rgba(0,0,0,0.35)_100%)]"
-        />
-      </div>
+      <div class="hidden lg:block" />
 
-      <!-- DIREITA: area escura com o card centralizado -->
+      <!-- Card -->
       <div
-        class="relative flex min-h-[100dvh] items-center justify-center px-5 py-10 sm:px-8 lg:min-h-[100dvh] lg:bg-[#080808] lg:px-12 lg:py-16"
+        class="relative flex min-h-[100dvh] items-center justify-center px-5 py-10 sm:px-8 lg:min-h-[100dvh] lg:px-12 lg:py-16"
         style="padding-top: max(2.5rem, env(safe-area-inset-top)); padding-bottom: max(2.5rem, env(safe-area-inset-bottom))"
       >
         <div
