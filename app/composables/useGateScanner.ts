@@ -1,5 +1,6 @@
 import { nextTick, onUnmounted, ref, watch } from 'vue'
 
+import { useGateSession } from '~/composables/useGateSession'
 import { GateError, registrarEntradaQr } from '~/services/gate/entradas'
 import type {
   GateCameraStatus,
@@ -42,6 +43,7 @@ export function useGateScanner(eventoId: () => string) {
 
   const lock = new LeituraLock()
   const agendador = criarAgendadorUnico()
+  const { registrar } = useGateSession()
   let stream: MediaStream | null = null
   let raf: number | null = null
   let canvas: HTMLCanvasElement | null = null
@@ -234,6 +236,12 @@ export function useGateScanner(eventoId: () => string) {
     try {
       resultado.value = await registrarEntradaQr({ eventoId: evento, qrToken: token })
       erro.value = null
+      // Contabiliza a sessao apenas se LIBERADO (regra no reducer).
+      registrar(resultado.value.resultado, {
+        nome: resultado.value.participanteNome ?? 'Ingresso liberado',
+        tipo: 'INGRESSO',
+        codigo: resultado.value.codigo
+      })
       // Feedback apenas para resultado de negocio.
       emitirFeedbackEntrada(resultado.value?.resultado ?? null)
     } catch (e) {

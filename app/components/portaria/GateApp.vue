@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { watch } from 'vue'
+
 import GateEmptyState from '~/components/portaria/GateEmptyState.vue'
 import GateEventSelector from '~/components/portaria/GateEventSelector.vue'
 import GateHeader from '~/components/portaria/GateHeader.vue'
@@ -6,6 +8,7 @@ import GateModeTabs from '~/components/portaria/GateModeTabs.vue'
 import GateNameSearchPanel from '~/components/portaria/GateNameSearchPanel.vue'
 import GateQrScanner from '~/components/portaria/GateQrScanner.vue'
 import { useGate } from '~/composables/useGate'
+import { useGateSession } from '~/composables/useGateSession'
 import type { EventListItem } from '~/types/evento'
 
 const props = defineProps<{
@@ -15,11 +18,15 @@ const props = defineProps<{
 // useGate e usado apenas para a selecao do evento (fluxo real da portaria).
 const { eventosOperacionais, eventoId, eventoAtual, modo, selecionarEvento, definirModo } =
   useGate(props.eventos)
+
+// Sessao local (contador + ultima entrada). Zera ao trocar de evento.
+const { total, ultima, resetar } = useGateSession()
+watch(eventoId, () => resetar())
 </script>
 
 <template>
   <div class="mx-auto w-full max-w-5xl space-y-5">
-    <GateHeader :evento="eventoAtual" />
+    <GateHeader :evento="eventoAtual" :total-entradas="total" :ultima="ultima" />
 
     <GateEventSelector
       :model-value="eventoId"

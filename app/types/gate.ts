@@ -55,3 +55,19 @@ export interface IngressoBuscaNome {
   utilizadoEm: string | null
   entradaEm: string | null
 }
+
+export type TipoEntradaGate = 'INGRESSO' | 'VIP'
+
+/** Ultima entrada LIBERADA na sessao atual da portaria (somente memoria). */
+export interface UltimaEntradaGate {
+  nome: string
+  tipo: TipoEntradaGate
+  codigo: string | null
+  horario: string
+}
+
+/** Estado da sessao local da portaria (nao persistido). */
+export interface SessaoPortaria {
+  total: number
+  ultima: UltimaEntradaGate | null
+}

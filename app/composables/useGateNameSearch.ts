@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 
+import { useGateSession } from '~/composables/useGateSession'
 import { GateError, buscarIngressosPorNome, registrarEntradaNome, registrarEntradaVip } from '~/services/gate/ingressos'
 import type { GateScanErroCode, IngressoBuscaNome, RegistrarEntradaQrResult } from '~/types/gate'
 import { nomeBuscaValido, uuidValido } from '~/utils/gate'
@@ -16,6 +17,8 @@ export function useGateNameSearch(eventoId: () => string) {
   const resultado = ref<RegistrarEntradaQrResult | null>(null)
   const erro = ref<GateScanErroCode | null>(null)
   const jaBuscou = ref(false)
+
+  const { registrar: registrarSessao } = useGateSession()
 
   const nomeValido = computed(() => nomeBuscaValido(nome.value))
   const podeBuscar = computed(() => uuidValido(eventoId()) && nomeValido.value)
@@ -70,6 +73,13 @@ export function useGateNameSearch(eventoId: () => string) {
           ingressoId: ingresso.ingressoId
         })
       }
+
+      // Contabiliza a sessao apenas se LIBERADO (regra no reducer).
+      registrarSessao(resultado.value.resultado, {
+        nome: resultado.value.participanteNome ?? ingresso.participanteNome,
+        tipo: ingresso.origem === 'VIP' ? 'VIP' : 'INGRESSO',
+        codigo: ingresso.origem === 'VIP' ? null : ingresso.codigo
+      })
     } catch (e) {
       resultado.value = null
       erro.value = e instanceof GateError ? e.code : 'ERRO_TEMPORARIO'
