@@ -132,7 +132,8 @@ test('pagina /configuracoes/usuarios exige admin-auth', () => {
 
 test('sidebar aponta Configurações para /configuracoes', () => {
   const sidebar = ler('../app/components/AdminSidebar.vue')
-  assert.ok(/\{\s*to:\s*'\/configuracoes',[\s\S]*label:\s*'Configurações'\s*\}/.test(sidebar))
+  assert.ok(sidebar.includes("to: '/configuracoes'"))
+  assert.ok(sidebar.includes("label: 'Configurações'"))
 })
 
 test('endpoint de convite usa service role + Auth Admin e nao expoe chave', () => {

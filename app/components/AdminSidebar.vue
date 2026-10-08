@@ -19,7 +19,12 @@ import { useRoute } from '#imports'
 
 import SidebarItem from '~/components/SidebarItem.vue'
 import { useOperatorAuth } from '~/composables/useOperatorAuth'
-import { podeVerListaVip } from '~/utils/navegacao'
+import {
+  PERFIS_ADMIN,
+  PERFIS_ADMIN_PORTARIA,
+  podeVerItemSidebar,
+  type PerfilSidebar
+} from '~/utils/navegacao'
 
 const props = withDefaults(
   defineProps<{
@@ -37,12 +42,12 @@ interface NavItem {
   to: string
   icon: Component
   label: string
-  adminOnly?: boolean
+  allowedProfiles: PerfilSidebar[]
 }
 
 const route = useRoute()
 
-const { user, operador, carregarOperador, logout } = useOperatorAuth()
+const { user, operador, carregado, carregarOperador, logout } = useOperatorAuth()
 
 onMounted(() => {
   if (user.value && !operador.value) {
@@ -61,21 +66,41 @@ const activeLabel = computed(() => {
 })
 
 const itens: NavItem[] = [
-  { to: '/', icon: Squares2X2Icon, label: 'Dashboard' },
-  { to: '/eventos', icon: CalendarDaysIcon, label: 'Eventos' },
-  { to: '/pedidos', icon: RectangleStackIcon, label: 'Pedidos' },
-  { to: '/ingressos', icon: TicketIcon, label: 'Ingressos' },
-  { to: '/lista-vip', icon: UserGroupIcon, label: 'Lista VIP', adminOnly: true },
-  { to: '/entradas', icon: ArrowRightOnRectangleIcon, label: 'Entradas' },
-  { to: '/portaria', icon: QrCodeIcon, label: 'Portaria' },
-  { to: '#', icon: UsersIcon, label: 'Participantes' },
-  { to: '/financeiro', icon: BanknotesIcon, label: 'Financeiro' },
-  { to: '#', icon: ChartBarIcon, label: 'Relatórios' },
-  { to: '/configuracoes', icon: Cog6ToothIcon, label: 'Configurações' }
+  { to: '/', icon: Squares2X2Icon, label: 'Dashboard', allowedProfiles: PERFIS_ADMIN },
+  { to: '/eventos', icon: CalendarDaysIcon, label: 'Eventos', allowedProfiles: PERFIS_ADMIN },
+  { to: '/pedidos', icon: RectangleStackIcon, label: 'Pedidos', allowedProfiles: PERFIS_ADMIN },
+  { to: '/ingressos', icon: TicketIcon, label: 'Ingressos', allowedProfiles: PERFIS_ADMIN },
+  { to: '/lista-vip', icon: UserGroupIcon, label: 'Lista VIP', allowedProfiles: PERFIS_ADMIN },
+  {
+    to: '/entradas',
+    icon: ArrowRightOnRectangleIcon,
+    label: 'Entradas',
+    allowedProfiles: PERFIS_ADMIN
+  },
+  {
+    to: '/portaria',
+    icon: QrCodeIcon,
+    label: 'Portaria',
+    allowedProfiles: PERFIS_ADMIN_PORTARIA
+  },
+  { to: '#', icon: UsersIcon, label: 'Participantes', allowedProfiles: PERFIS_ADMIN },
+  { to: '/financeiro', icon: BanknotesIcon, label: 'Financeiro', allowedProfiles: PERFIS_ADMIN },
+  { to: '#', icon: ChartBarIcon, label: 'Relatórios', allowedProfiles: PERFIS_ADMIN },
+  {
+    to: '/configuracoes',
+    icon: Cog6ToothIcon,
+    label: 'Configurações',
+    allowedProfiles: PERFIS_ADMIN
+  }
 ]
 
-const podeVerAdministracaoVip = computed(() => podeVerListaVip(operador.value?.perfil ?? null))
-const items = computed(() => itens.filter((item) => !item.adminOnly || podeVerAdministracaoVip.value))
+const perfil = computed<PerfilSidebar | null>(() => operador.value?.perfil ?? null)
+// Enquanto o perfil nao estiver resolvido, nao liberar nenhum item (evita flash
+// do menu administrativo para PORTARIA).
+const perfilResolvido = computed(() => carregado.value && perfil.value !== null)
+const items = computed(() =>
+  perfilResolvido.value ? itens.filter((item) => podeVerItemSidebar(item, perfil.value)) : []
+)
 
 const raizClasses = computed(() =>
   props.mobile
