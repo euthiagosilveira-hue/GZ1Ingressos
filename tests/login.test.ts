@@ -43,21 +43,27 @@ test('Voltar ao site aponta para a rota publica', () => {
   assert.ok(page.includes('to="/eventos-publicos"'))
 })
 
-test('usa a foto real da fachada com fallback gracioso', () => {
-  assert.ok(page.includes('Galeria%20fachada.png'))
+test('usa a foto real da fachada (WebP) com fallback gracioso', () => {
+  assert.ok(page.includes('galeria-fachada.webp'))
   assert.ok(page.includes('object-cover'))
   assert.ok(page.includes('@error="fotoOk = false"'))
 })
 
-test('background e um unico full-screen (sem painel lateral separado)', () => {
+test('background e um unico full-screen com menos zoom no desktop', () => {
   assert.ok(page.includes('absolute inset-0'))
   assert.ok(!page.includes('lg:bg-[#080808]'))
   assert.ok(!page.includes('object-[50%_45%]'))
+  assert.ok(page.includes('md:object-contain'))
 })
 
-test('asset da fachada existe em public/', () => {
-  const caminho = fileURLToPath(new URL('../public/Galeria fachada.png', import.meta.url))
-  assert.ok(existsSync(caminho), 'public/Galeria fachada.png deve existir')
+test('asset WebP da fachada existe em public/', () => {
+  const caminho = fileURLToPath(new URL('../public/galeria-fachada.webp', import.meta.url))
+  assert.ok(existsSync(caminho), 'public/galeria-fachada.webp deve existir')
+})
+
+test('asset antigo login-fachada.jpg foi removido', () => {
+  const caminho = fileURLToPath(new URL('../public/login-fachada.jpg', import.meta.url))
+  assert.ok(!existsSync(caminho), 'public/login-fachada.jpg nao deve existir')
 })
 
 test('loading bloqueia multiplos submits', () => {

@@ -30,10 +30,10 @@ const mostrarSenha = ref(false)
 const fotoOk = ref(true)
 
 /**
- * Foto real da fachada (public/Galeria fachada.png).
+ * Foto real da fachada (public/galeria-fachada.webp — WebP otimizado).
  * Referenciada dinamicamente; ha fallback grafico se a imagem faltar.
  */
-const fotoSrc = '/Galeria%20fachada.png'
+const fotoSrc = '/galeria-fachada.webp'
 
 const erroQuery = computed(() => {
   const e = route.query.erro
@@ -81,7 +81,7 @@ async function entrar() {
         fetchpriority="high"
         loading="eager"
         decoding="async"
-        class="h-full w-full object-cover object-[38%_40%] lg:object-center"
+        class="h-full w-full object-cover object-[42%_45%] md:object-contain md:object-center"
         @error="fotoOk = false"
       />
       <!-- Overlay leve: mantem o brilho da placa e da fachada -->
