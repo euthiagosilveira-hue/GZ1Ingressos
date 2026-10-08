@@ -7,7 +7,7 @@ import type {
   GateScanErroCode,
   RegistrarEntradaQrResult
 } from '~/types/gate'
-import { LeituraLock, mascararToken, qrTokenPlausivel, uuidValido } from '~/utils/gate'
+import { LeituraLock, qrTokenPlausivel, uuidValido } from '~/utils/gate'
 import { desbloquearAudio, emitirFeedbackEntrada } from '~/utils/portariaFeedback'
 import {
   AUTO_RESUME_DELAY_MS,
@@ -39,7 +39,6 @@ export function useGateScanner(eventoId: () => string) {
   const processando = ref(false)
   const resultado = ref<RegistrarEntradaQrResult | null>(null)
   const erro = ref<GateScanErroCode | null>(null)
-  const ultimoToken = ref('')
   const pausado = ref(false)
   // Token da ultima tentativa que falhou tecnicamente (para retry explicito).
   const tokenPendente = ref('')
@@ -83,7 +82,6 @@ export function useGateScanner(eventoId: () => string) {
   function limparResultado() {
     resultado.value = null
     erro.value = null
-    ultimoToken.value = ''
     lendo.value = false
     tokenPendente.value = ''
     lock.liberar()
@@ -262,7 +260,6 @@ export function useGateScanner(eventoId: () => string) {
 
     lock.bloquear()
     lendo.value = true
-    ultimoToken.value = mascararToken(token)
     tokenProcessado = token
     tokenProcessadoEm = performance.now()
 
@@ -337,7 +334,6 @@ export function useGateScanner(eventoId: () => string) {
     processando,
     resultado,
     erro,
-    ultimoToken,
     pausado,
     retentativaPendente: computed(() => Boolean(tokenPendente.value)),
     iniciar,

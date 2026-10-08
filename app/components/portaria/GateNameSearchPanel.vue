@@ -202,11 +202,13 @@ async function novaBusca() {
       >
         <div v-if="resultado.participanteNome" class="flex justify-between gap-3">
           <dt class="text-zinc-500">Participante</dt>
-          <dd class="text-right font-semibold text-zinc-100">{{ resultado.participanteNome }}</dd>
+          <dd class="min-w-0 break-words text-right font-semibold text-zinc-100">
+            {{ resultado.participanteNome }}
+          </dd>
         </div>
         <div v-if="resultado.codigo" class="flex justify-between gap-3">
           <dt class="text-zinc-500">Ingresso</dt>
-          <dd class="text-zinc-200">{{ resultado.codigo }}</dd>
+          <dd class="min-w-0 break-all text-right text-zinc-200">{{ resultado.codigo }}</dd>
         </div>
         <div v-if="resultado.entradaEm" class="flex justify-between gap-3">
           <dt class="text-zinc-500">Entrada</dt>
@@ -248,6 +250,10 @@ async function novaBusca() {
             v-model="nome"
             type="text"
             autocomplete="off"
+            autocorrect="off"
+            autocapitalize="words"
+            spellcheck="false"
+            enterkeyhint="search"
             class="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
             placeholder="Digite o nome completo"
           />

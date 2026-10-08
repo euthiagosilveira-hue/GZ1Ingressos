@@ -54,7 +54,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="pb-[env(safe-area-inset-bottom)]">
     <p
       v-if="carregando"
       class="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-center text-sm text-zinc-400"

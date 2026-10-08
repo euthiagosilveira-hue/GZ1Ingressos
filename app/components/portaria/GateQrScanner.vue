@@ -29,7 +29,6 @@ const {
   processando,
   resultado,
   erro,
-  ultimoToken,
   pausado,
   retentativaPendente,
   iniciar,
@@ -112,11 +111,13 @@ const cameraFallback = computed(() =>
       >
         <div v-if="resultado.participanteNome" class="flex justify-between gap-3">
           <dt class="text-zinc-500">Participante</dt>
-          <dd class="text-right font-semibold text-zinc-100">{{ resultado.participanteNome }}</dd>
+          <dd class="min-w-0 break-words text-right font-semibold text-zinc-100">
+            {{ resultado.participanteNome }}
+          </dd>
         </div>
         <div v-if="resultado.codigo" class="flex justify-between gap-3">
           <dt class="text-zinc-500">Ingresso</dt>
-          <dd class="text-zinc-200">{{ resultado.codigo }}</dd>
+          <dd class="min-w-0 break-all text-right text-zinc-200">{{ resultado.codigo }}</dd>
         </div>
         <div v-if="resultado.entradaEm" class="flex justify-between gap-3">
           <dt class="text-zinc-500">Entrada</dt>
@@ -208,20 +209,18 @@ const cameraFallback = computed(() =>
         Posicione o QR Code do ingresso dentro da área.
       </p>
 
-      <AppButton v-if="pausado" variant="primary" block @click="continuar">
+      <AppButton v-if="pausado" variant="primary" size="lg" block @click="continuar">
         Continuar leitura
       </AppButton>
-      <AppButton v-else-if="!cameraAtiva" variant="primary" block @click="iniciar">
+      <AppButton v-else-if="!cameraAtiva" variant="primary" size="lg" block @click="iniciar">
         Ativar câmera
       </AppButton>
-      <AppButton v-else variant="outline" block @click="pausar">Pausar leitura</AppButton>
+      <AppButton v-else variant="outline" size="lg" block @click="pausar">
+        Pausar leitura
+      </AppButton>
 
       <p v-if="cameraFallback" class="text-center text-xs text-zinc-500">
         Alternativa: use a aba <span class="font-semibold text-zinc-300">Buscar por nome</span>.
-      </p>
-
-      <p v-if="ultimoToken" class="text-center text-[10px] uppercase tracking-wide text-zinc-600">
-        Último código: {{ ultimoToken }}
       </p>
     </template>
   </BaseCard>

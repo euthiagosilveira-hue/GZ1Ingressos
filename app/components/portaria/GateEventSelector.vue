@@ -35,12 +35,12 @@ const selecionado = computed({
 
     <div
       v-if="props.evento"
-      class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-sm text-zinc-400"
+      class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-sm text-zinc-400"
     >
-      <span class="font-semibold text-white">{{ props.evento.nome }}</span>
+      <span class="min-w-0 break-words font-semibold text-white">{{ props.evento.nome }}</span>
       <EventStatusBadge :status="props.evento.status" />
       <span>{{ formatDataHora(props.evento.inicioEm) }}</span>
-      <span>{{ props.evento.local }}</span>
+      <span class="min-w-0 break-words">{{ props.evento.local }}</span>
     </div>
   </BaseCard>
 </template>

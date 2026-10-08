@@ -19,7 +19,7 @@ const emit = defineEmits<{
 
 <template>
   <header
-    class="flex h-16 shrink-0 items-center gap-3 border-b border-zinc-800 bg-zinc-950 px-4 lg:hidden"
+    class="flex min-h-16 shrink-0 items-center gap-3 border-b border-zinc-800 bg-zinc-950 px-4 pt-[env(safe-area-inset-top)] lg:hidden"
   >
     <button
       type="button"

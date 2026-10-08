@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden bg-zinc-950 text-white">
+  <div class="flex h-[100dvh] overflow-hidden bg-zinc-950 text-white">
     <AdminSidebar class="hidden lg:flex" />
 
     <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -100,7 +100,7 @@ onBeforeUnmount(() => {
 
       <aside
         id="admin-mobile-drawer"
-        class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform transition-transform duration-200 ease-out"
+        class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform pb-[env(safe-area-inset-bottom)] transition-transform duration-200 ease-out"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
         role="dialog"
         aria-modal="true"
