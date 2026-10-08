@@ -1,4 +1,4 @@
-import { nextTick, onUnmounted, ref } from 'vue'
+import { nextTick, onUnmounted, ref, watch } from 'vue'
 
 import { GateError, registrarEntradaQr } from '~/services/gate/entradas'
 import type {
@@ -7,6 +7,14 @@ import type {
   RegistrarEntradaQrResult
 } from '~/types/gate'
 import { LeituraLock, mascararToken, qrTokenPlausivel, uuidValido } from '~/utils/gate'
+import { desbloquearAudio, emitirFeedbackEntrada } from '~/utils/portariaFeedback'
+import {
+  AUTO_RESUME_DELAY_MS,
+  criarAgendadorUnico,
+  deveAutoRetomar,
+  deveIgnorarPorCooldown,
+  podeIniciarCamera
+} from '~/utils/portariaQr'
 
 const INTERVALO_LEITURA_MS = 120
 const LARGURA_MAX_PX = 480
@@ -16,7 +24,11 @@ type Decodificador = typeof import('jsqr')['default']
 /**
  * Scanner de portaria: camera (getUserMedia) + decode local (jsQR) +
  * chamada unica a RPC registrar_entrada_qr por leitura.
- * Toda decisao de negocio vem da RPC; aqui so ha formato + trava de leitura.
+ *
+ * Fluxo automatico:
+ *   QR -> lock -> RPC -> resultado (som/vibracao) -> aguarda AUTO_RESUME_DELAY_MS
+ *   -> limpa resultado -> reabre a camera. O operador pode pausar/continuar ou
+ *   avancar na hora. Erro tecnico (transporte) NAO entra em loop automatico.
  */
 export function useGateScanner(eventoId: () => string) {
   const video = ref<HTMLVideoElement | null>(null)
@@ -26,14 +38,20 @@ export function useGateScanner(eventoId: () => string) {
   const resultado = ref<RegistrarEntradaQrResult | null>(null)
   const erro = ref<GateScanErroCode | null>(null)
   const ultimoToken = ref('')
+  const pausado = ref(false)
 
   const lock = new LeituraLock()
+  const agendador = criarAgendadorUnico()
   let stream: MediaStream | null = null
   let raf: number | null = null
   let canvas: HTMLCanvasElement | null = null
   let ctx: CanvasRenderingContext2D | null = null
   let decodificador: Decodificador | null = null
   let ultimaLeitura = 0
+  let desmontado = false
+  // Cooldown do MESMO token: guarda o ultimo token processado e o instante.
+  let tokenProcessado = ''
+  let tokenProcessadoEm = 0
 
   function pararLoop() {
     if (raf !== null) {
@@ -50,6 +68,19 @@ export function useGateScanner(eventoId: () => string) {
     }
     if (video.value) video.value.srcObject = null
     cameraStatus.value = 'IDLE'
+  }
+
+  function limparCooldown() {
+    tokenProcessado = ''
+    tokenProcessadoEm = 0
+  }
+
+  function limparResultado() {
+    resultado.value = null
+    erro.value = null
+    ultimoToken.value = ''
+    lendo.value = false
+    lock.liberar()
   }
 
   async function carregarDecodificador(): Promise<Decodificador> {
@@ -78,13 +109,15 @@ export function useGateScanner(eventoId: () => string) {
   }
 
   async function iniciar() {
-    if (!import.meta.client || cameraStatus.value === 'ATIVA' || cameraStatus.value === 'SOLICITANDO') {
-      return
-    }
+    if (!import.meta.client || desmontado) return
+    if (!podeIniciarCamera(cameraStatus.value)) return
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       cameraStatus.value = 'SEM_SUPORTE'
       return
     }
+
+    // Inicializa o audio no gesto do usuario (politica de autoplay).
+    desbloquearAudio()
 
     cameraStatus.value = 'SOLICITANDO'
     erro.value = null
@@ -154,6 +187,24 @@ export function useGateScanner(eventoId: () => string) {
     }
   }
 
+  function agendarAutoResume() {
+    if (
+      !deveAutoRetomar({
+        autoHabilitado: !pausado.value,
+        temResultado: Boolean(resultado.value),
+        erroTecnico: Boolean(erro.value)
+      })
+    ) {
+      return
+    }
+    agendador.agendar(() => {
+      if (desmontado || pausado.value) return
+      // Mantem o cooldown: o mesmo QR continua bloqueado por alguns segundos.
+      limparResultado()
+      void iniciar()
+    }, AUTO_RESUME_DELAY_MS)
+  }
+
   async function aoDetectar(tokenBruto: string) {
     if (!lock.podeProcessar() || processando.value) return
 
@@ -161,9 +212,16 @@ export function useGateScanner(eventoId: () => string) {
     // Formato basico apenas; nenhuma regra de negocio aqui.
     if (!qrTokenPlausivel(token)) return
 
+    // Protecao de UX: ignora o MESMO token dentro da janela de cooldown.
+    if (deveIgnorarPorCooldown(tokenProcessado, token, tokenProcessadoEm, performance.now())) {
+      return
+    }
+
     lock.bloquear()
     lendo.value = true
     ultimoToken.value = mascararToken(token)
+    tokenProcessado = token
+    tokenProcessadoEm = performance.now()
 
     const evento = eventoId()
     if (!evento || !uuidValido(evento)) {
@@ -176,6 +234,8 @@ export function useGateScanner(eventoId: () => string) {
     try {
       resultado.value = await registrarEntradaQr({ eventoId: evento, qrToken: token })
       erro.value = null
+      // Feedback apenas para resultado de negocio.
+      emitirFeedbackEntrada(resultado.value?.resultado ?? null)
     } catch (e) {
       resultado.value = null
       erro.value = e instanceof GateError ? e.code : 'ERRO_TEMPORARIO'
@@ -183,19 +243,51 @@ export function useGateScanner(eventoId: () => string) {
       processando.value = false
       // Desliga a camera ao exibir o resultado (economia/privacidade).
       parar()
+      agendarAutoResume()
     }
   }
 
-  /** Liberado apos mostrar o resultado: pronto para o proximo ingresso. */
-  function reiniciar() {
-    resultado.value = null
-    erro.value = null
-    ultimoToken.value = ''
-    lendo.value = false
-    lock.liberar()
+  /** Avanca imediatamente (pula a espera do auto-resume). */
+  function lerProximoAgora() {
+    agendador.cancelar()
+    limparCooldown()
+    limparResultado()
+    void iniciar()
   }
 
+  /** Pausa o fluxo automatico: cancela timer e desliga a camera. */
+  function pausar() {
+    agendador.cancelar()
+    pausado.value = true
+    limparCooldown()
+    limparResultado()
+    parar()
+  }
+
+  /** Retoma o fluxo automatico. */
+  function continuar() {
+    pausado.value = false
+    limparCooldown()
+    limparResultado()
+    void iniciar()
+  }
+
+  /** Reset mantendo o cooldown (usado por fluxos externos/legado). */
+  function reiniciar() {
+    limparResultado()
+  }
+
+  // Troca de evento: cancela o ciclo anterior por completo.
+  watch(eventoId, () => {
+    agendador.cancelar()
+    limparCooldown()
+    limparResultado()
+    parar()
+  })
+
   onUnmounted(() => {
+    desmontado = true
+    agendador.cancelar()
     parar()
   })
 
@@ -207,9 +299,13 @@ export function useGateScanner(eventoId: () => string) {
     resultado,
     erro,
     ultimoToken,
+    pausado,
     iniciar,
     parar,
     reiniciar,
+    lerProximoAgora,
+    pausar,
+    continuar,
     tentarNovamente: reiniciar
   }
 }

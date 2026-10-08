@@ -21,14 +21,15 @@ const props = defineProps<{
 const {
   video,
   cameraStatus,
-  lendo,
   processando,
   resultado,
   erro,
   ultimoToken,
+  pausado,
   iniciar,
-  parar,
-  reiniciar
+  lerProximoAgora,
+  pausar,
+  continuar
 } = useGateScanner(() => props.eventoId)
 
 const cameraAtiva = computed(() => cameraStatus.value === 'ATIVA')
@@ -63,11 +64,6 @@ const descricaoResultado = computed(() =>
 const cameraFallback = computed(() =>
   ['NEGADA', 'INDISPONIVEL', 'SEM_SUPORTE', 'ERRO'].includes(cameraStatus.value)
 )
-
-function lerProximo() {
-  reiniciar()
-  iniciar()
-}
 </script>
 
 <template>
@@ -119,7 +115,14 @@ function lerProximo() {
         </div>
       </dl>
 
-      <AppButton variant="primary" size="lg" block @click="lerProximo">Ler próximo</AppButton>
+      <div class="space-y-2">
+        <AppButton variant="primary" size="lg" block @click="lerProximoAgora">
+          Ler próximo agora
+        </AppButton>
+        <AppButton v-if="!pausado" variant="ghost" size="lg" block @click="pausar">
+          Pausar leitura
+        </AppButton>
+      </div>
     </div>
 
     <!-- Sem evento selecionado: scanner bloqueado -->
@@ -178,8 +181,13 @@ function lerProximo() {
         Posicione o QR Code do ingresso dentro da área.
       </p>
 
-      <AppButton v-if="!cameraAtiva" variant="primary" block @click="iniciar">Ativar câmera</AppButton>
-      <AppButton v-else variant="outline" block @click="parar">Pausar câmera</AppButton>
+      <AppButton v-if="pausado" variant="primary" block @click="continuar">
+        Continuar leitura
+      </AppButton>
+      <AppButton v-else-if="!cameraAtiva" variant="primary" block @click="iniciar">
+        Ativar câmera
+      </AppButton>
+      <AppButton v-else variant="outline" block @click="pausar">Pausar leitura</AppButton>
 
       <p v-if="cameraFallback" class="text-center text-xs text-zinc-500">
         Alternativa: use a aba <span class="font-semibold text-zinc-300">Buscar por nome</span>.
