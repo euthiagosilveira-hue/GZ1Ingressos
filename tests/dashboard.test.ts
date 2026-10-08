@@ -101,6 +101,34 @@ test('card: capa real com proporcao definida, object-cover e fallback', () => {
   assert.ok(card.includes('Ver evento'))
 })
 
+test('card: usa a capa real quando ha imageUrl valida', () => {
+  assert.ok(card.includes(':src="props.event.imageUrl'))
+  assert.ok(card.includes('exibirCapa'))
+})
+
+test('card: poster de data permanece como fallback', () => {
+  assert.ok(card.includes('poster.weekday'))
+  assert.ok(card.includes('poster.day'))
+  assert.ok(card.includes('poster.month'))
+  assert.ok(card.includes('poster.name'))
+})
+
+test('card: preserva badge, nome, data, hora, local e botao alinhado', () => {
+  assert.ok(card.includes('props.event.badge'))
+  assert.ok(card.includes('props.event.title'))
+  assert.ok(card.includes('props.event.date'))
+  assert.ok(card.includes('props.event.time'))
+  assert.ok(card.includes('props.event.venue'))
+  assert.ok(card.includes('props.event.href'))
+  assert.ok(card.includes('mt-auto'))
+})
+
+test('card: responsivo (aspect-video no mobile e capa lateral no >=sm)', () => {
+  assert.ok(card.includes('aspect-video'))
+  assert.ok(card.includes('sm:flex-row'))
+  assert.ok(card.includes('sm:w-[38%]'))
+})
+
 test('mapearPedidosRecentes formata codigo/total/pagamento', () => {
   const r = mapearPedidosRecentes([
     {

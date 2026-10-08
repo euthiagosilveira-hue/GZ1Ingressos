@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { CalendarDaysIcon, ClockIcon, MapPinIcon } from '@heroicons/vue/24/outline'
 
 import AppButton from '~/components/AppButton.vue'
@@ -17,6 +17,9 @@ watch(
     imagemOk.value = true
   }
 )
+
+/** Capa real apenas quando ha imagem valida e ela nao falhou no carregamento. */
+const exibirCapa = computed(() => Boolean(props.event.imageUrl) && imagemOk.value)
 </script>
 
 <template>
@@ -25,17 +28,27 @@ watch(
       Próximo evento
     </h3>
 
-    <div v-if="props.event.hasEvent" class="mt-5 flex flex-1 gap-5">
+    <div v-if="props.event.hasEvent" class="mt-5 flex flex-1 flex-col gap-5 sm:flex-row">
+      <!-- Capa real do evento; sem imagem valida cai no poster de data (fallback) -->
       <div
-        class="relative aspect-[3/4] w-32 shrink-0 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 sm:w-40"
+        class="relative aspect-video w-full shrink-0 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 sm:aspect-[3/4] sm:w-[38%] sm:max-w-[15rem]"
       >
-        <img
-          v-if="props.event.imageUrl && imagemOk"
-          :src="props.event.imageUrl"
-          :alt="props.event.title"
-          class="h-full w-full object-cover object-center"
-          @error="imagemOk = false"
-        />
+        <template v-if="exibirCapa">
+          <img
+            :src="props.event.imageUrl as string"
+            :alt="props.event.title"
+            loading="lazy"
+            decoding="async"
+            class="h-full w-full object-cover object-center"
+            @error="imagemOk = false"
+          />
+          <!-- Overlay discreto: integra a capa sem cobrir info (sem textos aqui) -->
+          <div
+            class="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/55 to-transparent"
+            aria-hidden="true"
+          ></div>
+        </template>
+
         <template v-else>
           <div class="absolute inset-0 bg-gradient-to-b from-zinc-700 via-zinc-900 to-black"></div>
           <div
