@@ -33,6 +33,7 @@ interface BuscaRow {
   status: string
   utilizado_em?: string | null
   entrada_em?: string | null
+  telefone?: string | null
 }
 
 /**
@@ -59,7 +60,8 @@ export async function buscarIngressosPorNome(input: {
     participanteNome: row.participante_nome,
     status: row.status,
     utilizadoEm: row.utilizado_em ?? null,
-    entradaEm: row.entrada_em ?? null
+    entradaEm: row.entrada_em ?? null,
+    telefone: row.telefone ?? null
   }))
 }
 

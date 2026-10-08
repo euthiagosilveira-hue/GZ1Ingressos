@@ -54,6 +54,8 @@ export interface IngressoBuscaNome {
   status: string
   utilizadoEm: string | null
   entradaEm: string | null
+  /** Telefone para desambiguacao (cru; mascarar no frontend). Pode ser null. */
+  telefone: string | null
 }
 
 export type TipoEntradaGate = 'INGRESSO' | 'VIP'
