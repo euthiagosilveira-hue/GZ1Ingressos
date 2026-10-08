@@ -129,6 +129,29 @@ test('card: responsivo (aspect-video no mobile e capa lateral no >=sm)', () => {
   assert.ok(card.includes('sm:w-[38%]'))
 })
 
+test('mapearDashboardEvento: payload legado (sem imagem_url/evento_id) ainda mostra o card', () => {
+  // Regressao do bug: a RPC antiga retorna chave 'id' e sem 'imagem_url'.
+  const r = mapearDashboardEvento({
+    id: 'e1',
+    nome: 'PDC convida cantor Braga',
+    slug: 'pdc-convida-cantor-braga',
+    inicio_em: '2026-10-17T21:00:00Z',
+    local: 'Galeria Zero 1',
+    status: 'AGENDADO'
+  } as never)
+  assert.equal(r.hasEvent, true)
+  assert.equal(r.imageUrl, null)
+  assert.equal(r.badge, 'PRÓXIMO')
+  assert.equal(r.href, '/eventos/pdc-convida-cantor-braga')
+})
+
+test('card: nao esconde o card por ausencia ou erro de imagem', () => {
+  // A raiz depende apenas de hasEvent; a imagem so escolhe capa x poster.
+  assert.ok(card.includes('v-if="props.event.hasEvent"'))
+  assert.ok(card.includes('exibirCapa'))
+  assert.ok(card.includes('@error="imagemOk = false"'))
+})
+
 test('mapearPedidosRecentes formata codigo/total/pagamento', () => {
   const r = mapearPedidosRecentes([
     {
