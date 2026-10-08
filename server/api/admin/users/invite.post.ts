@@ -66,10 +66,13 @@ export default defineEventHandler(async (event) => {
     return { error: 'EMAIL_DUPLICADO', message: 'Já existe um usuário com este e-mail.' }
   }
 
-  const origin = getRequestURL(event).origin
+  // URL publica canonica (NUXT_PUBLIC_SITE_URL). Evita depender de
+  // getRequestURL().origin, que pode resolver localhost/host interno atras de proxy.
+  const config = useRuntimeConfig(event)
+  const siteUrl = String(config.public.siteUrl || getRequestURL(event).origin).replace(/\/+$/, '')
   const { data: convite, error: erroConvite } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { nome, perfil },
-    redirectTo: `${origin}/login`
+    redirectTo: `${siteUrl}/auth/convite`
   })
 
   if (erroConvite || !convite?.user) {
