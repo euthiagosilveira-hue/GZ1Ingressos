@@ -1,19 +1,19 @@
-import type { GateScanErroCode, RegistrarEntradaQrResult } from '~/types/gate'
+import type { RegistrarEntradaQrResult, TipoErroGate } from '~/types/gate'
 import { mapearResultadoEntradaRpc } from '~/utils/gate'
-
-interface RpcErrorLike {
-  code?: string | null
-  message?: string | null
-}
+import { classificarErroGate, comTimeout } from '~/utils/portariaErro'
 
 export class GateError extends Error {
-  code: GateScanErroCode
+  code: TipoErroGate
 
-  constructor(code: GateScanErroCode, message: string) {
+  constructor(code: TipoErroGate, message: string) {
     super(message)
     this.name = 'GateError'
     this.code = code
   }
+}
+
+function mapearErro(error: unknown): GateError {
+  return new GateError(classificarErroGate(error), 'Falha na comunicação com o sistema.')
 }
 
 /**
@@ -25,19 +25,14 @@ export async function registrarEntradaQr(input: {
   qrToken: string
 }): Promise<RegistrarEntradaQrResult> {
   const client = useSupabaseClient()
-  const { data, error } = await client.rpc('registrar_entrada_qr', {
-    p_evento_id: input.eventoId,
-    p_qr_token: input.qrToken
-  })
+  const { data, error } = await comTimeout(
+    client.rpc('registrar_entrada_qr', {
+      p_evento_id: input.eventoId,
+      p_qr_token: input.qrToken
+    })
+  )
 
-  if (error) {
-    const e = error as RpcErrorLike
-    const mensagem = (e.message ?? '').toLowerCase()
-    if (e.code === '42501' || mensagem.includes('permiss')) {
-      throw new GateError('SEM_PERMISSAO', 'Sessão de operador de portaria necessária.')
-    }
-    throw new GateError('ERRO_TEMPORARIO', 'Não foi possível registrar a entrada agora.')
-  }
+  if (error) throw mapearErro(error)
 
   return mapearResultadoEntradaRpc(data as Record<string, unknown>)
 }

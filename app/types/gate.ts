@@ -20,7 +20,15 @@ export interface RegistrarEntradaQrResult {
 }
 
 /** Erros de transporte/permissao do scanner (nao sao resultados de negocio). */
-export type GateScanErroCode = 'SEM_EVENTO' | 'SEM_PERMISSAO' | 'QR_INVALIDO' | 'ERRO_TEMPORARIO'
+export type TipoErroGate =
+  | 'OFFLINE'
+  | 'TIMEOUT'
+  | 'SERVIDOR_INDISPONIVEL'
+  | 'SEM_PERMISSAO'
+  | 'DESCONHECIDO'
+
+/** Estado de erro exibivel na portaria (taxonomia + validacoes de tela). */
+export type GateScanErroCode = TipoErroGate | 'SEM_EVENTO' | 'QR_INVALIDO'
 
 /** Estado local da camera. */
 export type GateCameraStatus =

@@ -2,6 +2,7 @@
 import { computed, nextTick, ref } from 'vue'
 import {
   CheckCircleIcon,
+  ExclamationTriangleIcon,
   MagnifyingGlassIcon,
   TicketIcon,
   XCircleIcon
@@ -28,6 +29,7 @@ import {
   precisaHintNome,
   rotuloOrigem
 } from '~/utils/portariaBusca'
+import { ehErroTecnico, mensagemErroTecnico } from '~/utils/portariaErro'
 
 const props = defineProps<{
   eventoId: string
@@ -40,34 +42,21 @@ const {
   resultados,
   resultado,
   erro,
+  contextoErro,
+  itemParaRetry,
   jaBuscou,
   nomeValido,
   podeBuscar,
   buscar,
   registrar,
+  tentarBuscarNovamente,
+  tentarRegistrarNovamente,
   reset
 } = useGateNameSearch(() => props.eventoId)
 
 const temEvento = computed(() => uuidValido(props.eventoId))
 const inputNome = ref<HTMLInputElement | null>(null)
 const itemPendente = ref<IngressoBuscaNome | null>(null)
-
-const MENSAGENS_ERRO: Record<GateScanErroCode, string> = {
-  SEM_EVENTO: 'Selecione um evento para buscar ingressos.',
-  SEM_PERMISSAO: 'Sessão de operador de portaria necessária. Entre com um usuário autorizado.',
-  QR_INVALIDO: 'Código inválido.',
-  ERRO_TEMPORARIO: 'Não foi possível concluir a busca agora. Tente novamente.'
-}
-
-const rotulo = computed(() =>
-  resultado.value ? rotuloResultadoEntrada(resultado.value.resultado) : null
-)
-
-const descricaoResultado = computed(() =>
-  resultado.value
-    ? descricaoResultadoEntrada(resultado.value.resultado, resultado.value.mensagem)
-    : ''
-)
 
 const ROTULOS_STATUS: Record<string, string> = {
   VALIDO: 'Válido',
@@ -80,6 +69,28 @@ const ROTULOS_STATUS: Record<string, string> = {
 function rotuloStatus(status: string): string {
   return ROTULOS_STATUS[status] ?? status
 }
+
+function mensagemErro(codigo: GateScanErroCode): string {
+  if (ehErroTecnico(codigo)) return mensagemErroTecnico(codigo)
+  if (codigo === 'SEM_EVENTO') return 'Selecione um evento para buscar ingressos.'
+  return 'Não foi possível concluir a operação.'
+}
+
+const rotulo = computed(() =>
+  resultado.value ? rotuloResultadoEntrada(resultado.value.resultado) : null
+)
+
+const descricaoResultado = computed(() =>
+  resultado.value
+    ? descricaoResultadoEntrada(resultado.value.resultado, resultado.value.mensagem)
+    : ''
+)
+
+const erroTecnicoRegistro = computed(
+  () => contextoErro.value === 'REGISTRO' && Boolean(erro.value)
+)
+const erroBusca = computed(() => contextoErro.value === 'BUSCA' && Boolean(erro.value))
+const podeRetentarRegistro = computed(() => Boolean(itemParaRetry.value))
 
 const nomesAmbiguosSet = computed(() => nomesAmbiguos(resultados.value))
 
@@ -139,9 +150,9 @@ async function novaBusca() {
       <p class="mt-3 text-sm text-zinc-400">Selecione um evento para buscar ingressos.</p>
     </div>
 
-    <!-- Resultado de registro -->
+    <!-- Resultado de registro / erro tecnico de registro -->
     <div
-      v-else-if="resultado || (erro && erro !== 'SEM_EVENTO')"
+      v-else-if="resultado || erroTecnicoRegistro"
       role="status"
       aria-live="assertive"
       class="space-y-4 rounded-2xl border-2 bg-zinc-950 p-5"
@@ -152,17 +163,35 @@ async function novaBusca() {
           class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900"
         >
           <CheckCircleIcon v-if="rotulo?.sucesso" class="h-7 w-7 text-green-300" />
+          <ExclamationTriangleIcon
+            v-else-if="erroTecnicoRegistro"
+            class="h-7 w-7 text-amber-400"
+          />
           <XCircleIcon v-else class="h-7 w-7 text-red-300" />
         </span>
         <div class="min-w-0">
           <p
             class="text-lg font-bold uppercase tracking-wide"
-            :class="rotulo?.sucesso ? 'text-green-300' : 'text-red-300'"
+            :class="
+              rotulo?.sucesso
+                ? 'text-green-300'
+                : erroTecnicoRegistro
+                  ? 'text-amber-300'
+                  : 'text-red-300'
+            "
           >
-            {{ rotulo ? rotulo.titulo : 'Não foi possível registrar' }}
+            {{
+              rotulo
+                ? rotulo.titulo
+                : erroTecnicoRegistro
+                  ? 'Falha na conexão'
+                  : 'Não foi possível registrar'
+            }}
           </p>
           <p class="text-sm text-zinc-400">
-            {{ erro && !resultado ? MENSAGENS_ERRO[erro] : descricaoResultado }}
+            {{
+              erro && !resultado ? mensagemErro(erro as GateScanErroCode) : descricaoResultado
+            }}
           </p>
         </div>
       </div>
@@ -185,7 +214,22 @@ async function novaBusca() {
         </div>
       </dl>
 
-      <AppButton variant="primary" size="lg" block @click="novaBusca">Nova busca</AppButton>
+      <div v-if="erroTecnicoRegistro" class="space-y-2">
+        <AppButton
+          v-if="podeRetentarRegistro"
+          variant="primary"
+          size="lg"
+          block
+          :disabled="registrando"
+          @click="tentarRegistrarNovamente"
+        >
+          {{ registrando ? 'Tentando...' : 'Tentar novamente' }}
+        </AppButton>
+        <AppButton variant="ghost" size="lg" block :disabled="registrando" @click="novaBusca">
+          Nova busca
+        </AppButton>
+      </div>
+      <AppButton v-else variant="primary" size="lg" block @click="novaBusca">Nova busca</AppButton>
     </div>
 
     <!-- Busca -->
@@ -212,7 +256,13 @@ async function novaBusca() {
           </p>
         </div>
 
-        <AppButton type="submit" variant="primary" size="lg" block :disabled="!podeBuscar || buscando">
+        <AppButton
+          type="submit"
+          variant="primary"
+          size="lg"
+          block
+          :disabled="!podeBuscar || buscando"
+        >
           {{ buscando ? 'Buscando...' : 'Buscar' }}
         </AppButton>
       </form>
@@ -221,9 +271,12 @@ async function novaBusca() {
         Selecione um evento para buscar ingressos.
       </p>
 
-      <p v-else-if="erro" role="alert" class="text-sm text-red-300">
-        {{ MENSAGENS_ERRO[erro] }}
-      </p>
+      <div v-else-if="erroBusca" class="space-y-2" role="alert">
+        <p class="text-sm text-red-300">{{ mensagemErro(erro as GateScanErroCode) }}</p>
+        <AppButton variant="outline" block :disabled="buscando" @click="tentarBuscarNovamente">
+          Tentar novamente
+        </AppButton>
+      </div>
 
       <div
         v-if="jaBuscou && !buscando && resultados.length === 0 && !erro"

@@ -1,4 +1,4 @@
-import { nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 
 import { useGateSession } from '~/composables/useGateSession'
 import { GateError, registrarEntradaQr } from '~/services/gate/entradas'
@@ -29,7 +29,8 @@ type Decodificador = typeof import('jsqr')['default']
  * Fluxo automatico:
  *   QR -> lock -> RPC -> resultado (som/vibracao) -> aguarda AUTO_RESUME_DELAY_MS
  *   -> limpa resultado -> reabre a camera. O operador pode pausar/continuar ou
- *   avancar na hora. Erro tecnico (transporte) NAO entra em loop automatico.
+ *   avancar na hora. Erro TECNICO (transporte) NAO entra em loop automatico:
+ *   guarda o token da tentativa para "Tentar novamente" ou "Ler outro codigo".
  */
 export function useGateScanner(eventoId: () => string) {
   const video = ref<HTMLVideoElement | null>(null)
@@ -40,6 +41,8 @@ export function useGateScanner(eventoId: () => string) {
   const erro = ref<GateScanErroCode | null>(null)
   const ultimoToken = ref('')
   const pausado = ref(false)
+  // Token da ultima tentativa que falhou tecnicamente (para retry explicito).
+  const tokenPendente = ref('')
 
   const lock = new LeituraLock()
   const agendador = criarAgendadorUnico()
@@ -82,6 +85,7 @@ export function useGateScanner(eventoId: () => string) {
     erro.value = null
     ultimoToken.value = ''
     lendo.value = false
+    tokenPendente.value = ''
     lock.liberar()
   }
 
@@ -207,6 +211,43 @@ export function useGateScanner(eventoId: () => string) {
     }, AUTO_RESUME_DELAY_MS)
   }
 
+  /** Executa a RPC para um token. Usado pelo scanner e pelo retry explicito. */
+  async function executarRegistro(token: string) {
+    if (processando.value || desmontado) return
+
+    const evento = eventoId()
+    if (!evento || !uuidValido(evento)) {
+      erro.value = 'SEM_EVENTO'
+      parar()
+      return
+    }
+
+    processando.value = true
+    try {
+      resultado.value = await registrarEntradaQr({ eventoId: evento, qrToken: token })
+      erro.value = null
+      tokenPendente.value = ''
+      // Contabiliza a sessao apenas se LIBERADO (regra no reducer).
+      registrar(resultado.value.resultado, {
+        nome: resultado.value.participanteNome ?? 'Ingresso liberado',
+        tipo: 'INGRESSO',
+        codigo: resultado.value.codigo
+      })
+      // Feedback apenas para resultado de negocio.
+      emitirFeedbackEntrada(resultado.value?.resultado ?? null)
+    } catch (e) {
+      resultado.value = null
+      erro.value = e instanceof GateError ? e.code : 'DESCONHECIDO'
+      // Guarda o token para permitir "Tentar novamente".
+      tokenPendente.value = token
+    } finally {
+      processando.value = false
+      // Desliga a camera ao exibir o resultado (economia/privacidade).
+      parar()
+      agendarAutoResume()
+    }
+  }
+
   async function aoDetectar(tokenBruto: string) {
     if (!lock.podeProcessar() || processando.value) return
 
@@ -225,34 +266,7 @@ export function useGateScanner(eventoId: () => string) {
     tokenProcessado = token
     tokenProcessadoEm = performance.now()
 
-    const evento = eventoId()
-    if (!evento || !uuidValido(evento)) {
-      erro.value = 'SEM_EVENTO'
-      parar()
-      return
-    }
-
-    processando.value = true
-    try {
-      resultado.value = await registrarEntradaQr({ eventoId: evento, qrToken: token })
-      erro.value = null
-      // Contabiliza a sessao apenas se LIBERADO (regra no reducer).
-      registrar(resultado.value.resultado, {
-        nome: resultado.value.participanteNome ?? 'Ingresso liberado',
-        tipo: 'INGRESSO',
-        codigo: resultado.value.codigo
-      })
-      // Feedback apenas para resultado de negocio.
-      emitirFeedbackEntrada(resultado.value?.resultado ?? null)
-    } catch (e) {
-      resultado.value = null
-      erro.value = e instanceof GateError ? e.code : 'ERRO_TEMPORARIO'
-    } finally {
-      processando.value = false
-      // Desliga a camera ao exibir o resultado (economia/privacidade).
-      parar()
-      agendarAutoResume()
-    }
+    await executarRegistro(token)
   }
 
   /** Avanca imediatamente (pula a espera do auto-resume). */
@@ -278,6 +292,23 @@ export function useGateScanner(eventoId: () => string) {
     limparCooldown()
     limparResultado()
     void iniciar()
+  }
+
+  /**
+   * Retry EXPLICITO do token que falhou tecnicamente. Ignora o cooldown
+   * (acao do operador), respeita processando (uma RPC por clique).
+   */
+  function tentarNovamente() {
+    const token = tokenPendente.value
+    if (!token || processando.value) return
+    agendador.cancelar()
+    limparCooldown()
+    void executarRegistro(token)
+  }
+
+  /** Descarta a tentativa e volta ao scanner (mesmo que "Ler proximo agora"). */
+  function lerOutroCodigo() {
+    lerProximoAgora()
   }
 
   /** Reset mantendo o cooldown (usado por fluxos externos/legado). */
@@ -308,12 +339,14 @@ export function useGateScanner(eventoId: () => string) {
     erro,
     ultimoToken,
     pausado,
+    retentativaPendente: computed(() => Boolean(tokenPendente.value)),
     iniciar,
     parar,
     reiniciar,
     lerProximoAgora,
+    tentarNovamente,
+    lerOutroCodigo,
     pausar,
-    continuar,
-    tentarNovamente: reiniciar
+    continuar
   }
 }

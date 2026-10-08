@@ -12,7 +12,12 @@ import BaseCard from '~/components/BaseCard.vue'
 import { useGateScanner } from '~/composables/useGateScanner'
 import type { GateScanErroCode } from '~/types/gate'
 import { formatDataHoraCompleta } from '~/utils/format'
-import { descricaoResultadoEntrada, rotuloResultadoEntrada, uuidValido } from '~/utils/gate'
+import {
+  descricaoResultadoEntrada,
+  rotuloResultadoEntrada,
+  uuidValido
+} from '~/utils/gate'
+import { ehErroTecnico, mensagemErroTecnico } from '~/utils/portariaErro'
 
 const props = defineProps<{
   eventoId: string
@@ -26,8 +31,11 @@ const {
   erro,
   ultimoToken,
   pausado,
+  retentativaPendente,
   iniciar,
   lerProximoAgora,
+  tentarNovamente,
+  lerOutroCodigo,
   pausar,
   continuar
 } = useGateScanner(() => props.eventoId)
@@ -35,6 +43,7 @@ const {
 const cameraAtiva = computed(() => cameraStatus.value === 'ATIVA')
 const mostraResultado = computed(() => Boolean(resultado.value) || Boolean(erro.value))
 const temEvento = computed(() => uuidValido(props.eventoId))
+const erroTecnico = computed(() => Boolean(erro.value) && !resultado.value)
 
 const MENSAGENS_CAMERA: Record<string, string> = {
   SOLICITANDO: 'Solicitando acesso à câmera...',
@@ -44,11 +53,11 @@ const MENSAGENS_CAMERA: Record<string, string> = {
   ERRO: 'Não foi possível iniciar a câmera. Tente novamente.'
 }
 
-const MENSAGENS_ERRO: Record<GateScanErroCode, string> = {
-  SEM_EVENTO: 'Selecione um evento válido para registrar entradas.',
-  SEM_PERMISSAO: 'Sessão de operador de portaria necessária. Entre com um usuário autorizado.',
-  QR_INVALIDO: 'QR Code inválido. Posicione novamente.',
-  ERRO_TEMPORARIO: 'Não foi possível registrar a entrada agora. Tente novamente.'
+function mensagemErro(codigo: GateScanErroCode): string {
+  if (ehErroTecnico(codigo)) return mensagemErroTecnico(codigo)
+  if (codigo === 'SEM_EVENTO') return 'Selecione um evento válido para registrar entradas.'
+  if (codigo === 'QR_INVALIDO') return 'QR Code inválido. Posicione novamente.'
+  return 'Não foi possível concluir a operação.'
 }
 
 const rotulo = computed(() =>
@@ -89,10 +98,10 @@ const cameraFallback = computed(() =>
             class="text-lg font-bold uppercase tracking-wide"
             :class="rotulo?.sucesso ? 'text-green-300' : 'text-red-300'"
           >
-            {{ rotulo ? rotulo.titulo : 'Não foi possível validar' }}
+            {{ rotulo ? rotulo.titulo : erroTecnico ? 'Falha na conexão' : 'Não foi possível validar' }}
           </p>
           <p class="text-sm text-zinc-400">
-            {{ erro ? MENSAGENS_ERRO[erro] : descricaoResultado }}
+            {{ erro && !resultado ? mensagemErro(erro as GateScanErroCode) : descricaoResultado }}
           </p>
         </div>
       </div>
@@ -115,7 +124,25 @@ const cameraFallback = computed(() =>
         </div>
       </dl>
 
-      <div class="space-y-2">
+      <!-- Erro tecnico: retry do MESMO token (sem reabrir a camera) ou novo codigo -->
+      <div v-if="erroTecnico" class="space-y-2">
+        <AppButton
+          v-if="retentativaPendente"
+          variant="primary"
+          size="lg"
+          block
+          :disabled="processando"
+          @click="tentarNovamente"
+        >
+          {{ processando ? 'Tentando...' : 'Tentar novamente' }}
+        </AppButton>
+        <AppButton variant="ghost" size="lg" block :disabled="processando" @click="lerOutroCodigo">
+          Ler outro código
+        </AppButton>
+      </div>
+
+      <!-- Resultado de negocio -->
+      <div v-else class="space-y-2">
         <AppButton variant="primary" size="lg" block @click="lerProximoAgora">
           Ler próximo agora
         </AppButton>

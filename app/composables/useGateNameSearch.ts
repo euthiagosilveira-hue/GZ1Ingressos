@@ -1,13 +1,23 @@
 import { computed, ref } from 'vue'
 
 import { useGateSession } from '~/composables/useGateSession'
-import { GateError, buscarIngressosPorNome, registrarEntradaNome, registrarEntradaVip } from '~/services/gate/ingressos'
+import {
+  GateError,
+  buscarIngressosPorNome,
+  registrarEntradaNome,
+  registrarEntradaVip
+} from '~/services/gate/ingressos'
 import type { GateScanErroCode, IngressoBuscaNome, RegistrarEntradaQrResult } from '~/types/gate'
 import { nomeBuscaValido, uuidValido } from '~/utils/gate'
+
+type ContextoErro = 'BUSCA' | 'REGISTRO'
 
 /**
  * Busca por nome na portaria: consulta e registro por RPC real, sempre dentro
  * do evento selecionado. Nenhuma regra de negocio no frontend.
+ *
+ * Em erro TECNICO preserva o contexto (nome digitado / item selecionado) para
+ * permitir "Tentar novamente" sem refazer o fluxo.
  */
 export function useGateNameSearch(eventoId: () => string) {
   const nome = ref('')
@@ -16,6 +26,8 @@ export function useGateNameSearch(eventoId: () => string) {
   const resultados = ref<IngressoBuscaNome[]>([])
   const resultado = ref<RegistrarEntradaQrResult | null>(null)
   const erro = ref<GateScanErroCode | null>(null)
+  const contextoErro = ref<ContextoErro | null>(null)
+  const itemParaRetry = ref<IngressoBuscaNome | null>(null)
   const jaBuscou = ref(false)
 
   const { registrar: registrarSessao } = useGateSession()
@@ -25,6 +37,7 @@ export function useGateNameSearch(eventoId: () => string) {
 
   async function buscar() {
     erro.value = null
+    contextoErro.value = null
     if (!uuidValido(eventoId())) {
       erro.value = 'SEM_EVENTO'
       return
@@ -39,7 +52,9 @@ export function useGateNameSearch(eventoId: () => string) {
       })
       jaBuscou.value = true
     } catch (e) {
-      erro.value = e instanceof GateError ? e.code : 'ERRO_TEMPORARIO'
+      // Preserva o texto digitado; erro tecnico (nao "nenhum encontrado").
+      erro.value = e instanceof GateError ? e.code : 'DESCONHECIDO'
+      contextoErro.value = 'BUSCA'
       resultados.value = []
     } finally {
       buscando.value = false
@@ -48,6 +63,7 @@ export function useGateNameSearch(eventoId: () => string) {
 
   async function registrar(ingresso: IngressoBuscaNome) {
     erro.value = null
+    contextoErro.value = null
     if (!uuidValido(eventoId())) {
       erro.value = 'SEM_EVENTO'
       return
@@ -56,7 +72,9 @@ export function useGateNameSearch(eventoId: () => string) {
     try {
       if (ingresso.origem === 'VIP') {
         if (!ingresso.vipId) {
-          erro.value = 'ERRO_TEMPORARIO'
+          erro.value = 'DESCONHECIDO'
+          contextoErro.value = 'REGISTRO'
+          itemParaRetry.value = ingresso
           return
         }
         resultado.value = await registrarEntradaVip({
@@ -65,7 +83,9 @@ export function useGateNameSearch(eventoId: () => string) {
         })
       } else {
         if (!ingresso.ingressoId) {
-          erro.value = 'ERRO_TEMPORARIO'
+          erro.value = 'DESCONHECIDO'
+          contextoErro.value = 'REGISTRO'
+          itemParaRetry.value = ingresso
           return
         }
         resultado.value = await registrarEntradaNome({
@@ -74,6 +94,7 @@ export function useGateNameSearch(eventoId: () => string) {
         })
       }
 
+      itemParaRetry.value = null
       // Contabiliza a sessao apenas se LIBERADO (regra no reducer).
       registrarSessao(resultado.value.resultado, {
         nome: resultado.value.participanteNome ?? ingresso.participanteNome,
@@ -81,11 +102,27 @@ export function useGateNameSearch(eventoId: () => string) {
         codigo: ingresso.origem === 'VIP' ? null : ingresso.codigo
       })
     } catch (e) {
+      // Preserva o item selecionado para retry; nao incrementa sessao.
       resultado.value = null
-      erro.value = e instanceof GateError ? e.code : 'ERRO_TEMPORARIO'
+      erro.value = e instanceof GateError ? e.code : 'DESCONHECIDO'
+      contextoErro.value = 'REGISTRO'
+      itemParaRetry.value = ingresso
     } finally {
       registrando.value = false
     }
+  }
+
+  /** Retry da ultima busca (mesmo nome), sem limpar o input. */
+  function tentarBuscarNovamente() {
+    if (buscando.value) return
+    void buscar()
+  }
+
+  /** Retry do ultimo registro (mesmo item), sem nova busca. */
+  function tentarRegistrarNovamente() {
+    const item = itemParaRetry.value
+    if (!item || registrando.value) return
+    void registrar(item)
   }
 
   function reset() {
@@ -93,6 +130,8 @@ export function useGateNameSearch(eventoId: () => string) {
     resultados.value = []
     resultado.value = null
     erro.value = null
+    contextoErro.value = null
+    itemParaRetry.value = null
     jaBuscou.value = false
   }
 
@@ -103,11 +142,15 @@ export function useGateNameSearch(eventoId: () => string) {
     resultados,
     resultado,
     erro,
+    contextoErro,
+    itemParaRetry,
     jaBuscou,
     nomeValido,
     podeBuscar,
     buscar,
     registrar,
+    tentarBuscarNovamente,
+    tentarRegistrarNovamente,
     reset
   }
 }

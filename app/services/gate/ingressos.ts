@@ -1,27 +1,20 @@
-import type { GateScanErroCode, IngressoBuscaNome, RegistrarEntradaQrResult } from '~/types/gate'
+import type { IngressoBuscaNome, RegistrarEntradaQrResult, TipoErroGate } from '~/types/gate'
 import { mapearResultadoEntradaRpc } from '~/utils/gate'
-
-interface RpcErrorLike {
-  code?: string | null
-  message?: string | null
-}
+import { classificarErroGate, comTimeout } from '~/utils/portariaErro'
 
 export class GateError extends Error {
-  code: GateScanErroCode
+  code: TipoErroGate
 
-  constructor(code: GateScanErroCode, message: string) {
+  constructor(code: TipoErroGate, message: string) {
     super(message)
     this.name = 'GateError'
     this.code = code
   }
 }
 
-function mapearErro(error: RpcErrorLike): GateError {
-  const mensagem = (error.message ?? '').toLowerCase()
-  if (error.code === '42501' || mensagem.includes('permiss')) {
-    return new GateError('SEM_PERMISSAO', 'Sessão de operador de portaria necessária.')
-  }
-  return new GateError('ERRO_TEMPORARIO', 'Não foi possível concluir a operação agora.')
+/** Classifica erro tecnico de transporte (nunca resultado de negocio). */
+function mapearErro(error: unknown): GateError {
+  return new GateError(classificarErroGate(error), 'Falha na comunicação com o sistema.')
 }
 
 interface BuscaRow {
@@ -45,11 +38,13 @@ export async function buscarIngressosPorNome(input: {
   nome: string
 }): Promise<IngressoBuscaNome[]> {
   const client = useSupabaseClient()
-  const { data, error } = await client.rpc('buscar_ingressos_por_nome', {
-    p_evento_id: input.eventoId,
-    p_nome: input.nome
-  })
-  if (error) throw mapearErro(error as RpcErrorLike)
+  const { data, error } = await comTimeout(
+    client.rpc('buscar_ingressos_por_nome', {
+      p_evento_id: input.eventoId,
+      p_nome: input.nome
+    })
+  )
+  if (error) throw mapearErro(error)
 
   const rows = (data ?? []) as BuscaRow[]
   return rows.map((row) => ({
@@ -71,11 +66,13 @@ export async function registrarEntradaNome(input: {
   ingressoId: string
 }): Promise<RegistrarEntradaQrResult> {
   const client = useSupabaseClient()
-  const { data, error } = await client.rpc('registrar_entrada_nome', {
-    p_evento_id: input.eventoId,
-    p_ingresso_id: input.ingressoId
-  })
-  if (error) throw mapearErro(error as RpcErrorLike)
+  const { data, error } = await comTimeout(
+    client.rpc('registrar_entrada_nome', {
+      p_evento_id: input.eventoId,
+      p_ingresso_id: input.ingressoId
+    })
+  )
+  if (error) throw mapearErro(error)
   return mapearResultadoEntradaRpc(data as Record<string, unknown>)
 }
 
@@ -85,10 +82,12 @@ export async function registrarEntradaVip(input: {
   vipId: string
 }): Promise<RegistrarEntradaQrResult> {
   const client = useSupabaseClient()
-  const { data, error } = await client.rpc('registrar_entrada_vip', {
-    p_evento_id: input.eventoId,
-    p_vip_id: input.vipId
-  })
-  if (error) throw mapearErro(error as RpcErrorLike)
+  const { data, error } = await comTimeout(
+    client.rpc('registrar_entrada_vip', {
+      p_evento_id: input.eventoId,
+      p_vip_id: input.vipId
+    })
+  )
+  if (error) throw mapearErro(error)
   return mapearResultadoEntradaRpc(data as Record<string, unknown>)
 }
