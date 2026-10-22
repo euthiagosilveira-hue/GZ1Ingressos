@@ -123,3 +123,7 @@ test('rotas admin continuam protegidas por admin-auth', () => {
   // /portaria usa operator-auth (ADMIN ou PORTARIA)
   assert.ok(ler('../app/pages/portaria/index.vue').includes("middleware: ['operator-auth']"))
 })
+
+test('sidebar nao tem itens sem destino (to: #)', () => {
+  assert.ok(!/to:\s*'#'/.test(sidebar))
+})
