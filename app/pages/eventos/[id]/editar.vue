@@ -3,7 +3,11 @@ import { onMounted, ref } from 'vue'
 import { toast } from 'vue3-toastify'
 
 import EventForm from '~/components/eventos/EventForm.vue'
-import { atualizarEventoAdmin, obterEventoAdmin } from '~/services/admin/eventos'
+import {
+  atualizarEventoAdmin,
+  definirEncerramentoVendasAdmin,
+  obterEventoAdmin
+} from '~/services/admin/eventos'
 import type { EventFormValue, EventPayload } from '~/types/evento'
 import { mapearEventoAdminParaFormulario } from '~/utils/eventos'
 
@@ -22,6 +26,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const carregando = ref(true)
 const erro = ref('')
 const valorInicial = ref<EventFormValue | null>(null)
+const encerramentoVendasOriginal = ref<string | null>(null)
 
 async function carregar() {
   carregando.value = true
@@ -37,11 +42,17 @@ async function carregar() {
   try {
     const evento = await obterEventoAdmin(eventoId)
     valorInicial.value = mapearEventoAdminParaFormulario(evento)
+    encerramentoVendasOriginal.value = evento.vendasEncerramEm
   } catch (e) {
     erro.value = e instanceof Error ? e.message : 'Não foi possível carregar o evento.'
   } finally {
     carregando.value = false
   }
+}
+
+function mesmoInstante(a: string | null, b: string | null): boolean {
+  if (!a || !b) return !a && !b
+  return new Date(a).getTime() === new Date(b).getTime()
 }
 
 async function aoSubmeter(payload: EventPayload) {
@@ -59,6 +70,10 @@ async function aoSubmeter(payload: EventPayload) {
       publicacaoStatus: payload.publicacaoStatus,
       vendasStatus: payload.vendasStatus
     })
+    if (!mesmoInstante(payload.vendasEncerramEm, encerramentoVendasOriginal.value)) {
+      await definirEncerramentoVendasAdmin(eventoId, payload.vendasEncerramEm)
+      encerramentoVendasOriginal.value = payload.vendasEncerramEm
+    }
     toast.success('Evento atualizado com sucesso!')
     await navigateTo(`/eventos/${eventoId}/lotes`)
   } catch (e) {

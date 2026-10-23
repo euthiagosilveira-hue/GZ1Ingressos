@@ -24,6 +24,7 @@ export interface EventListItem {
   slug: string
   imagemUrl: string | null
   inicioEm: string
+  vendasEncerramEm?: string | null
   local: string
   status: EventStatus
   vendasStatus: SalesStatus
@@ -52,6 +53,9 @@ export interface EventFormValue {
   imagemUrl: string | null
   dataInicio: string
   horaInicio: string
+  /** Encerramento proprio das vendas online (vazio = inicio do evento). */
+  dataEncerramentoVendas: string
+  horaEncerramentoVendas: string
   local: string
   endereco: string
   capacidadeTotal: number | null
@@ -71,6 +75,7 @@ export interface EventPayload {
   descricao: string
   imagemUrl: string | null
   inicioEm: string
+  vendasEncerramEm: string | null
   local: string
   endereco: string
   capacidadeTotal: number
@@ -99,6 +104,7 @@ export interface AdminEventListItem {
   nome: string
   slug: string
   inicioEm: string
+  vendasEncerramEm: string | null
   local: string
   status: EventStatus
   vendasStatus: SalesStatus
@@ -121,6 +127,7 @@ export interface AdminEventDetail {
   descricao: string | null
   imagemUrl: string | null
   inicioEm: string
+  vendasEncerramEm: string | null
   encerradoEm: string | null
   local: string
   endereco: string

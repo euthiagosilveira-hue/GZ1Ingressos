@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import BaseCard from '~/components/BaseCard.vue'
+import BaseInput from '~/components/BaseInput.vue'
+import FormField from '~/components/FormField.vue'
 import EventStatusBadge from '~/components/eventos/EventStatusBadge.vue'
 import SegmentedControl from '~/components/SegmentedControl.vue'
-import type { EventFormValue } from '~/types/evento'
+import type { EventFormErrors, EventFormValue } from '~/types/evento'
 import type { SelectOption } from '~/types/ui'
 
 const props = defineProps<{
   value: EventFormValue
+  errors: EventFormErrors
 }>()
 
 const publicacaoOptions: SelectOption[] = [
@@ -37,8 +40,30 @@ const vendasOptions: SelectOption[] = [
     <div class="space-y-2">
       <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Vendas</p>
       <SegmentedControl v-model="props.value.vendasStatus" :options="vendasOptions" />
+    </div>
+
+    <div class="space-y-2">
+      <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        Encerramento das vendas online
+      </p>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <FormField label="Data" :error="props.errors.dataEncerramentoVendas">
+          <BaseInput
+            v-model="props.value.dataEncerramentoVendas"
+            type="date"
+            :invalid="!!props.errors.dataEncerramentoVendas"
+          />
+        </FormField>
+        <FormField label="Horário">
+          <BaseInput
+            v-model="props.value.horaEncerramentoVendas"
+            type="time"
+            :invalid="!!props.errors.dataEncerramentoVendas"
+          />
+        </FormField>
+      </div>
       <p class="text-xs text-zinc-500">
-        As vendas serão encerradas automaticamente no horário de início do evento.
+        Deixe vazio para encerrar as vendas online no horário de início do evento.
       </p>
     </div>
 

@@ -15,6 +15,7 @@ export function mapearEventoAdminParaListItem(evento: AdminEventListItem): Event
     slug: evento.slug,
     imagemUrl: imagemValida(evento.imagemUrl),
     inicioEm: evento.inicioEm,
+    vendasEncerramEm: evento.vendasEncerramEm ?? null,
     local: evento.local,
     status: evento.status,
     vendasStatus: evento.vendasStatus,
@@ -147,6 +148,7 @@ export function separarInstanteSaoPaulo(iso: string): { data: string; hora: stri
 /** Mapeia o evento administrativo real para o estado do EventForm (sem any). */
 export function mapearEventoAdminParaFormulario(evento: AdminEventDetail): EventFormValue {
   const { data, hora } = separarInstanteSaoPaulo(evento.inicioEm)
+  const encerramento = separarInstanteSaoPaulo(evento.vendasEncerramEm ?? '')
   return {
     nome: evento.nome,
     slug: evento.slug,
@@ -154,6 +156,8 @@ export function mapearEventoAdminParaFormulario(evento: AdminEventDetail): Event
     imagemUrl: imagemValida(evento.imagemUrl),
     dataInicio: data,
     horaInicio: hora,
+    dataEncerramentoVendas: encerramento.data,
+    horaEncerramentoVendas: encerramento.hora,
     local: evento.local,
     endereco: evento.endereco,
     capacidadeTotal: evento.capacidadeTotal,
@@ -162,4 +166,26 @@ export function mapearEventoAdminParaFormulario(evento: AdminEventDetail): Event
     vendasStatus: evento.vendasStatus,
     status: 'AGENDADO'
   }
+}
+
+/**
+ * Horario em que as vendas online encerram: o horario proprio do evento ou,
+ * se vazio, o inicio. Nunca depois do inicio (mesma regra do banco,
+ * private.limite_vendas_online).
+ */
+export function limiteVendasOnline(inicioEm: string, vendasEncerramEm: string | null): string {
+  if (!vendasEncerramEm) return inicioEm
+  return new Date(vendasEncerramEm).getTime() < new Date(inicioEm).getTime()
+    ? vendasEncerramEm
+    : inicioEm
+}
+
+/** Vendas online abertas agora: status ABERTAS e antes do limite de horario. */
+export function vendasOnlineAbertas(
+  evento: Pick<EventListItem, 'vendasStatus' | 'inicioEm' | 'vendasEncerramEm'>,
+  agora: Date = new Date()
+): boolean {
+  if (evento.vendasStatus !== 'ABERTAS') return false
+  const limite = limiteVendasOnline(evento.inicioEm, evento.vendasEncerramEm ?? null)
+  return agora.getTime() < new Date(limite).getTime()
 }
