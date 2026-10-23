@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { normalizarCodigoPedido, normalizarTelefone } from '../app/utils/publicIngressos.ts'
+import { normalizarCodigoPedido, normalizarEmail, normalizarTelefone } from '../app/utils/publicIngressos.ts'
 
 test('normalizarCodigoPedido aplica trim e maiusculo', () => {
   assert.equal(normalizarCodigoPedido('  gz100123 '), 'GZ100123')
@@ -14,4 +14,9 @@ test('normalizarTelefone mantem apenas digitos (aceita mascara)', () => {
   assert.equal(normalizarTelefone('11999990000'), '11999990000')
   assert.equal(normalizarTelefone('+55 11 9 9999-0000'), '5511999990000')
   assert.equal(normalizarTelefone(''), '')
+})
+
+test('normalizarEmail aplica trim e minusculo', () => {
+  assert.equal(normalizarEmail('  Voce@Email.COM '), 'voce@email.com')
+  assert.equal(normalizarEmail(''), '')
 })

@@ -26,6 +26,11 @@ export function normalizarTelefone(valor: string): string {
   return (valor ?? '').replace(/\D/g, '')
 }
 
+/** Normaliza e-mail (trim + minusculo). */
+export function normalizarEmail(valor: string): string {
+  return (valor ?? '').trim().toLowerCase()
+}
+
 /** Mensagem amigavel para erros de carregamento dos ingressos. */
 export function mensagemTicketsErro(code: TicketsErrorCode): string {
   const mapa: Record<TicketsErrorCode, string> = {
