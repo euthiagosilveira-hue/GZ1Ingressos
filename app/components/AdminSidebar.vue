@@ -15,6 +15,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import { useRoute } from '#imports'
 
+import InstalarApp from '~/components/InstalarApp.vue'
 import SidebarItem from '~/components/SidebarItem.vue'
 import { useOperatorAuth } from '~/composables/useOperatorAuth'
 import {
@@ -132,6 +133,10 @@ const raizClasses = computed(() =>
         @click="emit('navigate')"
       />
     </nav>
+
+    <div v-if="perfilResolvido" class="mt-5">
+      <InstalarApp @navigate="emit('navigate')" />
+    </div>
 
     <div v-if="operador" class="mt-5 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
       <p class="truncate text-sm font-semibold text-white">{{ operador.nome }}</p>
