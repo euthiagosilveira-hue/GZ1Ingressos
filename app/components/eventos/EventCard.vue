@@ -8,6 +8,7 @@ import EventCardActions from '~/components/eventos/EventCardActions.vue'
 import EventPublicationBadge from '~/components/eventos/EventPublicationBadge.vue'
 import EventStatusBadge from '~/components/eventos/EventStatusBadge.vue'
 import { formatDataHora, formatMoeda, formatNumero } from '~/utils/format'
+import { vendasOnlineAbertas } from '~/utils/eventos'
 import type { EventListItem } from '~/types/evento'
 
 const props = defineProps<{
@@ -31,7 +32,7 @@ const iniciais = computed(() =>
     .toUpperCase()
 )
 
-const vendasAbertas = computed(() => props.event.vendasStatus === 'ABERTAS')
+const vendasAbertas = computed(() => vendasOnlineAbertas(props.event))
 </script>
 
 <template>

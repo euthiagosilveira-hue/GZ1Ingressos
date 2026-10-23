@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { mapearEventoAdminParaListItem, gerarSlug, montarInicioEm, separarInstanteSaoPaulo, mapearEventoAdminParaFormulario } from '../app/utils/eventos.ts'
+import { mapearEventoAdminParaListItem, gerarSlug, montarInicioEm, separarInstanteSaoPaulo, mapearEventoAdminParaFormulario, limiteVendasOnline, vendasOnlineAbertas } from '../app/utils/eventos.ts'
 import type { AdminEventDetail } from '../app/types/evento.ts'
 
 test('mapearEventoAdminParaListItem adapta o item real para o shape dos cards', () => {
@@ -10,6 +10,7 @@ test('mapearEventoAdminParaListItem adapta o item real para o shape dos cards', 
     nome: 'Evento Real',
     slug: 'evento-real',
     inicioEm: '2026-10-25T19:19:10.781Z',
+    vendasEncerramEm: null,
     local: 'Galeria Zero 1',
     status: 'EM_ANDAMENTO',
     vendasStatus: 'ENCERRADAS',
@@ -41,6 +42,7 @@ test('mapearEventoAdminParaListItem mantem "sem lote" quando nao ha ativo', () =
     nome: 'Evento Sem Lote',
     slug: 'evento-sem-lote',
     inicioEm: '2026-10-25T19:19:10.781Z',
+    vendasEncerramEm: null,
     local: 'Galeria Zero 1',
     status: 'AGENDADO',
     vendasStatus: 'ENCERRADAS',
@@ -63,6 +65,7 @@ test('mapearEventoAdminParaListItem usa fallback quando capa e invalida', () => 
     nome: 'Evento Real',
     slug: 'evento-real',
     inicioEm: '2026-10-25T19:19:10.781Z',
+    vendasEncerramEm: null,
     local: 'Galeria Zero 1',
     status: 'AGENDADO' as const,
     vendasStatus: 'ABERTAS' as const,
@@ -133,6 +136,7 @@ const detalheBase: AdminEventDetail = {
   descricao: 'Show',
   imagemUrl: 'https://cdn.exemplo.com/capa.jpg',
   inicioEm: '2026-10-29T23:00:00.000Z',
+  vendasEncerramEm: null,
   encerradoEm: null,
   local: 'Galeria',
   endereco: 'Rua 1',
@@ -177,4 +181,52 @@ test('mapearEventoAdminParaFormulario trata descricao nula e capa invalida', () 
 test('round-trip: form -> instante preserva o horario', () => {
   const form = mapearEventoAdminParaFormulario(detalheBase)
   assert.equal(montarInicioEm(form.dataInicio, form.horaInicio), '2026-10-29T23:00:00.000Z')
+})
+
+test('mapearEventoAdminParaFormulario: encerramento vazio fica vazio', () => {
+  const form = mapearEventoAdminParaFormulario(detalheBase)
+  assert.equal(form.dataEncerramentoVendas, '')
+  assert.equal(form.horaEncerramentoVendas, '')
+})
+
+test('mapearEventoAdminParaFormulario: encerramento proprio em Sao Paulo', () => {
+  const form = mapearEventoAdminParaFormulario({
+    ...detalheBase,
+    vendasEncerramEm: '2026-10-29T18:00:00.000Z'
+  })
+  assert.equal(form.dataEncerramentoVendas, '2026-10-29')
+  assert.equal(form.horaEncerramentoVendas, '15:00')
+  assert.equal(
+    montarInicioEm(form.dataEncerramentoVendas, form.horaEncerramentoVendas),
+    '2026-10-29T18:00:00.000Z'
+  )
+})
+
+test('limiteVendasOnline: vazio = inicio; nunca depois do inicio', () => {
+  const inicio = '2026-10-29T23:00:00.000Z'
+  assert.equal(limiteVendasOnline(inicio, null), inicio)
+  assert.equal(limiteVendasOnline(inicio, '2026-10-29T18:00:00.000Z'), '2026-10-29T18:00:00.000Z')
+  assert.equal(limiteVendasOnline(inicio, '2026-10-30T01:00:00.000Z'), inicio)
+})
+
+test('vendasOnlineAbertas considera status e horario', () => {
+  const base = {
+    vendasStatus: 'ABERTAS' as const,
+    inicioEm: '2026-10-29T23:00:00.000Z',
+    vendasEncerramEm: '2026-10-29T18:00:00.000Z'
+  }
+  assert.equal(vendasOnlineAbertas(base, new Date('2026-10-29T17:59:00.000Z')), true)
+  assert.equal(vendasOnlineAbertas(base, new Date('2026-10-29T18:00:00.000Z')), false)
+  assert.equal(
+    vendasOnlineAbertas({ ...base, vendasEncerramEm: null }, new Date('2026-10-29T20:00:00.000Z')),
+    true
+  )
+  assert.equal(
+    vendasOnlineAbertas({ ...base, vendasEncerramEm: null }, new Date('2026-10-29T23:00:00.000Z')),
+    false
+  )
+  assert.equal(
+    vendasOnlineAbertas({ ...base, vendasStatus: 'ENCERRADAS' }, new Date('2026-10-29T10:00:00.000Z')),
+    false
+  )
 })

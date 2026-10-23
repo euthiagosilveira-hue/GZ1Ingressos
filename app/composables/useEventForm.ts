@@ -11,6 +11,8 @@ export function criarValorInicial(): EventFormValue {
     imagemUrl: null,
     dataInicio: '',
     horaInicio: '',
+    dataEncerramentoVendas: '',
+    horaEncerramentoVendas: '',
     local: '',
     endereco: '',
     capacidadeTotal: null,
@@ -67,6 +69,18 @@ export function useEventForm(options: { initialValue?: Partial<EventFormValue> }
 
     if (!valor.dataInicio) erros.dataInicio = 'Informe a data do evento.'
     if (!valor.horaInicio) erros.horaInicio = 'Informe o horário de início.'
+
+    const temDataEncerramento = !!valor.dataEncerramentoVendas
+    const temHoraEncerramento = !!valor.horaEncerramentoVendas
+    if (temDataEncerramento !== temHoraEncerramento) {
+      erros.dataEncerramentoVendas = 'Informe a data e o horário, ou deixe os dois vazios.'
+    } else if (temDataEncerramento && valor.dataInicio && valor.horaInicio) {
+      const encerramento = montarInicioEm(valor.dataEncerramentoVendas, valor.horaEncerramentoVendas)
+      const inicio = montarInicioEm(valor.dataInicio, valor.horaInicio)
+      if (encerramento && inicio && new Date(encerramento) > new Date(inicio)) {
+        erros.dataEncerramentoVendas = 'O encerramento das vendas não pode ser depois do início do evento.'
+      }
+    }
     if (!valor.local.trim()) erros.local = 'Informe o local.'
     if (!valor.endereco.trim()) erros.endereco = 'Informe o endereço.'
 
@@ -105,6 +119,8 @@ export function useEventForm(options: { initialValue?: Partial<EventFormValue> }
       descricao: valor.descricao.trim(),
       imagemUrl: valor.imagemUrl,
       inicioEm: montarInicioEm(valor.dataInicio, valor.horaInicio),
+      vendasEncerramEm:
+        montarInicioEm(valor.dataEncerramentoVendas, valor.horaEncerramentoVendas) || null,
       local: valor.local.trim(),
       endereco: valor.endereco.trim(),
       capacidadeTotal: valor.capacidadeTotal as number,

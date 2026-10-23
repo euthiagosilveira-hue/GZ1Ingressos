@@ -2,7 +2,7 @@
 import { toast } from 'vue3-toastify'
 
 import EventForm from '~/components/eventos/EventForm.vue'
-import { criarEventoAdmin } from '~/services/admin/eventos'
+import { criarEventoAdmin, definirEncerramentoVendasAdmin } from '~/services/admin/eventos'
 import type { EventPayload } from '~/types/evento'
 
 definePageMeta({
@@ -28,6 +28,17 @@ async function aoSubmeter(payload: EventPayload) {
       publicacaoStatus: payload.publicacaoStatus,
       vendasStatus: payload.vendasStatus
     })
+    if (payload.vendasEncerramEm) {
+      try {
+        await definirEncerramentoVendasAdmin(evento.eventoId, payload.vendasEncerramEm)
+      } catch {
+        toast.warning(
+          'Evento criado, mas o encerramento das vendas não foi salvo. Edite o evento para tentar de novo.'
+        )
+        await navigateTo(`/eventos/${evento.eventoId}/editar`)
+        return
+      }
+    }
     toast.success('Evento criado com sucesso!')
     await navigateTo(`/eventos/${evento.eventoId}/lotes`)
   } catch (e) {

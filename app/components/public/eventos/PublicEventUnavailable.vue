@@ -26,7 +26,7 @@ const mapa: Record<Exclude<PublicVendaSituacao, 'DISPONIVEL'>, Config> = {
   },
   VENDAS_ENCERRADAS: {
     titulo: 'Vendas encerradas',
-    descricao: 'As vendas para este evento foram encerradas.',
+    descricao: 'As vendas online para este evento foram encerradas.',
     classes: 'border-zinc-700 bg-zinc-800/60 text-zinc-300'
   },
   EVENTO_EM_ANDAMENTO: {

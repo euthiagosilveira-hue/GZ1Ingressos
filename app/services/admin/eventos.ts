@@ -19,6 +19,7 @@ interface AdminEventRow {
   nome: string
   slug: string
   inicio_em: string
+  vendas_encerram_em: string | null
   local: string
   status: string
   vendas_status: string
@@ -45,6 +46,7 @@ function mapear(row: AdminEventRow): AdminEventListItem {
     nome: row.nome,
     slug: row.slug,
     inicioEm: row.inicio_em,
+    vendasEncerramEm: row.vendas_encerram_em ?? null,
     local: row.local,
     status: row.status as EventStatus,
     vendasStatus: row.vendas_status as SalesStatus,
@@ -181,6 +183,7 @@ interface EventoAdminRow {
   descricao: string | null
   imagem_url: string | null
   inicio_em: string
+  vendas_encerram_em: string | null
   encerrado_em: string | null
   local: string
   endereco: string
@@ -200,6 +203,7 @@ function mapearDetalhe(row: EventoAdminRow): AdminEventDetail {
     descricao: row.descricao,
     imagemUrl: row.imagem_url,
     inicioEm: row.inicio_em,
+    vendasEncerramEm: row.vendas_encerram_em ?? null,
     encerradoEm: row.encerrado_em,
     local: row.local,
     endereco: row.endereco,
@@ -258,5 +262,29 @@ export async function atualizarEventoAdmin(
   })
   if (error) {
     throw new Error(mensagemErroEvento(error, 'Não foi possível atualizar o evento.'))
+  }
+}
+
+/**
+ * Define o horario proprio de encerramento das vendas online (RPC segura,
+ * ADMINISTRADOR). null = vendas online encerram no inicio do evento.
+ */
+export async function definirEncerramentoVendasAdmin(
+  eventoId: string,
+  vendasEncerramEm: string | null
+): Promise<void> {
+  const client = useSupabaseClient()
+  const { error } = await client.rpc('definir_encerramento_vendas_admin', {
+    p_evento_id: eventoId,
+    p_vendas_encerram_em: vendasEncerramEm
+  })
+  if (error) {
+    const mensagem = (error.message ?? '').toLowerCase()
+    if (mensagem.includes('depois do inicio')) {
+      throw new Error('O encerramento das vendas não pode ser depois do início do evento.')
+    }
+    throw new Error(
+      mensagemErroEvento(error, 'Não foi possível salvar o encerramento das vendas.')
+    )
   }
 }

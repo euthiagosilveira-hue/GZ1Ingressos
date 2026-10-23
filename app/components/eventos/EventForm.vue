@@ -98,7 +98,7 @@ function visualizarPublico() {
       :evento-id="props.eventoId"
       :evento-nome="valor.nome"
     />
-    <EventPublicationSection :value="valor" />
+    <EventPublicationSection :value="valor" :errors="erros" />
 
     <EventFormActions :submitting="enviando" @cancel="aoCancelar" @submit="aoSubmeter" />
   </div>
