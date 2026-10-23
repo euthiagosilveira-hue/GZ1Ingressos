@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Versao do app: aumente versionCode a cada novo APK publicado.
+def appVersionCode = 1
+def appVersionName = '1.0.0'
+
+android {
+    namespace 'br.com.gz1ingressos.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'br.com.gz1ingressos.app'
+        minSdk 24
+        targetSdk 35
+        versionCode appVersionCode
+        versionName appVersionName
+    }
+
+    buildTypes {
+        release {
+            // Sem minify: o app so abre o site (Trusted Web Activity).
+            minifyEnabled false
+            // Sem signingConfig: gera APK sem assinatura; a assinatura e feita
+            // fora do Gradle (ver android/README.md).
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

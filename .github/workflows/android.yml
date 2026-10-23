@@ -1,0 +1,72 @@
+name: Android APK
+
+# Compila o app Android (android/) e confere o APK publicado em
+# public/download/. Ver android/README.md.
+on:
+  push:
+    paths:
+      - 'android/**'
+      - 'public/download/**'
+      - 'public/.well-known/assetlinks.json'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Compilar APK (sem assinatura)
+        run: gradle -p android assembleRelease --no-daemon
+
+      - name: Conferir alinhamento
+        run: |
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BT/zipalign" -c -P 16 4 android/app/build/outputs/apk/release/app-release-unsigned.apk
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk gz1-ingressos-unsigned.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gz1-ingressos-unsigned
+          path: gz1-ingressos-unsigned.apk
+
+      # Publica o APK sem assinatura numa pre-release fixa, para ser baixado
+      # e assinado com a chave do app (que nao fica no repositorio).
+      - name: Publicar APK sem assinatura
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view android-unsigned >/dev/null 2>&1 || \
+            gh release create android-unsigned --prerelease --target "$GITHUB_SHA" \
+              --title "APK Android (sem assinatura)" \
+              --notes "Build automatico, sem assinatura. Nao instale este arquivo: use o APK assinado em https://gz-1-ingressos.vercel.app/download/gz1-ingressos.apk"
+          gh release upload android-unsigned gz1-ingressos-unsigned.apk --clobber
+
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conferir APK assinado publicado
+        run: |
+          APK=public/download/gz1-ingressos.apk
+          if [ ! -f "$APK" ]; then echo "Sem APK publicado ainda."; exit 0; fi
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BT/zipalign" -c -P 16 4 "$APK"
+          "$BT/apksigner" verify --min-sdk-version 24 --verbose --print-certs "$APK" | tee verify.txt
+          CERT=$(grep -m1 'certificate SHA-256 digest' verify.txt | awk '{print $NF}' | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//')
+          echo "Certificado do APK: $CERT"
+          grep -q "$CERT" public/.well-known/assetlinks.json || { echo "Certificado nao confere com assetlinks.json"; exit 1; }
