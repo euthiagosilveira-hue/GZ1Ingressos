@@ -10,7 +10,7 @@ import EventEmptyState from '~/components/eventos/EventEmptyState.vue'
 import EventFilters from '~/components/eventos/EventFilters.vue'
 import EventGrid from '~/components/eventos/EventGrid.vue'
 import { useAdminEvents } from '~/composables/useAdminEvents'
-import { encerrarEventoAdmin } from '~/services/admin/eventos'
+import { baixarListaPagantesAdmin, encerrarEventoAdmin } from '~/services/admin/eventos'
 
 definePageMeta({
   title: 'Eventos',
@@ -61,7 +61,31 @@ async function confirmarEncerramento() {
   }
 }
 
+async function baixarPagantes(eventoId: string, formato: 'xlsx' | 'txt') {
+  const aviso = toast.loading('Gerando lista de pagantes...')
+  try {
+    await baixarListaPagantesAdmin(eventoId, formato)
+    toast.update(aviso, {
+      render: 'Lista baixada. Confira a pasta de downloads.',
+      type: 'success',
+      isLoading: false,
+      autoClose: 3000
+    })
+  } catch (e) {
+    toast.update(aviso, {
+      render: e instanceof Error ? e.message : 'Não foi possível baixar a lista.',
+      type: 'error',
+      isLoading: false,
+      autoClose: 5000
+    })
+  }
+}
+
 function acaoEvento(payload: { id: string; action: string }) {
+  if (payload.action === 'pagantes-xlsx' || payload.action === 'pagantes-txt') {
+    baixarPagantes(payload.id, payload.action === 'pagantes-xlsx' ? 'xlsx' : 'txt')
+    return
+  }
   if (payload.action === 'encerrar') {
     eventoParaEncerrar.value = payload.id
     return
