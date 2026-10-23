@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import {
+  eventoDoFiltro,
+  urlPublicaEvento,
   mapearDashboardEvento,
   mapearPedidosRecentes,
   mapearPagamentosPorStatus,
@@ -172,4 +174,40 @@ test('mapearPedidosRecentes formata codigo/total/pagamento', () => {
   assert.equal(r[0].entranceUsed, 1)
   assert.equal(r[0].entranceTotal, 2)
   assert.match(r[0].total, /^R\$\s?80,00$/)
+})
+
+test('mapearDashboardEvento: expoe eventoId (inclusive payload legado com id)', () => {
+  assert.equal(mapearDashboardEvento({ ...EVENTO_BASE }).eventoId, 'e1')
+  const { evento_id: _omit, ...legado } = EVENTO_BASE
+  assert.equal(mapearDashboardEvento({ ...legado, id: 'e9' } as never).eventoId, 'e9')
+  assert.equal(mapearDashboardEvento(null).eventoId, '')
+})
+
+test('mapearDashboardEvento: badge por status (filtro pode mostrar evento realizado)', () => {
+  assert.equal(mapearDashboardEvento({ ...EVENTO_BASE, status: 'REALIZADO' }).badge, 'REALIZADO')
+  assert.equal(mapearDashboardEvento({ ...EVENTO_BASE, status: 'CANCELADO' }).badge, 'CANCELADO')
+})
+
+test('urlPublicaEvento: prefere siteUrl e remove barra final', () => {
+  assert.equal(
+    urlPublicaEvento('https://gz1.app/', 'http://localhost:3000', '/eventos/festa'),
+    'https://gz1.app/eventos/festa'
+  )
+  assert.equal(urlPublicaEvento('', 'http://localhost:3000', '/eventos/festa'), 'http://localhost:3000/eventos/festa')
+  assert.equal(urlPublicaEvento('https://gz1.app', 'x', ''), '')
+})
+
+test('eventoDoFiltro: aceita somente uuid', () => {
+  const id = '0b8a3c1e-6f2d-4c1a-9d3e-1234567890ab'
+  assert.equal(eventoDoFiltro(id), id)
+  assert.equal(eventoDoFiltro([id]), id)
+  assert.equal(eventoDoFiltro('abc'), null)
+  assert.equal(eventoDoFiltro(undefined), null)
+})
+
+test('card: link de venda com copiar e "Ver evento" filtrando o dashboard', () => {
+  assert.ok(card.includes('urlPublica'))
+  assert.ok(card.includes('copiarUrl'))
+  assert.ok(card.includes('`/?evento=${props.event.eventoId}`'))
+  assert.ok(card.includes('Ver todos os eventos'))
 })

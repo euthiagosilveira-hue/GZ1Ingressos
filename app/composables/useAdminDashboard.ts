@@ -1,8 +1,8 @@
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import { obterDashboardAdmin } from '~/services/admin/dashboard'
 import type { AdminDashboardData } from '~/types/dashboard'
-import { mapearDashboard } from '~/utils/dashboard'
+import { eventoDoFiltro, mapearDashboard } from '~/utils/dashboard'
 
 const VAZIO: AdminDashboardData = {
   metricas: { vendidos: 0, utilizados: 0, naoEntraram: 0, faturamento: 0, ticketMedio: 0 },
@@ -13,8 +13,13 @@ const VAZIO: AdminDashboardData = {
   entradasRecentes: []
 }
 
-/** Dashboard administrativo: dados reais via RPC + view-models prontos. */
+/**
+ * Dashboard administrativo: dados reais via RPC + view-models prontos.
+ * O filtro por evento vem da URL (?evento=<id>), entao sobrevive ao recarregar.
+ */
 export function useAdminDashboard() {
+  const route = useRoute()
+  const eventoFiltro = computed(() => eventoDoFiltro(route.query.evento))
   const data = ref<AdminDashboardData>(VAZIO)
   const carregando = ref(true)
   const erro = ref('')
@@ -25,7 +30,7 @@ export function useAdminDashboard() {
     carregando.value = true
     erro.value = ''
     try {
-      data.value = await obterDashboardAdmin()
+      data.value = await obterDashboardAdmin(eventoFiltro.value)
     } catch {
       erro.value = 'Não foi possível carregar o dashboard.'
       data.value = VAZIO
@@ -38,9 +43,14 @@ export function useAdminDashboard() {
     void carregar()
   })
 
+  watch(eventoFiltro, () => {
+    void carregar()
+  })
+
   return {
     data,
     viewModel,
+    eventoFiltro,
     carregando,
     erro,
     carregar,

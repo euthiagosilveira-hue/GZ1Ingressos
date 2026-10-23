@@ -70,6 +70,27 @@ function diaMes(iso: string): { dia: string; mes: string } {
   return { dia, mes }
 }
 
+const BADGES: Record<string, string> = {
+  EM_ANDAMENTO: 'AO VIVO',
+  AGENDADO: 'PRÓXIMO',
+  REALIZADO: 'REALIZADO',
+  CANCELADO: 'CANCELADO'
+}
+
+/** URL publica completa da pagina de venda do evento. */
+export function urlPublicaEvento(siteUrl: string | null | undefined, origemAtual: string, href: string): string {
+  if (!href) return ''
+  const base = String(siteUrl || origemAtual).replace(/\/+$/, '')
+  return `${base}${href}`
+}
+
+/** Le o id do evento do filtro (?evento=...) na URL do dashboard. */
+export function eventoDoFiltro(valor: unknown): string | null {
+  const v = Array.isArray(valor) ? valor[0] : valor
+  if (typeof v !== 'string') return null
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ? v : null
+}
+
 /**
  * Converte o evento real (EM_ANDAMENTO ou proximo AGENDADO) no view-model do
  * card. A capa usa imagem_url real validada; sem imagem, usa o fallback atual.
@@ -85,6 +106,7 @@ export function mapearDashboardEvento(evento: AdminDashboardEvento | null): Toda
       venue: '—',
       imageUrl: null,
       href: '',
+      eventoId: '',
       poster: { weekday: '', day: '--', month: '', label: 'EVENTO', name: '—' }
     }
   }
@@ -93,13 +115,15 @@ export function mapearDashboardEvento(evento: AdminDashboardEvento | null): Toda
   const semana = nomeDiaSemana(evento.inicio_em)
   return {
     hasEvent: true,
-    badge: evento.status === 'EM_ANDAMENTO' ? 'AO VIVO' : 'PRÓXIMO',
+    badge: BADGES[evento.status] ?? 'PRÓXIMO',
     title: evento.nome,
     date: formatData(evento.inicio_em),
     time: formatHora(evento.inicio_em),
     venue: evento.local ?? '—',
     imageUrl: imagemValida(evento.imagem_url),
     href: `/eventos/${evento.slug}`,
+    // RPC legada devolvia 'id' em vez de 'evento_id'
+    eventoId: evento.evento_id ?? (evento as { id?: string }).id ?? '',
     poster: {
       weekday: semana ? semana.slice(0, 3).toUpperCase() : '',
       day: dia,

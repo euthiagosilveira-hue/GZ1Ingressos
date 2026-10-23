@@ -96,7 +96,10 @@ export interface TodayEvent {
   time: string
   venue: string
   imageUrl: string | null
+  /** Caminho da pagina publica de venda (ex.: /eventos/meu-evento). */
   href: string
+  /** Id do evento (usado no filtro "Ver evento" do dashboard). */
+  eventoId: string
   poster: {
     weekday: string
     day: string

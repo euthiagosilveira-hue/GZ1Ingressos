@@ -1,13 +1,55 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { CalendarDaysIcon, ClockIcon, MapPinIcon } from '@heroicons/vue/24/outline'
+import { computed, onMounted, ref, watch } from 'vue'
+import {
+  CalendarDaysIcon,
+  CheckIcon,
+  ClockIcon,
+  DocumentDuplicateIcon,
+  LinkIcon,
+  MapPinIcon
+} from '@heroicons/vue/24/outline'
+import { toast } from 'vue3-toastify'
 
 import AppButton from '~/components/AppButton.vue'
 import type { TodayEvent } from '~/types/dashboard'
+import { urlPublicaEvento } from '~/utils/dashboard'
 
 const props = defineProps<{
   event: TodayEvent
+  /** Dashboard filtrado por este evento ("Ver evento" ja clicado). */
+  filtrado?: boolean
 }>()
+
+const config = useRuntimeConfig()
+// Origem so existe no navegador; evita divergencia SSR x cliente.
+const origem = ref('')
+onMounted(() => {
+  origem.value = window.location.origin
+})
+
+/** Link publico da pagina de venda, para divulgar. */
+const urlPublica = computed(() =>
+  config.public.siteUrl || origem.value
+    ? urlPublicaEvento(config.public.siteUrl as string, origem.value, props.event.href)
+    : ''
+)
+
+const copiado = ref(false)
+
+async function copiarUrl() {
+  const url = urlPublica.value
+  if (!url) return
+  try {
+    await navigator.clipboard.writeText(url)
+    copiado.value = true
+    toast.success('Link do evento copiado!')
+    setTimeout(() => {
+      copiado.value = false
+    }, 2000)
+  } catch {
+    toast.error('Não foi possível copiar. Selecione o link e copie manualmente.')
+  }
+}
 
 const imagemOk = ref(true)
 
@@ -25,7 +67,7 @@ const exibirCapa = computed(() => Boolean(props.event.imageUrl) && imagemOk.valu
 <template>
   <BaseCard :padded="false" class="flex h-full flex-col p-5 sm:p-6">
     <h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-zinc-400">
-      Próximo evento
+      {{ props.filtrado ? 'Evento selecionado' : 'Próximo evento' }}
     </h3>
 
     <div v-if="props.event.hasEvent" class="mt-5 flex flex-1 flex-col gap-5 sm:flex-row">
@@ -102,10 +144,49 @@ const exibirCapa = computed(() => Boolean(props.event.imageUrl) && imagemOk.valu
           </div>
         </div>
 
+        <!-- Link publico da pagina de venda + copiar -->
+        <div v-if="urlPublica" class="mt-5">
+          <p class="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            Link de venda
+          </p>
+          <div class="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 py-1.5 pl-3 pr-1.5">
+            <LinkIcon class="h-4 w-4 shrink-0 text-zinc-500" />
+            <a
+              :href="urlPublica"
+              target="_blank"
+              rel="noopener"
+              class="min-w-0 flex-1 truncate text-xs text-zinc-300 hover:text-amber-400"
+              :title="urlPublica"
+            >
+              {{ urlPublica }}
+            </a>
+            <button
+              type="button"
+              class="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-amber-400 transition-colors hover:bg-amber-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+              :aria-label="copiado ? 'Link copiado' : 'Copiar link do evento'"
+              @click="copiarUrl"
+            >
+              <CheckIcon v-if="copiado" class="h-4 w-4" />
+              <DocumentDuplicateIcon v-else class="h-4 w-4" />
+              {{ copiado ? 'Copiado' : 'Copiar' }}
+            </button>
+          </div>
+        </div>
+
         <div class="mt-auto pt-6">
+          <!-- "Ver evento" filtra o dashboard por este evento; filtrado, volta para todos -->
           <AppButton
-            v-if="props.event.href"
-            :to="props.event.href"
+            v-if="props.filtrado"
+            to="/"
+            variant="outline"
+            size="md"
+            class="w-fit"
+          >
+            Ver todos os eventos
+          </AppButton>
+          <AppButton
+            v-else-if="props.event.eventoId"
+            :to="`/?evento=${props.event.eventoId}`"
             variant="outlineAccent"
             size="md"
             class="w-fit"
