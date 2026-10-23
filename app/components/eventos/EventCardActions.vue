@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   ChartBarIcon,
+  CheckCircleIcon,
   EllipsisHorizontalIcon,
   EyeIcon,
   PencilSquareIcon,
@@ -9,6 +10,8 @@ import {
   UserGroupIcon,
   XCircleIcon
 } from '@heroicons/vue/24/outline'
+
+const props = withDefaults(defineProps<{ podeEncerrar?: boolean }>(), { podeEncerrar: false })
 
 const emit = defineEmits<{
   action: [action: string]
@@ -94,6 +97,16 @@ onBeforeUnmount(() => document.removeEventListener('click', aoClicarFora))
       >
         <PencilSquareIcon class="h-4 w-4 text-zinc-500" />
         Editar evento
+      </button>
+
+      <button
+        v-if="props.podeEncerrar"
+        type="button"
+        class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
+        @click.stop="selecionar('encerrar')"
+      >
+        <CheckCircleIcon class="h-4 w-4 text-zinc-500" />
+        Encerrar evento
       </button>
 
       <div class="my-1 h-px bg-zinc-800"></div>

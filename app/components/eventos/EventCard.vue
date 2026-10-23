@@ -8,7 +8,7 @@ import EventCardActions from '~/components/eventos/EventCardActions.vue'
 import EventPublicationBadge from '~/components/eventos/EventPublicationBadge.vue'
 import EventStatusBadge from '~/components/eventos/EventStatusBadge.vue'
 import { formatDataHora, formatMoeda, formatNumero } from '~/utils/format'
-import { vendasOnlineAbertas } from '~/utils/eventos'
+import { eventoPodeSerEncerrado, vendasOnlineAbertas } from '~/utils/eventos'
 import type { EventListItem } from '~/types/evento'
 
 const props = defineProps<{
@@ -33,6 +33,7 @@ const iniciais = computed(() =>
 )
 
 const vendasAbertas = computed(() => vendasOnlineAbertas(props.event))
+const podeEncerrar = computed(() => eventoPodeSerEncerrado(props.event))
 </script>
 
 <template>
@@ -127,7 +128,7 @@ const vendasAbertas = computed(() => vendasOnlineAbertas(props.event))
       <!-- Rodapé -->
       <div class="mt-5 flex items-center justify-between border-t border-zinc-800 pt-4">
         <AppButton variant="outline" size="sm" @click="emit('edit')">Editar</AppButton>
-        <EventCardActions @action="emit('action', $event)" />
+        <EventCardActions :pode-encerrar="podeEncerrar" @action="emit('action', $event)" />
       </div>
     </div>
   </BaseCard>
