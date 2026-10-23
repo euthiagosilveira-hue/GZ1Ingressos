@@ -173,3 +173,24 @@ test('descricaoConfirmacao nao expoe telefone completo', () => {
   assert.ok(!texto.includes('34999991234'))
   assert.equal(rotuloOrigem('VIP'), 'VIP')
 })
+
+// Sugestoes enquanto digita / nomes semelhantes
+test('sugestoes: busca automatica com atraso e descarte de respostas antigas', () => {
+  assert.ok(busca.includes('watch(nome'))
+  assert.ok(busca.includes('ATRASO_SUGESTOES_MS'))
+  assert.ok(busca.includes('minhaBusca !== sequenciaBusca'))
+})
+
+test('sugestoes: campo semelhante mapeado e exibido como "Nome parecido"', () => {
+  assert.ok(service.includes('semelhante: row.semelhante === true'))
+  assert.ok(painel.includes('v-if="item.semelhante"'))
+  assert.ok(painel.includes('Nome parecido'))
+})
+
+test('migration de nomes semelhantes preserva permissao e limita resultados', () => {
+  const sql = ler('../supabase/migrations/20261023040000_portaria_busca_nome_semelhante.sql')
+  assert.ok(sql.includes('private.usuario_pode_operar_portaria()'))
+  assert.ok(sql.includes('extensions.levenshtein'))
+  assert.ok(sql.includes('limit 30'))
+  assert.ok(/from public, anon, authenticated, service_role/.test(sql))
+})

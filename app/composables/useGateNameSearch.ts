@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, onScopeDispose, ref, watch } from 'vue'
 
 import { useGateSession } from '~/composables/useGateSession'
 import {
@@ -12,9 +12,16 @@ import { nomeBuscaValido, uuidValido } from '~/utils/gate'
 
 type ContextoErro = 'BUSCA' | 'REGISTRO'
 
+/** Espera apos a ultima tecla antes de buscar sugestoes. */
+export const ATRASO_SUGESTOES_MS = 300
+
 /**
  * Busca por nome na portaria: consulta e registro por RPC real, sempre dentro
  * do evento selecionado. Nenhuma regra de negocio no frontend.
+ *
+ * Sugestoes enquanto digita: com 2+ caracteres a busca roda sozinha apos uma
+ * pausa curta; respostas antigas (de letras ja apagadas/trocadas) sao
+ * descartadas para a lista nao "pular".
  *
  * Em erro TECNICO preserva o contexto (nome digitado / item selecionado) para
  * permitir "Tentar novamente" sem refazer o fluxo.
@@ -35,7 +42,16 @@ export function useGateNameSearch(eventoId: () => string) {
   const nomeValido = computed(() => nomeBuscaValido(nome.value))
   const podeBuscar = computed(() => uuidValido(eventoId()) && nomeValido.value)
 
+  let sequenciaBusca = 0
+  let timerSugestoes: ReturnType<typeof setTimeout> | null = null
+
+  function cancelarSugestoes() {
+    if (timerSugestoes) clearTimeout(timerSugestoes)
+    timerSugestoes = null
+  }
+
   async function buscar() {
+    cancelarSugestoes()
     erro.value = null
     contextoErro.value = null
     if (!uuidValido(eventoId())) {
@@ -44,22 +60,50 @@ export function useGateNameSearch(eventoId: () => string) {
     }
     if (!nomeValido.value) return
 
+    const minhaBusca = ++sequenciaBusca
     buscando.value = true
     try {
-      resultados.value = await buscarIngressosPorNome({
+      const encontrados = await buscarIngressosPorNome({
         eventoId: eventoId(),
         nome: nome.value.trim()
       })
+      if (minhaBusca !== sequenciaBusca) return
+      resultados.value = encontrados
       jaBuscou.value = true
     } catch (e) {
+      if (minhaBusca !== sequenciaBusca) return
       // Preserva o texto digitado; erro tecnico (nao "nenhum encontrado").
       erro.value = e instanceof GateError ? e.code : 'DESCONHECIDO'
       contextoErro.value = 'BUSCA'
       resultados.value = []
     } finally {
-      buscando.value = false
+      if (minhaBusca === sequenciaBusca) buscando.value = false
     }
   }
+
+  // Sugestoes enquanto digita.
+  watch(nome, () => {
+    cancelarSugestoes()
+    if (resultado.value || registrando.value) return
+    if (!nomeValido.value) {
+      // Texto apagado: limpa a lista e ignora respostas pendentes.
+      sequenciaBusca++
+      buscando.value = false
+      resultados.value = []
+      jaBuscou.value = false
+      if (contextoErro.value === 'BUSCA') {
+        erro.value = null
+        contextoErro.value = null
+      }
+      return
+    }
+    timerSugestoes = setTimeout(() => {
+      timerSugestoes = null
+      void buscar()
+    }, ATRASO_SUGESTOES_MS)
+  })
+
+  onScopeDispose(cancelarSugestoes)
 
   async function registrar(ingresso: IngressoBuscaNome) {
     erro.value = null

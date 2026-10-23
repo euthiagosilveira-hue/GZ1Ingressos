@@ -64,6 +64,8 @@ export interface IngressoBuscaNome {
   entradaEm: string | null
   /** Telefone para desambiguacao (cru; mascarar no frontend). Pode ser null. */
   telefone: string | null
+  /** Nome parecido (nao contem exatamente o que foi digitado). */
+  semelhante: boolean
 }
 
 export type TipoEntradaGate = 'INGRESSO' | 'VIP'
