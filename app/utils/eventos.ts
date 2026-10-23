@@ -189,3 +189,15 @@ export function vendasOnlineAbertas(
   const limite = limiteVendasOnline(evento.inicioEm, evento.vendasEncerramEm ?? null)
   return agora.getTime() < new Date(limite).getTime()
 }
+
+/**
+ * O admin pode encerrar (marcar REALIZADO) um evento em andamento, ou um
+ * AGENDADO cujo inicio ja passou (mesma regra de private.encerrar_evento).
+ */
+export function eventoPodeSerEncerrado(
+  evento: Pick<EventListItem, 'status' | 'inicioEm'>,
+  agora: Date = new Date()
+): boolean {
+  if (evento.status === 'EM_ANDAMENTO') return true
+  return evento.status === 'AGENDADO' && agora.getTime() >= new Date(evento.inicioEm).getTime()
+}

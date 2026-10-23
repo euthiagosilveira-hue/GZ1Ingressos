@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { PlusIcon } from '@heroicons/vue/24/outline'
+import { toast } from 'vue3-toastify'
 
 import AppButton from '~/components/AppButton.vue'
+import ConfirmDialog from '~/components/ConfirmDialog.vue'
 import PageHeader from '~/components/PageHeader.vue'
 import EventEmptyState from '~/components/eventos/EventEmptyState.vue'
 import EventFilters from '~/components/eventos/EventFilters.vue'
 import EventGrid from '~/components/eventos/EventGrid.vue'
 import { useAdminEvents } from '~/composables/useAdminEvents'
+import { encerrarEventoAdmin } from '~/services/admin/eventos'
 
 definePageMeta({
   title: 'Eventos',
@@ -37,7 +40,32 @@ function editarEvento(id: string) {
   navigateTo(`/eventos/${id}/editar`)
 }
 
+const eventoParaEncerrar = ref<string | null>(null)
+const encerrando = ref(false)
+const nomeEventoParaEncerrar = computed(
+  () => eventosLista.value.find((item) => item.id === eventoParaEncerrar.value)?.nome ?? ''
+)
+
+async function confirmarEncerramento() {
+  if (!eventoParaEncerrar.value) return
+  encerrando.value = true
+  try {
+    await encerrarEventoAdmin(eventoParaEncerrar.value)
+    toast.success('Evento encerrado.')
+    eventoParaEncerrar.value = null
+    await carregar()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Não foi possível encerrar o evento.')
+  } finally {
+    encerrando.value = false
+  }
+}
+
 function acaoEvento(payload: { id: string; action: string }) {
+  if (payload.action === 'encerrar') {
+    eventoParaEncerrar.value = payload.id
+    return
+  }
   if (payload.action === 'lotes') {
     navigateTo(`/eventos/${payload.id}/lotes`)
     return
@@ -117,4 +145,15 @@ function acaoEvento(payload: { id: string; action: string }) {
       Atualizar lista
     </button>
   </div>
+
+  <ConfirmDialog
+    :open="eventoParaEncerrar !== null"
+    :title="`Encerrar ${nomeEventoParaEncerrar}?`"
+    description="O evento passa a Realizado: as vendas e o lote ativo são encerrados e a portaria deixa de aceitar entradas. Não dá para desfazer."
+    confirm-label="Encerrar evento"
+    tone="danger"
+    :loading="encerrando"
+    @confirm="confirmarEncerramento"
+    @cancel="eventoParaEncerrar = null"
+  />
 </template>

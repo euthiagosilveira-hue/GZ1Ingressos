@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { mapearEventoAdminParaListItem, gerarSlug, montarInicioEm, separarInstanteSaoPaulo, mapearEventoAdminParaFormulario, limiteVendasOnline, vendasOnlineAbertas } from '../app/utils/eventos.ts'
+import { mapearEventoAdminParaListItem, gerarSlug, montarInicioEm, separarInstanteSaoPaulo, mapearEventoAdminParaFormulario, limiteVendasOnline, vendasOnlineAbertas, eventoPodeSerEncerrado } from '../app/utils/eventos.ts'
 import type { AdminEventDetail } from '../app/types/evento.ts'
 
 test('mapearEventoAdminParaListItem adapta o item real para o shape dos cards', () => {
@@ -229,4 +229,17 @@ test('vendasOnlineAbertas considera status e horario', () => {
     vendasOnlineAbertas({ ...base, vendasStatus: 'ENCERRADAS' }, new Date('2026-10-29T10:00:00.000Z')),
     false
   )
+})
+
+test('eventoPodeSerEncerrado: em andamento ou agendado ja iniciado', () => {
+  const agora = new Date('2026-10-29T23:30:00.000Z')
+  const inicioEm = '2026-10-29T23:00:00.000Z'
+  assert.equal(eventoPodeSerEncerrado({ status: 'EM_ANDAMENTO', inicioEm }, agora), true)
+  assert.equal(eventoPodeSerEncerrado({ status: 'AGENDADO', inicioEm }, agora), true)
+  assert.equal(
+    eventoPodeSerEncerrado({ status: 'AGENDADO', inicioEm: '2026-10-30T23:00:00.000Z' }, agora),
+    false
+  )
+  assert.equal(eventoPodeSerEncerrado({ status: 'REALIZADO', inicioEm }, agora), false)
+  assert.equal(eventoPodeSerEncerrado({ status: 'CANCELADO', inicioEm }, agora), false)
 })

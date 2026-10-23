@@ -288,3 +288,19 @@ export async function definirEncerramentoVendasAdmin(
     )
   }
 }
+
+/** Encerra o evento (REALIZADO), fechando vendas e lote ativo (RPC segura, ADMINISTRADOR). */
+export async function encerrarEventoAdmin(eventoId: string): Promise<void> {
+  const client = useSupabaseClient()
+  const { error } = await client.rpc('encerrar_evento', { p_evento_id: eventoId })
+  if (error) {
+    const mensagem = (error.message ?? '').toLowerCase()
+    if (mensagem.includes('somente evento em_andamento')) {
+      throw new Error('Só é possível encerrar um evento que já começou.')
+    }
+    if (mensagem.includes('ja esta realizado')) {
+      throw new Error('Este evento já foi encerrado.')
+    }
+    throw new Error(mensagemErroEvento(error, 'Não foi possível encerrar o evento.'))
+  }
+}
