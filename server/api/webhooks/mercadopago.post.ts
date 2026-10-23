@@ -3,6 +3,7 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 import { ehUuid } from '../../services/payments/payment-service'
 import { MercadoPagoProvider } from '../../services/payments/mercado-pago/mercado-pago-provider'
 import { validarAssinaturaMp } from '../../services/payments/mercado-pago/mercado-pago-signature'
+import { notificarVendaConfirmada } from '../../services/push/push-service'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
@@ -43,7 +44,7 @@ export default defineEventHandler(async (event) => {
 
   if (charge.status === 'APROVADO' && ehUuid(charge.externalReference)) {
     const client = serverSupabaseServiceRole(event)
-    const { error } = await client.rpc('confirmar_pagamento', {
+    const { data, error } = await client.rpc('confirmar_pagamento', {
       p_pagamento_id: charge.externalReference,
       p_transaction_id: charge.transactionId,
       p_referencia_externa: charge.externalReference
@@ -51,6 +52,11 @@ export default defineEventHandler(async (event) => {
     if (error) {
       setResponseStatus(event, 500)
       return { error: 'ERRO_CONFIRMACAO' }
+    }
+    // So a primeira confirmacao notifica (reenvios do webhook voltam 'ja_confirmado').
+    const resultado = data as { resultado?: string; pedido_id?: string } | null
+    if (resultado?.resultado === 'confirmado' && resultado.pedido_id) {
+      await notificarVendaConfirmada(event, resultado.pedido_id)
     }
   }
 

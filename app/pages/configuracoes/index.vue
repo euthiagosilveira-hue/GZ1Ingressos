@@ -2,6 +2,7 @@
 import { UsersIcon } from '@heroicons/vue/24/outline'
 
 import BaseCard from '~/components/BaseCard.vue'
+import NotificacoesVendaCard from '~/components/configuracoes/NotificacoesVendaCard.vue'
 import PageHeader from '~/components/PageHeader.vue'
 
 definePageMeta({
@@ -37,6 +38,10 @@ definePageMeta({
           </div>
         </BaseCard>
       </NuxtLink>
+
+      <ClientOnly>
+        <NotificacoesVendaCard />
+      </ClientOnly>
     </div>
   </div>
 </template>
