@@ -187,6 +187,15 @@ async function entrar() {
               </div>
             </div>
 
+            <div class="-mt-2 text-right">
+              <NuxtLink
+                to="/esqueci-senha"
+                class="text-xs font-medium text-zinc-400 underline-offset-4 transition-colors hover:text-[#D9B138] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D9B138]/50"
+              >
+                Esqueci minha senha
+              </NuxtLink>
+            </div>
+
             <button
               type="submit"
               :disabled="carregando"

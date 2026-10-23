@@ -36,7 +36,11 @@ test('acessibilidade: labels, autocomplete e toggle de senha', () => {
 
 test('nao inventa recursos de autenticacao inexistentes', () => {
   assert.ok(!page.includes('Lembrar de mim'))
-  assert.ok(!page.includes('Esqueci minha senha'))
+})
+
+test('login tem link para Esqueci minha senha', () => {
+  assert.ok(page.includes('to="/esqueci-senha"'))
+  assert.ok(page.includes('Esqueci minha senha'))
 })
 
 test('Voltar ao site aponta para a rota publica', () => {
