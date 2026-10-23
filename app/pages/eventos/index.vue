@@ -90,6 +90,10 @@ function acaoEvento(payload: { id: string; action: string }) {
     eventoParaEncerrar.value = payload.id
     return
   }
+  if (payload.action === 'dashboard') {
+    navigateTo(`/?evento=${payload.id}`)
+    return
+  }
   if (payload.action === 'lotes') {
     navigateTo(`/eventos/${payload.id}/lotes`)
     return
