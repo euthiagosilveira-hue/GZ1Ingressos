@@ -47,3 +47,26 @@ export async function compartilharOuCopiar(input: {
 
   return 'falha'
 }
+
+/**
+ * Link do WhatsApp com a mensagem do ingresso ja escrita.
+ * Telefone brasileiro (DDD + numero) recebe o 55 na frente; sem telefone,
+ * o WhatsApp abre para o usuario escolher o contato.
+ */
+export function montarLinkWhatsApp(input: {
+  url: string
+  eventoNome: string
+  participanteNome?: string | null
+  telefone?: string | null
+}): string {
+  const saudacao = input.participanteNome ? `Olá, ${input.participanteNome}! ` : ''
+  const evento = input.eventoNome ? ` para ${input.eventoNome}` : ''
+  const texto = `${saudacao}Aqui está seu ingresso${evento}. Apresente o QR Code na entrada: ${input.url}`
+
+  let digitos = (input.telefone ?? '').replace(/\D/g, '')
+  if (digitos.length === 10 || digitos.length === 11) digitos = `55${digitos}`
+  if (digitos.length < 12 || digitos.length > 13) digitos = ''
+
+  const base = digitos ? `https://wa.me/${digitos}` : 'https://wa.me/'
+  return `${base}?text=${encodeURIComponent(texto)}`
+}
