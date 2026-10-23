@@ -2,7 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue3-toastify'
 
+import BaseModal from '~/components/BaseModal.vue'
 import ConfirmDialog from '~/components/ConfirmDialog.vue'
+import AdminTicketQr from '~/components/ingressos/AdminTicketQr.vue'
 import OrderBuyerCard from '~/components/pedidos/OrderBuyerCard.vue'
 import OrderDetailActions from '~/components/pedidos/OrderDetailActions.vue'
 import OrderDetailHeader from '~/components/pedidos/OrderDetailHeader.vue'
@@ -21,6 +23,11 @@ const props = defineProps<{
 const route = useRoute()
 
 const confirmarReembolso = ref(false)
+const ingressoAbertoId = ref<string | null>(null)
+
+const ingressoAberto = computed(
+  () => props.pedido.ingressos.find((item) => item.id === ingressoAbertoId.value) ?? null
+)
 
 const temReembolso = computed(() => (props.pedido.pagamento?.valorReembolsado ?? 0) > 0)
 
@@ -54,8 +61,8 @@ function confirmarSolicitacaoReembolso() {
   toast.success('Solicitação de reembolso registrada (mock).')
 }
 
-function visualizarIngresso() {
-  toast.info('Visualização do ingresso será implementada na próxima etapa.')
+function visualizarIngresso(id: string) {
+  ingressoAbertoId.value = id
 }
 
 onMounted(() => {
@@ -90,6 +97,15 @@ onMounted(() => {
         <OrderPaymentCard :pedido="props.pedido" />
       </div>
     </div>
+
+    <BaseModal
+      :open="!!ingressoAberto"
+      :title="ingressoAberto ? `Ingresso ${ingressoAberto.codigo}` : ''"
+      :subtitle="ingressoAberto?.participanteNome ?? ''"
+      @close="ingressoAbertoId = null"
+    >
+      <AdminTicketQr v-if="ingressoAberto" :ingresso-id="ingressoAberto.id" />
+    </BaseModal>
 
     <ConfirmDialog
       :open="confirmarReembolso"
