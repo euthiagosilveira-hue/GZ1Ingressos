@@ -2,6 +2,17 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: false },
+  app: {
+    head: {
+      htmlAttrs: { lang: 'pt-BR' },
+      meta: [{ name: 'theme-color', content: '#09090b' }],
+      link: [
+        // PWA / aplicativo Android (TWA): ver android/README.md
+        { rel: 'manifest', href: '/manifest.webmanifest' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }
+      ]
+    }
+  },
   modules: ['@nuxtjs/supabase', '@nuxtjs/tailwindcss'],
   runtimeConfig: {
     // Somente backend. Nunca expor em public.

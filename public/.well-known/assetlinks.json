@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.com.gz1ingressos.app",
+      "sha256_cert_fingerprints": [
+        "D4:55:C1:76:C0:E2:13:24:83:B2:D6:83:5F:C4:7D:D7:85:9D:66:24:A4:C0:90:0D:7D:39:FF:25:84:84:18:37"
+      ]
+    }
+  }
+]

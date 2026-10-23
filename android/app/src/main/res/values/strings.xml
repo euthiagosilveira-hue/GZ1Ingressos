@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="appName">GZ1 Ingressos</string>
+    <string name="hostName">gz-1-ingressos.vercel.app</string>
+    <string name="launchUrl">https://gz-1-ingressos.vercel.app/abrir</string>
+    <string name="providerAuthority">br.com.gz1ingressos.app.fileprovider</string>
+    <string name="assetStatements" translatable="false">
+        [{
+            \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+            \"target\": {\"namespace\": \"web\", \"site\": \"https://gz-1-ingressos.vercel.app\"}
+        }]
+    </string>
+</resources>
