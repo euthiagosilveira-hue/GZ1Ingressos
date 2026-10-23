@@ -255,10 +255,13 @@ async function novaBusca() {
             spellcheck="false"
             enterkeyhint="search"
             class="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
-            placeholder="Digite o nome completo"
+            placeholder="Comece a digitar o nome"
           />
           <p v-if="precisaHintNome(nome)" class="text-xs text-zinc-500">
-            Informe o nome completo (mínimo 2 caracteres).
+            Digite pelo menos 2 letras para ver sugestões.
+          </p>
+          <p v-else-if="buscando" class="text-xs text-zinc-500" aria-live="polite">
+            Procurando nomes...
           </p>
         </div>
 
@@ -288,7 +291,7 @@ async function novaBusca() {
         v-if="jaBuscou && !buscando && resultados.length === 0 && !erro"
         class="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-center text-sm text-zinc-400"
       >
-        Nenhum ingresso encontrado com esse nome neste evento.
+        Nenhum nome parecido encontrado neste evento.
       </div>
 
       <ul v-if="resultados.length > 0" class="space-y-3" aria-live="polite">
@@ -321,6 +324,13 @@ async function novaBusca() {
                   class="inline-flex items-center rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300"
                 >
                   {{ rotuloStatus(item.status) }}
+                </span>
+                <span
+                  v-if="item.semelhante"
+                  class="inline-flex items-center rounded-full border border-sky-400/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-300"
+                  title="O nome não é exatamente o digitado. Confira antes de registrar."
+                >
+                  Nome parecido
                 </span>
                 <span
                   v-if="ehAmbiguo(item)"
