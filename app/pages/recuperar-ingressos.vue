@@ -7,7 +7,7 @@ definePageMeta({
 
 useSeoMeta({
   title: 'Recuperar ingressos | GZ1 Ingresso',
-  description: 'Recupere seus ingressos usando o código do pedido e o telefone da compra.'
+  description: 'Recupere seus ingressos usando o telefone e o e-mail da compra.'
 })
 </script>
 

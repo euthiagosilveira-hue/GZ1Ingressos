@@ -6,6 +6,7 @@ import {
   mensagemPagamentoErro,
   obterCheckoutPedido
 } from '~/services/public/pagamentos'
+import { armazenamentoNavegador, salvarIngresso } from '~/utils/ingressosSalvos'
 import type {
   CheckoutPublico,
   PagamentoErrorCode,
@@ -165,6 +166,23 @@ export function usePublicPayment() {
     }
   }
 
+  /**
+   * Salva o pedido neste aparelho assim que a tela de pagamento abre: se o
+   * comprador sair antes de ver os ingressos, ele volta por "Meus ingressos".
+   */
+  function lembrarNoAparelho() {
+    const atual = checkout.value
+    if (!token.value || !atual) return
+    if (atual.pedidoStatus !== 'RESERVADO' && atual.pedidoStatus !== 'PAGO') return
+    salvarIngresso(armazenamentoNavegador(), {
+      checkoutToken: token.value,
+      codigoPedido: atual.codigoPedido,
+      eventoNome: atual.eventoNome,
+      eventoSlug: atual.eventoSlug,
+      eventoInicioEm: null
+    })
+  }
+
   /** Carga inicial: recupera e, se necessario, cria/reutiliza o pagamento. */
   async function carregar() {
     carregando.value = true
@@ -183,6 +201,7 @@ export function usePublicPayment() {
         atual = await buscar()
       }
       checkout.value = atual
+      lembrarNoAparelho()
     } catch (e) {
       tratarErro(e)
       checkout.value = null

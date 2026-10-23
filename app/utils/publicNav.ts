@@ -8,7 +8,8 @@ export interface PublicNavItem {
  * garantindo os mesmos destinos em desktop e mobile.
  *
  * Nunca incluir tokens (qr, checkout ou recovery): o acesso aos ingressos
- * passa sempre pela validacao de pedido + telefone em /recuperar-ingressos.
+ * passa pelos pedidos salvos no aparelho ou pela validacao de telefone +
+ * e-mail em /recuperar-ingressos.
  */
 export const PUBLIC_NAV_ITEMS: readonly PublicNavItem[] = [
   { to: '/eventos-publicos', label: 'Eventos' },

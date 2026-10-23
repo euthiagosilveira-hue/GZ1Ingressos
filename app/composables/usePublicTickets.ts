@@ -5,6 +5,11 @@ import {
   obterIngressosCheckout,
   obterIngressosRecuperacao
 } from '~/services/public/ingressos'
+import {
+  armazenamentoNavegador,
+  removerIngressoSalvo,
+  salvarIngresso
+} from '~/utils/ingressosSalvos'
 import type { PublicOrderTickets, TicketsErrorCode } from '~/types/publicIngressos'
 
 export type TicketsEstado =
@@ -63,12 +68,31 @@ export function usePublicTickets() {
       tickets.value = recoveryToken.value
         ? await obterIngressosRecuperacao(recoveryToken.value)
         : await obterIngressosCheckout(token.value as string)
+      lembrarNoAparelho()
     } catch (e) {
       erro.value = e instanceof TicketsError ? e.code : 'ERRO_INESPERADO'
       tickets.value = null
     } finally {
       carregando.value = false
     }
+  }
+
+  /** Pedido aberto pelo link original fica salvo para voltar sem codigo. */
+  function lembrarNoAparelho() {
+    const atual = tickets.value
+    if (!token.value || recoveryToken.value || !atual) return
+    const storage = armazenamentoNavegador()
+    if (atual.pedidoStatus === 'CANCELADO' || atual.pedidoStatus === 'EXPIRADO') {
+      removerIngressoSalvo(storage, token.value)
+      return
+    }
+    salvarIngresso(storage, {
+      checkoutToken: token.value,
+      codigoPedido: atual.codigoPedido,
+      eventoNome: atual.eventoNome,
+      eventoSlug: atual.eventoSlug,
+      eventoInicioEm: atual.eventoInicioEm
+    })
   }
 
   onMounted(() => {
