@@ -304,3 +304,42 @@ export async function encerrarEventoAdmin(eventoId: string): Promise<void> {
     throw new Error(mensagemErroEvento(error, 'Não foi possível encerrar o evento.'))
   }
 }
+
+export type FormatoListaPagantes = 'xlsx' | 'txt'
+
+/**
+ * Baixa a lista de pagantes do evento (Excel ou bloco de notas) e dispara o
+ * download no navegador. O arquivo e gerado no servidor (so administradores).
+ */
+export async function baixarListaPagantesAdmin(
+  eventoId: string,
+  formato: FormatoListaPagantes
+): Promise<void> {
+  let resposta: Response
+  try {
+    resposta = await fetch(
+      `/api/admin/eventos/${encodeURIComponent(eventoId)}/pagantes?formato=${formato}`,
+      { credentials: 'same-origin' }
+    )
+  } catch {
+    throw new Error('Sem conexão. Verifique a internet e tente de novo.')
+  }
+  if (!resposta.ok) {
+    throw new Error(
+      resposta.status === 401 || resposta.status === 403
+        ? 'Só administradores podem baixar a lista de pagantes.'
+        : 'Não foi possível gerar a lista de pagantes.'
+    )
+  }
+
+  const disposicao = resposta.headers.get('Content-Disposition') ?? ''
+  const nome = /filename="([^"]+)"/.exec(disposicao)?.[1] ?? `pagantes.${formato}`
+  const url = URL.createObjectURL(await resposta.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = nome
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
