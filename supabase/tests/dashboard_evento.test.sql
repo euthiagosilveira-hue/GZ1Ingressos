@@ -18,7 +18,7 @@ begin;
 
 do $$
 begin
-  if has_function_privilege('anon', 'public.obter_dashboard_admin()', 'EXECUTE') then
+  if has_function_privilege('anon', 'public.obter_dashboard_admin(uuid)', 'EXECUTE') then
     raise exception 'ACL: anon nao pode executar obter_dashboard_admin';
   end if;
 end $$;

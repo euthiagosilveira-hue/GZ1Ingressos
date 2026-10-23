@@ -6,7 +6,8 @@ import {
   ClockIcon,
   CreditCardIcon,
   TicketIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  XMarkIcon
 } from '@heroicons/vue/24/outline'
 
 import { useAdminDashboard } from '~/composables/useAdminDashboard'
@@ -23,7 +24,7 @@ interface Metric {
   subtitleClass?: string
 }
 
-const { viewModel } = useAdminDashboard()
+const { viewModel, eventoFiltro } = useAdminDashboard()
 
 function percentual(valor: number, total: number): string {
   if (total <= 0) return '0% do total'
@@ -80,6 +81,24 @@ const metrics = computed<Metric[]>(() => {
 </script>
 
 <template>
+  <!-- Aviso do filtro por evento (vem do botao "Ver evento") -->
+  <div
+    v-if="eventoFiltro"
+    class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-sm"
+  >
+    <p class="text-zinc-200">
+      Mostrando somente os dados de
+      <span class="font-semibold text-amber-400">{{ viewModel.evento.hasEvent ? viewModel.evento.title : 'evento selecionado' }}</span>
+    </p>
+    <NuxtLink
+      to="/"
+      class="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-amber-400 hover:text-amber-300"
+    >
+      <XMarkIcon class="h-4 w-4" />
+      Limpar filtro
+    </NuxtLink>
+  </div>
+
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
     <DashboardMetricCard
       v-for="metric in metrics"
@@ -96,7 +115,11 @@ const metrics = computed<Metric[]>(() => {
   </div>
 
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-12">
-    <TodayEventCard class="lg:col-span-1 xl:col-span-4" :event="viewModel.evento" />
+    <TodayEventCard
+      class="lg:col-span-1 xl:col-span-4"
+      :event="viewModel.evento"
+      :filtrado="Boolean(eventoFiltro)"
+    />
     <EntriesByHourChart class="lg:col-span-1 xl:col-span-5" :data="viewModel.entriesByHour" />
     <PaymentStatusChart class="lg:col-span-2 xl:col-span-3" :data="viewModel.paymentStatus" />
   </div>
