@@ -255,12 +255,15 @@ export async function consultarStatus(
     throw new PaymentServiceError('CHECKOUT_INVALIDO', 'Checkout não encontrado.', 404)
   }
 
-  // Pedido ja finalizado (nao aprovado) reflete o estado definitivo.
-  if (
-    (checkout.pedido_status === 'EXPIRADO' || checkout.pedido_status === 'CANCELADO') &&
-    checkout.pagamento_status !== 'APROVADO'
-  ) {
-    return { status: checkout.pedido_status === 'CANCELADO' ? 'CANCELADO' : 'EXPIRADO' }
+  // Pedido cancelado (nao aprovado) reflete o estado definitivo. Pedido
+  // EXPIRADO com Pix gerado ainda consulta o provedor: o cliente pode ter
+  // pago depois da reserva vencer (confirmar_pagamento aceita o atraso).
+  if (checkout.pedido_status === 'CANCELADO' && checkout.pagamento_status !== 'APROVADO') {
+    return { status: 'CANCELADO' }
+  }
+  const expiradoSemPix = checkout.pedido_status === 'EXPIRADO' && !checkout.cobranca_id
+  if (expiradoSemPix && checkout.pagamento_status !== 'APROVADO') {
+    return { status: 'EXPIRADO' }
   }
 
   let status: Gz1PaymentStatus = (checkout.pagamento_status as Gz1PaymentStatus) ?? 'PENDENTE'
@@ -283,6 +286,10 @@ export async function consultarStatus(
     } catch {
       // Provedor indisponivel/ordem nao encontrada: nao bloqueia a expiracao.
     }
+  }
+
+  if (checkout.pedido_status === 'EXPIRADO' && status !== 'APROVADO') {
+    return { status: 'EXPIRADO' }
   }
 
   // 2) Somente expira se NAO estiver aprovado e a reserva realmente venceu.

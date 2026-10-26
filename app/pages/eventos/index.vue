@@ -6,6 +6,7 @@ import { toast } from 'vue3-toastify'
 import AppButton from '~/components/AppButton.vue'
 import ConfirmDialog from '~/components/ConfirmDialog.vue'
 import PageHeader from '~/components/PageHeader.vue'
+import EventExpiredPaymentsModal from '~/components/eventos/EventExpiredPaymentsModal.vue'
 import EventEmptyState from '~/components/eventos/EventEmptyState.vue'
 import EventFilters from '~/components/eventos/EventFilters.vue'
 import EventGrid from '~/components/eventos/EventGrid.vue'
@@ -81,7 +82,16 @@ async function baixarPagantes(eventoId: string, formato: 'xlsx' | 'txt') {
   }
 }
 
+const eventoPagamentosExpirados = ref<string | null>(null)
+const nomeEventoPagamentosExpirados = computed(
+  () => eventosLista.value.find((item) => item.id === eventoPagamentosExpirados.value)?.nome ?? ''
+)
+
 function acaoEvento(payload: { id: string; action: string }) {
+  if (payload.action === 'pagamentos-expirados') {
+    eventoPagamentosExpirados.value = payload.id
+    return
+  }
   if (payload.action === 'pagantes-xlsx' || payload.action === 'pagantes-txt') {
     baixarPagantes(payload.id, payload.action === 'pagantes-xlsx' ? 'xlsx' : 'txt')
     return
@@ -173,6 +183,13 @@ function acaoEvento(payload: { id: string; action: string }) {
       Atualizar lista
     </button>
   </div>
+
+  <EventExpiredPaymentsModal
+    :open="eventoPagamentosExpirados !== null"
+    :evento-id="eventoPagamentosExpirados"
+    :evento-nome="nomeEventoPagamentosExpirados"
+    @close="eventoPagamentosExpirados = null"
+  />
 
   <ConfirmDialog
     :open="eventoParaEncerrar !== null"
