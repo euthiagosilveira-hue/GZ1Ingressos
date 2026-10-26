@@ -66,3 +66,19 @@ export function descricaoConfirmacao(item: IngressoBuscaNome): string {
   if (tel) partes.push(tel)
   return partes.join(' • ')
 }
+
+/** Um mesmo ingresso expirado so e conferido no Mercado Pago a cada 60 s. */
+export const INTERVALO_CONFERENCIA_MS = 60_000
+
+/** Ingressos expirados (nao VIP) ainda nao conferidos no intervalo. */
+export function ingressosParaConferir(
+  itens: IngressoBuscaNome[],
+  conferidosEm: Map<string, number>,
+  agoraMs: number
+): string[] {
+  return itens
+    .filter((item) => item.origem === 'INGRESSO' && item.status === 'EXPIRADO' && item.ingressoId)
+    .map((item) => item.ingressoId as string)
+    .filter((id) => agoraMs - (conferidosEm.get(id) ?? -Infinity) >= INTERVALO_CONFERENCIA_MS)
+    .slice(0, 20)
+}

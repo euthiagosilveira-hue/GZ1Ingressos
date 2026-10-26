@@ -4,11 +4,13 @@ import { useGateSession } from '~/composables/useGateSession'
 import {
   GateError,
   buscarIngressosPorNome,
+  conferirPagamentosExpirados,
   registrarEntradaNome,
   registrarEntradaVip
 } from '~/services/gate/ingressos'
 import type { GateScanErroCode, IngressoBuscaNome, RegistrarEntradaQrResult } from '~/types/gate'
 import { nomeBuscaValido, uuidValido } from '~/utils/gate'
+import { ingressosParaConferir } from '~/utils/portariaBusca'
 
 type ContextoErro = 'BUSCA' | 'REGISTRO'
 
@@ -36,6 +38,9 @@ export function useGateNameSearch(eventoId: () => string) {
   const contextoErro = ref<ContextoErro | null>(null)
   const itemParaRetry = ref<IngressoBuscaNome | null>(null)
   const jaBuscou = ref(false)
+  const conferenciasPendentes = ref(0)
+  const verificandoPix = computed(() => conferenciasPendentes.value > 0)
+  const conferidosEm = new Map<string, number>()
 
   const { registrar: registrarSessao } = useGateSession()
 
@@ -70,6 +75,7 @@ export function useGateNameSearch(eventoId: () => string) {
       if (minhaBusca !== sequenciaBusca) return
       resultados.value = encontrados
       jaBuscou.value = true
+      void conferirExpirados(encontrados, minhaBusca)
     } catch (e) {
       if (minhaBusca !== sequenciaBusca) return
       // Preserva o texto digitado; erro tecnico (nao "nenhum encontrado").
@@ -78,6 +84,28 @@ export function useGateNameSearch(eventoId: () => string) {
       resultados.value = []
     } finally {
       if (minhaBusca === sequenciaBusca) buscando.value = false
+    }
+  }
+
+  /**
+   * Cliente pagou mas o pedido expirou (confirmacao do Pix atrasada): pergunta
+   * ao Mercado Pago na hora e, se pago, o ingresso aparece como Valido.
+   */
+  async function conferirExpirados(itens: IngressoBuscaNome[], minhaBusca: number) {
+    const ids = ingressosParaConferir(itens, conferidosEm, Date.now())
+    if (ids.length === 0) return
+    ids.forEach((id) => conferidosEm.set(id, Date.now()))
+    conferenciasPendentes.value++
+    try {
+      const liberados = new Set(
+        await conferirPagamentosExpirados({ eventoId: eventoId(), ingressoIds: ids })
+      )
+      if (liberados.size === 0 || minhaBusca !== sequenciaBusca) return
+      resultados.value = resultados.value.map((item) =>
+        item.ingressoId && liberados.has(item.ingressoId) ? { ...item, status: 'VALIDO' } : item
+      )
+    } finally {
+      conferenciasPendentes.value--
     }
   }
 
@@ -189,6 +217,7 @@ export function useGateNameSearch(eventoId: () => string) {
     contextoErro,
     itemParaRetry,
     jaBuscou,
+    verificandoPix,
     nomeValido,
     podeBuscar,
     buscar,

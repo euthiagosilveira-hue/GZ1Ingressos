@@ -93,3 +93,22 @@ export async function registrarEntradaVip(input: {
   if (error) throw mapearErro(error)
   return mapearResultadoEntradaRpc(data as Record<string, unknown>)
 }
+
+/**
+ * Ingressos EXPIRADOS achados na busca: o servidor pergunta ao Mercado Pago se
+ * o Pix foi pago e libera os pagos. Devolve os ids liberados (vazio em falha).
+ */
+export async function conferirPagamentosExpirados(input: {
+  eventoId: string
+  ingressoIds: string[]
+}): Promise<string[]> {
+  try {
+    const resposta = await $fetch<{ liberados?: string[] }>('/api/portaria/conferir-pagamentos', {
+      method: 'POST',
+      body: input
+    })
+    return Array.isArray(resposta?.liberados) ? resposta.liberados : []
+  } catch {
+    return []
+  }
+}
