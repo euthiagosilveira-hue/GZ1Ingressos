@@ -45,6 +45,7 @@ const {
   contextoErro,
   itemParaRetry,
   jaBuscou,
+  verificandoPix,
   nomeValido,
   podeBuscar,
   buscar,
@@ -358,6 +359,12 @@ async function novaBusca() {
               >
                 {{ item.status === 'UTILIZADO' ? 'Já utilizado' : rotuloStatus(item.status) }}
               </span>
+              <p
+                v-if="item.status === 'EXPIRADO' && item.origem === 'INGRESSO' && verificandoPix"
+                class="mt-1 text-[11px] text-amber-300"
+              >
+                Verificando Pix...
+              </p>
               <p
                 v-if="item.entradaEm ?? item.utilizadoEm"
                 class="mt-1 text-[11px] text-zinc-500"
