@@ -29,7 +29,8 @@ create table if not exists private.configuracoes (
   valor text not null
 );
 
-revoke all on table private.configuracoes from public;
+alter table private.configuracoes enable row level security;
+revoke all on table private.configuracoes from public, anon, authenticated;
 
 insert into private.configuracoes (chave, valor)
 values ('segredo_sistema', replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''))
