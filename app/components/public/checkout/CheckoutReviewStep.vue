@@ -48,6 +48,20 @@ const acaoEditar =
 
       <div class="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
         <div class="flex items-center justify-between gap-3">
+          <p class="text-xs uppercase tracking-wide text-zinc-500">Comprador</p>
+          <button type="button" :class="acaoEditar" @click="emit('editar', 'COMPRADOR')">
+            Editar comprador
+          </button>
+        </div>
+        <div class="mt-2 space-y-1 text-sm text-zinc-200">
+          <p>{{ props.comprador.nome }}</p>
+          <p>{{ props.comprador.telefone }}</p>
+          <p>{{ props.comprador.email }}</p>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div class="flex items-center justify-between gap-3">
           <p class="text-xs uppercase tracking-wide text-zinc-500">
             Participantes ({{ props.participantes.length }})
           </p>
@@ -60,20 +74,6 @@ const acaoEditar =
             {{ indice + 1 }}. {{ participante.nome }}
           </li>
         </ol>
-      </div>
-
-      <div class="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
-        <div class="flex items-center justify-between gap-3">
-          <p class="text-xs uppercase tracking-wide text-zinc-500">Comprador</p>
-          <button type="button" :class="acaoEditar" @click="emit('editar', 'COMPRADOR')">
-            Editar comprador
-          </button>
-        </div>
-        <div class="mt-2 space-y-1 text-sm text-zinc-200">
-          <p>{{ props.comprador.nome }}</p>
-          <p>{{ props.comprador.telefone }}</p>
-          <p>{{ props.comprador.email }}</p>
-        </div>
       </div>
 
       <div class="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">

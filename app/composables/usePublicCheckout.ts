@@ -16,6 +16,7 @@ import {
   emailValido,
   limiteQuantidade,
   mensagemErroReserva,
+  nomePrimeiroParticipante,
   nomeValido,
   telefoneValido
 } from '~/utils/checkout'
@@ -31,6 +32,8 @@ export function usePublicCheckout(
   const quantidade = ref(CHECKOUT_MIN)
   const participantes = ref<CheckoutParticipant[]>([{ nome: '' }])
   const comprador = reactive<CheckoutBuyer>({ nome: '', telefone: '', email: '' })
+  // Ultimo nome do comprador copiado para o 1o participante.
+  let nomeSugerido = ''
 
   const reserva = ref<CheckoutReservation | null>(null)
   const criando = ref(false)
@@ -111,16 +114,17 @@ export function usePublicCheckout(
   function proximo() {
     if (step.value === 'QUANTIDADE') {
       if (!validarQuantidade()) return
-      step.value = 'PARTICIPANTES'
-      return
-    }
-    if (step.value === 'PARTICIPANTES') {
-      if (!validarParticipantes()) return
       step.value = 'COMPRADOR'
       return
     }
     if (step.value === 'COMPRADOR') {
       if (!validarComprador()) return
+      preencherPrimeiroParticipante()
+      step.value = 'PARTICIPANTES'
+      return
+    }
+    if (step.value === 'PARTICIPANTES') {
+      if (!validarParticipantes()) return
       step.value = 'REVISAO'
       return
     }
@@ -129,10 +133,18 @@ export function usePublicCheckout(
     }
   }
 
+  function preencherPrimeiroParticipante() {
+    const primeiro = participantes.value[0]
+    if (!primeiro) return
+    const nome = nomePrimeiroParticipante(primeiro.nome, comprador.nome, nomeSugerido)
+    nomeSugerido = comprador.nome.trim()
+    if (nome !== primeiro.nome) atualizarParticipante(0, nome)
+  }
+
   function voltar() {
-    if (step.value === 'PARTICIPANTES') step.value = 'QUANTIDADE'
-    else if (step.value === 'COMPRADOR') step.value = 'PARTICIPANTES'
-    else if (step.value === 'REVISAO') step.value = 'COMPRADOR'
+    if (step.value === 'COMPRADOR') step.value = 'QUANTIDADE'
+    else if (step.value === 'PARTICIPANTES') step.value = 'COMPRADOR'
+    else if (step.value === 'REVISAO') step.value = 'PARTICIPANTES'
   }
 
   function irPara(destino: CheckoutStep) {

@@ -17,7 +17,8 @@ const emit = defineEmits<{
     <div>
       <h2 class="text-lg font-semibold text-white">Participantes</h2>
       <p class="mt-1 text-sm text-zinc-400">
-        Informe o nome de cada pessoa que vai usar um ingresso.
+        Informe o nome de cada pessoa que vai usar um ingresso. O primeiro já vem com o
+        nome do comprador; se o ingresso for para outra pessoa, é só trocar.
       </p>
     </div>
 

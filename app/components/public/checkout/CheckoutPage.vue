@@ -89,13 +89,6 @@ function aoVoltar() {
           @update:quantidade="definirQuantidade"
         />
 
-        <CheckoutParticipantsStep
-          v-else-if="step === 'PARTICIPANTES'"
-          :participantes="participantes"
-          :erros="errosParticipantes"
-          @update:nome="aoAtualizarParticipante"
-        />
-
         <CheckoutBuyerStep
           v-else-if="step === 'COMPRADOR'"
           :comprador="comprador"
@@ -103,6 +96,13 @@ function aoVoltar() {
           @update:nome="comprador.nome = $event"
           @update:telefone="comprador.telefone = $event"
           @update:email="comprador.email = $event"
+        />
+
+        <CheckoutParticipantsStep
+          v-else-if="step === 'PARTICIPANTES'"
+          :participantes="participantes"
+          :erros="errosParticipantes"
+          @update:nome="aoAtualizarParticipante"
         />
 
         <CheckoutReviewStep
