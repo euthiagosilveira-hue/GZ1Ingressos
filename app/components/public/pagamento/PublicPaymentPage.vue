@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onUnmounted, watch } from 'vue'
 
 import PaymentApprovedState from '~/components/public/pagamento/PaymentApprovedState.vue'
 import PaymentError from '~/components/public/pagamento/PaymentError.vue'
@@ -29,6 +29,25 @@ const {
 
 const eventoSlug = computed(() => checkout.value?.eventoSlug ?? '')
 const eventoNome = computed(() => checkout.value?.eventoNome ?? 'Checkout')
+
+// Pagamento confirmado: leva o comprador direto aos ingressos, sem exigir clique.
+const ESPERA_ABRIR_INGRESSOS_MS = 1500
+let abrirIngressosTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(
+  [estado, eventoSlug, token],
+  ([novoEstado, slug, checkoutToken]) => {
+    if (novoEstado !== 'PAGO' || !slug || !checkoutToken || abrirIngressosTimer) return
+    abrirIngressosTimer = setTimeout(() => {
+      void navigateTo(`/eventos/${slug}/comprar/ingressos?token=${checkoutToken}`, { replace: true })
+    }, ESPERA_ABRIR_INGRESSOS_MS)
+  },
+  { immediate: true }
+)
+
+onUnmounted(() => {
+  if (abrirIngressosTimer) clearTimeout(abrirIngressosTimer)
+})
 </script>
 
 <template>

@@ -294,13 +294,38 @@ export function usePublicPayment() {
     }
   }
 
+  /**
+   * O comprador sai para o app do banco e volta: o celular congela os timers
+   * em segundo plano, entao conferimos o pagamento assim que a tela reaparece.
+   */
+  function aoVoltarParaTela() {
+    if (document.visibilityState !== 'visible') return
+    if (estado.value !== 'PENDENTE' || verificandoExpiracao.value) return
+    recalcular()
+    if (segundos.value <= 0) {
+      void finalizarExpiracao()
+      return
+    }
+    void sincronizarStatus()
+  }
+
+  function aoReabrirPagina(evento: PageTransitionEvent) {
+    if (evento.persisted) aoVoltarParaTela()
+  }
+
   onMounted(() => {
     void carregar()
+    document.addEventListener('visibilitychange', aoVoltarParaTela)
+    window.addEventListener('focus', aoVoltarParaTela)
+    window.addEventListener('pageshow', aoReabrirPagina)
   })
 
   onUnmounted(() => {
     pararTimer()
     pararPolling()
+    document.removeEventListener('visibilitychange', aoVoltarParaTela)
+    window.removeEventListener('focus', aoVoltarParaTela)
+    window.removeEventListener('pageshow', aoReabrirPagina)
   })
 
   return {

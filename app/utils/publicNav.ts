@@ -1,6 +1,8 @@
 export interface PublicNavItem {
   to: string
   label: string
+  /** Mostrado como botao em destaque (comprador precisa achar facil). */
+  destaque?: boolean
 }
 
 /**
@@ -13,5 +15,5 @@ export interface PublicNavItem {
  */
 export const PUBLIC_NAV_ITEMS: readonly PublicNavItem[] = [
   { to: '/eventos-publicos', label: 'Eventos' },
-  { to: '/recuperar-ingressos', label: 'Meus ingressos' }
+  { to: '/recuperar-ingressos', label: 'Meus ingressos', destaque: true }
 ]
