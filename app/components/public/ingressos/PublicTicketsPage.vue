@@ -9,8 +9,22 @@ import PublicTicketsLoading from '~/components/public/ingressos/PublicTicketsLoa
 import PublicTicketsUnavailable from '~/components/public/ingressos/PublicTicketsUnavailable.vue'
 import { usePublicTickets } from '~/composables/usePublicTickets'
 import { mensagemTicketsErro } from '~/utils/publicIngressos'
+import { montarLinkWhatsApp } from '~/utils/share'
 
 const { token, recoveryToken, tickets, carregando, erro, estado, carregar } = usePublicTickets()
+const origem = useRequestURL().origin
+
+/**
+ * O comprador manda o link do pedido para o proprio WhatsApp e nao perde o
+ * ingresso. So com checkout_token: o link de recuperacao expira em 30 min.
+ */
+const linkWhatsAppProprio = computed(() => {
+  if (!token.value || !tickets.value) return null
+  return montarLinkWhatsApp({
+    url: `${origem}/meus-ingressos?token=${token.value}`,
+    eventoNome: tickets.value.eventoNome
+  })
+})
 
 const tituloIndisponivel = computed(() => {
   const status = tickets.value?.pedidoStatus
@@ -60,6 +74,27 @@ const descricaoIndisponivel = computed(() => {
 
       <div class="mt-6 space-y-6">
         <PublicOrderSummary :tickets="tickets" />
+
+        <div
+          v-if="linkWhatsAppProprio"
+          class="space-y-3 rounded-2xl border border-green-500/40 bg-green-500/5 p-4"
+        >
+          <p class="text-sm text-zinc-200">
+            <strong class="text-white">Guarde seu ingresso:</strong> envie o link para o seu WhatsApp e
+            abra por lá no dia do evento.
+          </p>
+          <a
+            :href="linkWhatsAppProprio"
+            target="_blank"
+            rel="noopener"
+            class="flex w-full items-center justify-center rounded-xl bg-green-500 px-6 py-3 text-xs font-bold uppercase tracking-wide text-zinc-950 transition-colors duration-150 hover:bg-green-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/60"
+          >
+            Enviar para meu WhatsApp
+          </a>
+          <p class="text-center text-xs text-zinc-500">
+            No WhatsApp, escolha a conversa com você mesmo (seu número aparece como "Você").
+          </p>
+        </div>
 
         <div class="space-y-4">
           <PublicTicketCard

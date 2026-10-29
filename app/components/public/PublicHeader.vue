@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { TicketIcon } from '@heroicons/vue/24/outline'
+
 import { PUBLIC_NAV_ITEMS } from '~/utils/publicNav'
 </script>
 
@@ -17,8 +19,14 @@ import { PUBLIC_NAV_ITEMS } from '~/utils/publicNav'
           v-for="item in PUBLIC_NAV_ITEMS"
           :key="item.to"
           :to="item.to"
-          class="text-zinc-300 transition-colors hover:text-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+          :class="
+            item.destaque
+              ? 'inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-zinc-950 hover:bg-amber-300'
+              : 'text-zinc-300 hover:text-amber-400'
+          "
+          class="transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
         >
+          <TicketIcon v-if="item.destaque" class="h-4 w-4" />
           {{ item.label }}
         </NuxtLink>
       </nav>

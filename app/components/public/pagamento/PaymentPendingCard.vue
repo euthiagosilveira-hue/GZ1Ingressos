@@ -45,6 +45,8 @@ const qrSrc = computed(() => {
 const pixCopiaCola = computed(() => valorQrPix(props.pix))
 const temPix = computed(() => Boolean(pixCopiaCola.value || qrSrc.value))
 const copiado = ref(false)
+// Depois da primeira copia o aviso "volte aqui" fica fixo na tela.
+const jaCopiou = ref(false)
 
 async function copiar() {
   const codigo = pixCopiaCola.value
@@ -56,6 +58,7 @@ async function copiar() {
       copiaLegado(codigo)
     }
     copiado.value = true
+    jaCopiou.value = true
     setTimeout(() => {
       copiado.value = false
     }, 2000)
@@ -63,6 +66,7 @@ async function copiar() {
     try {
       copiaLegado(codigo)
       copiado.value = true
+      jaCopiou.value = true
       setTimeout(() => {
         copiado.value = false
       }, 2000)
@@ -107,6 +111,18 @@ function copiaLegado(texto: string) {
       <div v-if="temPix" class="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <p class="text-sm font-semibold text-zinc-200">Pagamento via Pix</p>
 
+        <div class="rounded-xl border border-amber-400/40 bg-amber-400/5 p-4">
+          <p class="text-sm font-bold text-amber-300">Como receber seu ingresso</p>
+          <ol class="mt-2 space-y-1.5 text-sm text-zinc-200">
+            <li><span class="font-bold text-amber-400">1.</span> Copie o código Pix abaixo.</li>
+            <li><span class="font-bold text-amber-400">2.</span> Pague no app do seu banco.</li>
+            <li>
+              <span class="font-bold text-amber-400">3.</span>
+              <strong class="text-white">Volte para esta página:</strong> seu ingresso aparece aqui na hora.
+            </li>
+          </ol>
+        </div>
+
         <div v-if="pixCopiaCola" class="mx-auto w-full max-w-[240px] rounded-xl bg-white p-3">
           <QrcodeVue
             :value="pixCopiaCola"
@@ -140,6 +156,17 @@ function copiaLegado(texto: string) {
             <ClipboardDocumentIcon class="h-4 w-4" />
             {{ copiado ? 'Código Pix copiado.' : 'Copiar código Pix' }}
           </button>
+
+          <div
+            v-if="jaCopiou"
+            role="status"
+            class="rounded-xl border-2 border-amber-400 bg-amber-400/10 p-4 text-center"
+          >
+            <p class="text-sm font-bold text-amber-300">Código copiado! Agora pague no app do banco.</p>
+            <p class="mt-1 text-sm text-zinc-200">
+              Depois de pagar, <strong class="text-white">volte para esta página</strong> para pegar seu ingresso.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -176,6 +203,11 @@ function copiaLegado(texto: string) {
       </div>
 
       <PaymentExpiration :texto="props.textoCountdown" />
+
+      <p class="text-center text-xs text-zinc-500">
+        Fechou esta página sem querer? Seu ingresso fica em
+        <NuxtLink to="/recuperar-ingressos" class="font-semibold text-amber-400 underline">Meus ingressos</NuxtLink>.
+      </p>
 
       <button
         type="button"
