@@ -42,6 +42,20 @@ export function emailValido(valor: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor.trim())
 }
 
+// Nome sugerido para o 1o participante ao sair da etapa Comprador.
+// Na maioria das compras o comprador compra para si, entao o nome dele ja vai
+// pre-preenchido. So substitui se o campo estiver vazio ou ainda tiver o nome
+// que nos mesmos sugerimos antes (ou seja, a pessoa nao digitou outro nome).
+export function nomePrimeiroParticipante(
+  atual: string,
+  nomeComprador: string,
+  ultimoSugerido: string
+): string {
+  const atualLimpo = atual.trim()
+  if (atualLimpo === '' || atualLimpo === ultimoSugerido.trim()) return nomeComprador.trim()
+  return atual
+}
+
 export function mensagemErroReserva(codigo: ReservaErrorCode): string {
   const mapa: Record<ReservaErrorCode, string> = {
     SEM_ESTOQUE: 'Não há ingressos suficientes disponíveis para essa quantidade.',

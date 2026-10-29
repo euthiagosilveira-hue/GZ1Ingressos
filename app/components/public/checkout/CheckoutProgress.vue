@@ -9,8 +9,8 @@ const props = defineProps<{
 
 const passos = [
   { key: 'QUANTIDADE', label: 'Quantidade' },
-  { key: 'PARTICIPANTES', label: 'Participantes' },
   { key: 'COMPRADOR', label: 'Comprador' },
+  { key: 'PARTICIPANTES', label: 'Participantes' },
   { key: 'REVISAO', label: 'Revisão' }
 ] as const
 
