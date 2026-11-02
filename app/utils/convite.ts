@@ -32,6 +32,7 @@ export function mensagemErroConviteLink(erro: ErroLinkConvite | null): string {
 
 /** Destino pos-setup conforme o perfil (ADMIN -> '/', PORTARIA -> '/portaria'). */
 export function destinoAposConvite(perfil: string | null | undefined): string {
+  if (perfil === 'PRODUTOR') return '/produtor'
   return perfil === 'PORTARIA' ? '/portaria' : '/'
 }
 

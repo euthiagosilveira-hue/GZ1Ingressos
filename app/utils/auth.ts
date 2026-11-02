@@ -32,12 +32,25 @@ export function codigoErroPerfil(
 ): AuthErrorCode | null {
   if (!perfil) return 'SEM_USUARIO'
   if (!perfil.ativo) return 'INATIVO'
-  if (!perfilPermitido(perfil.perfil)) return 'SEM_PERMISSAO'
+  if (!perfilPodeEntrar(perfil.perfil)) return 'SEM_PERMISSAO'
   return null
 }
 
+/** Perfis da equipe (painel admin/portaria). */
 export function perfilPermitido(perfil: string | null | undefined): boolean {
   return perfil === 'ADMINISTRADOR' || perfil === 'PORTARIA'
+}
+
+/** Perfis que podem fazer login: equipe + PRODUTOR (area /produtor). */
+export function perfilPodeEntrar(perfil: string | null | undefined): boolean {
+  return perfilPermitido(perfil) || perfil === 'PRODUTOR'
+}
+
+/** Pagina inicial de cada perfil apos o login. */
+export function paginaInicialPerfil(perfil: string | null | undefined): string {
+  if (perfil === 'PORTARIA') return '/portaria'
+  if (perfil === 'PRODUTOR') return '/produtor'
+  return '/'
 }
 
 export type DecisaoAcesso = 'PERMITIR' | 'IR_LOGIN' | 'NEGAR'

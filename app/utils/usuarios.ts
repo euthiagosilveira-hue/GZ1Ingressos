@@ -6,11 +6,19 @@ import type {
   UsuarioListItem
 } from '~/types/usuario'
 
+/** Perfis que podem ser escolhidos no convite/edicao da tela de Usuarios. */
 export const PERFIS_USUARIO: PerfilUsuario[] = ['ADMINISTRADOR', 'PORTARIA']
+
+/**
+ * PRODUTOR e criado pelo bloco "Sociedade" do evento (ligado ao produtor),
+ * nao pela tela de Usuarios; la ele so pode ter nome/status alterados.
+ */
+export const PERFIS_VALIDOS: PerfilUsuario[] = ['ADMINISTRADOR', 'PORTARIA', 'PRODUTOR']
 
 const PERFIL_LABEL: Record<PerfilUsuario, string> = {
   ADMINISTRADOR: 'Administrador',
-  PORTARIA: 'Portaria'
+  PORTARIA: 'Portaria',
+  PRODUTOR: 'Produtor'
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -83,7 +91,7 @@ export function validarConvite(input: ConviteUsuarioInput): ErrosFormularioUsuar
 export function validarEdicao(input: EdicaoUsuarioInput): ErrosFormularioUsuario {
   const erros: ErrosFormularioUsuario = {}
   if (!input.nome?.trim()) erros.nome = 'Informe o nome.'
-  if (!PERFIS_USUARIO.includes(input.perfil)) erros.perfil = 'Selecione um perfil.'
+  if (!PERFIS_VALIDOS.includes(input.perfil)) erros.perfil = 'Selecione um perfil.'
   return erros
 }
 

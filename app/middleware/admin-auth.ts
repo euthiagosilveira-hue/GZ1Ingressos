@@ -39,6 +39,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return
   }
 
+  // Produtor logado tentando abrir o painel: leva para a area dele (sem deslogar).
+  if (perfil?.ativo && perfil.perfil === 'PRODUTOR') {
+    return navigateTo('/produtor')
+  }
+
   if (!perfil || !perfil.ativo || perfil.perfil !== 'ADMINISTRADOR') {
     await supabase.auth.signOut()
     return navigateTo('/login?erro=SEM_PERMISSAO')

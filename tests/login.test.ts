@@ -16,7 +16,10 @@ test('login preserva a logica real de autenticacao', () => {
   assert.ok(page.includes('mensagemLoginErro'))
   assert.ok(page.includes('logout'))
   assert.ok(page.includes("perfil.perfil === 'ADMINISTRADOR'"))
-  assert.ok(page.includes("perfil.perfil === 'PORTARIA' ? '/portaria' : '/'"))
+  // Destino padrao por perfil (PORTARIA -> /portaria, PRODUTOR -> /produtor, ADMIN -> /)
+  assert.ok(page.includes('paginaInicialPerfil(perfil.perfil)'))
+  // Produtor so e redirecionado para dentro da area dele
+  assert.ok(page.includes("destino?.startsWith('/produtor')"))
 })
 
 test('login nao usa alert nativo e exibe erro no card', () => {
