@@ -9,6 +9,7 @@ import EventCapacitySection from '~/components/eventos/EventCapacitySection.vue'
 import EventDescriptionSection from '~/components/eventos/EventDescriptionSection.vue'
 import EventFormActions from '~/components/eventos/EventFormActions.vue'
 import EventImageSection from '~/components/eventos/EventImageSection.vue'
+import EventPartnershipSection from '~/components/eventos/EventPartnershipSection.vue'
 import EventPublicationSection from '~/components/eventos/EventPublicationSection.vue'
 import { useEventForm } from '~/composables/useEventForm'
 import type { EventFormMode, EventFormValue, EventPayload } from '~/types/evento'
@@ -99,6 +100,7 @@ function visualizarPublico() {
       :evento-nome="valor.nome"
     />
     <EventPublicationSection :value="valor" :errors="erros" />
+    <EventPartnershipSection :evento-id="props.eventoId" />
 
     <EventFormActions :submitting="enviando" @cancel="aoCancelar" @submit="aoSubmeter" />
   </div>
