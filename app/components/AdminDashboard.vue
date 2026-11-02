@@ -10,6 +10,7 @@ import {
   XMarkIcon
 } from '@heroicons/vue/24/outline'
 
+import SociedadeDashboardCard from '~/components/sociedade/SociedadeDashboardCard.vue'
 import { useAdminDashboard } from '~/composables/useAdminDashboard'
 import { formatMoeda } from '~/utils/format'
 
@@ -113,6 +114,8 @@ const metrics = computed<Metric[]>(() => {
       :subtitle-class="metric.subtitleClass"
     />
   </div>
+
+  <SociedadeDashboardCard v-if="eventoFiltro" :evento-id="eventoFiltro" />
 
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-12">
     <TodayEventCard
