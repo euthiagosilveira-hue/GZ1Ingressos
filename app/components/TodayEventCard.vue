@@ -16,8 +16,10 @@ import { urlPublicaEvento } from '~/utils/dashboard'
 
 const props = defineProps<{
   event: TodayEvent
-  /** Dashboard filtrado por este evento ("Ver evento" ja clicado). */
+  /** Dashboard ja mostra so este evento (evento atual ou "Ver evento"). */
   filtrado?: boolean
+  /** Titulo do card (ex.: "Último evento"). */
+  titulo?: string
 }>()
 
 const config = useRuntimeConfig()
@@ -67,7 +69,7 @@ const exibirCapa = computed(() => Boolean(props.event.imageUrl) && imagemOk.valu
 <template>
   <BaseCard :padded="false" class="flex h-full flex-col p-5 sm:p-6">
     <h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-zinc-400">
-      {{ props.filtrado ? 'Evento selecionado' : 'Próximo evento' }}
+      {{ props.titulo || (props.filtrado ? 'Evento selecionado' : 'Próximo evento') }}
     </h3>
 
     <div v-if="props.event.hasEvent" class="mt-5 flex flex-1 flex-col gap-5 sm:flex-row">
@@ -174,10 +176,10 @@ const exibirCapa = computed(() => Boolean(props.event.imageUrl) && imagemOk.valu
         </div>
 
         <div class="mt-auto pt-6">
-          <!-- "Ver evento" filtra o dashboard por este evento; filtrado, volta para todos -->
+          <!-- "Ver evento" filtra o dashboard por este evento; filtrado, mostra todos -->
           <AppButton
             v-if="props.filtrado"
-            to="/"
+            to="/?periodo=todos"
             variant="outline"
             size="md"
             class="w-fit"
