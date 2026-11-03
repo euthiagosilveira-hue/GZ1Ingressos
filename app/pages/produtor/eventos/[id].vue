@@ -7,6 +7,7 @@ import AppButton from '~/components/AppButton.vue'
 import BaseCard from '~/components/BaseCard.vue'
 import BaseInput from '~/components/BaseInput.vue'
 import EventStatusBadge from '~/components/eventos/EventStatusBadge.vue'
+import LinkVendaEvento from '~/components/produtor/LinkVendaEvento.vue'
 import SociedadeDivisao from '~/components/sociedade/SociedadeDivisao.vue'
 import {
   adicionarVipProdutor,
@@ -66,10 +67,6 @@ const sociedade = computed<SociedadeEvento | null>(() =>
 
 const podeAlterarVip = computed(
   () => evento.value != null && !['REALIZADO', 'CANCELADO'].includes(evento.value.status)
-)
-
-const linkPublico = computed(() =>
-  evento.value && import.meta.client ? `${window.location.origin}/eventos/${evento.value.slug}` : ''
 )
 
 async function carregar() {
@@ -146,15 +143,6 @@ async function baixar(formato: 'xlsx' | 'txt') {
   }
 }
 
-async function copiarLink() {
-  try {
-    await navigator.clipboard.writeText(linkPublico.value)
-    toast.success('Link copiado.')
-  } catch {
-    toast.error('Não foi possível copiar.')
-  }
-}
-
 onMounted(() => void carregar())
 </script>
 
@@ -185,12 +173,7 @@ onMounted(() => void carregar())
         <p class="text-sm text-zinc-400">
           {{ formatDataHora(evento.inicioEm) }}<span v-if="evento.local"> · {{ evento.local }}</span>
         </p>
-        <div v-if="linkPublico" class="flex flex-wrap items-center gap-2 text-sm">
-          <span class="truncate text-zinc-500">{{ linkPublico }}</span>
-          <button type="button" class="text-xs font-semibold uppercase tracking-wide text-amber-400" @click="copiarLink">
-            Copiar link de venda
-          </button>
-        </div>
+        <LinkVendaEvento :slug="evento.slug" :nome="evento.nome" class="max-w-xl pt-1" />
       </div>
 
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
