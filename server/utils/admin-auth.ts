@@ -109,3 +109,35 @@ export async function exigirProdutorDoEvento(event: H3Event, eventoId: string) {
 
   return admin
 }
+
+/**
+ * Garante que a requisicao vem de um PRODUTOR ativo (com cadastro de produtor
+ * ativo ligado ao login). Devolve os ids ou lanca 401/403.
+ */
+export async function exigirProdutorAtivo(event: H3Event): Promise<{ usuarioId: string; produtorId: string }> {
+  const claims = await serverSupabaseUser(event).catch(() => null)
+  const uid = claims?.sub ? String(claims.sub) : ''
+  if (!uid) throw createError({ statusCode: 401, statusMessage: 'NAO_AUTENTICADO' })
+
+  const admin = serverSupabaseServiceRole(event)
+  const { data: usuario, error } = await admin
+    .from('usuarios')
+    .select('perfil,ativo')
+    .eq('id', uid)
+    .maybeSingle()
+  if (error) throw createError({ statusCode: 500, statusMessage: 'ERRO_INESPERADO' })
+  if (!usuario?.ativo || usuario.perfil !== 'PRODUTOR') {
+    throw createError({ statusCode: 403, statusMessage: 'SEM_PERMISSAO' })
+  }
+
+  const { data: produtor, error: erroProdutor } = await admin
+    .from('produtores')
+    .select('id')
+    .eq('usuario_id', uid)
+    .eq('ativo', true)
+    .maybeSingle()
+  if (erroProdutor) throw createError({ statusCode: 500, statusMessage: 'ERRO_INESPERADO' })
+  if (!produtor) throw createError({ statusCode: 403, statusMessage: 'SEM_PERMISSAO' })
+
+  return { usuarioId: uid, produtorId: String(produtor.id) }
+}

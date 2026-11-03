@@ -18,6 +18,14 @@ export default defineNuxtConfig({
     // Somente backend. Nunca expor em public.
     mercadoPagoAccessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '',
     mercadoPagoWebhookSecret: process.env.MERCADO_PAGO_WEBHOOK_SECRET || '',
+    // Marketplace (eventos em sociedade): OAuth do aplicativo da galeria para
+    // o produtor conectar a propria conta. TOKEN_KEY (32+ caracteres
+    // aleatorios) cifra os tokens dos produtores no banco.
+    mercadoPagoClientId: process.env.MERCADO_PAGO_CLIENT_ID || '',
+    mercadoPagoClientSecret: process.env.MERCADO_PAGO_CLIENT_SECRET || '',
+    mercadoPagoTokenKey: process.env.MERCADO_PAGO_TOKEN_KEY || '',
+    // Somente testes do OAuth (gera token de teste). Default false.
+    mercadoPagoOauthTestToken: process.env.MERCADO_PAGO_OAUTH_TEST_TOKEN || 'false',
     // Somente testes: auto-aprovacao Pix (first_name=APRO). Default false.
     mercadoPagoTestAutoApprovePix: process.env.MERCADO_PAGO_TEST_AUTO_APPROVE_PIX || 'false',
     // Notificacoes push de venda (Web Push/VAPID). Chave privada somente backend.

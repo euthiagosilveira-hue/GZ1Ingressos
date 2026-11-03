@@ -1,12 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-import { MercadoPagoProvider } from '../services/payments/mercado-pago/mercado-pago-provider'
+import type { PaymentProvider } from '../services/payments/payment-provider'
+
+/** Provider da conta onde o Pix foi criado (galeria ou produtor da sociedade). */
+export type ObterProvider = (produtorRecebedorId: string | null) => Promise<PaymentProvider | null>
 
 interface PedidoExpiradoBanco {
   id: string
   pagamentos:
-    | { id: string; provedor: string; cobranca_id: string | null }
-    | { id: string; provedor: string; cobranca_id: string | null }[]
+    | { id: string; provedor: string; cobranca_id: string | null; produtor_recebedor_id?: string | null }
+    | { id: string; provedor: string; cobranca_id: string | null; produtor_recebedor_id?: string | null }[]
     | null
 }
 
@@ -29,24 +32,32 @@ function primeiroPagamento(pedido: PedidoExpiradoBanco) {
 export async function liberarPedidosExpiradosPagos(
   client: SupabaseClient,
   pedidoIds: string[],
-  accessToken: string
+  obterProvider: ObterProvider
 ): Promise<string[]> {
   if (pedidoIds.length === 0) return []
 
   const { data, error } = await client
     .from('pedidos')
-    .select('id,pagamentos(id,provedor,cobranca_id)')
+    .select('id,pagamentos(id,provedor,cobranca_id,produtor_recebedor_id)')
     .in('id', pedidoIds)
     .eq('status', 'EXPIRADO')
   if (error) throw createError({ statusCode: 500, statusMessage: 'ERRO_INESPERADO' })
 
   const pedidos = (data ?? []) as unknown as PedidoExpiradoBanco[]
-  const provider = new MercadoPagoProvider(accessToken)
+  // Um provider por conta (galeria ou cada produtor), criado sob demanda.
+  const providers = new Map<string, Promise<PaymentProvider | null>>()
+  function providerDe(produtorId: string | null) {
+    const chave = produtorId ?? 'galeria'
+    if (!providers.has(chave)) providers.set(chave, obterProvider(produtorId).catch(() => null))
+    return providers.get(chave)!
+  }
 
   async function conferir(pedido: PedidoExpiradoBanco): Promise<string | null> {
     const pagamento = primeiroPagamento(pedido)
     if (!pagamento || pagamento.provedor !== 'MERCADO_PAGO' || !pagamento.cobranca_id) return null
     try {
+      const provider = await providerDe(pagamento.produtor_recebedor_id ?? null)
+      if (!provider) return null
       const charge = await provider.getCharge(pagamento.cobranca_id)
       if (charge.status !== 'APROVADO' || charge.externalReference !== pagamento.id) return null
       const { error: erroConfirmacao } = await client.rpc('confirmar_pagamento', {

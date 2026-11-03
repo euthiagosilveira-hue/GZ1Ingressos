@@ -160,3 +160,22 @@ export async function baixarListaPagantesProdutor(
   link.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
+
+export interface StatusMercadoPagoProdutor {
+  conectado: boolean
+  conectadoEm: string | null
+  liveMode: boolean
+}
+
+/** Se a conta Mercado Pago do produtor logado esta conectada. */
+export async function obterStatusMercadoPagoProdutor(): Promise<StatusMercadoPagoProdutor> {
+  const client = useSupabaseClient()
+  const { data, error } = await client.rpc('status_mercado_pago_produtor')
+  if (error) throw new Error(mensagemErro(error, 'Não foi possível ver a conexão do Mercado Pago.'))
+  const r = (data ?? {}) as Row
+  return {
+    conectado: Boolean(r.conectado),
+    conectadoEm: texto(r.conectado_em),
+    liveMode: Boolean(r.live_mode)
+  }
+}

@@ -6,6 +6,8 @@ export interface Produtor {
   email: string | null
   ativo: boolean
   temLogin: boolean
+  /** Conta Mercado Pago conectada (Pix do evento em sociedade cai nela). */
+  mpConectado?: boolean
   eventosCount?: number
 }
 
