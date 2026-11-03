@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 
 import EventStatusBadge from '~/components/eventos/EventStatusBadge.vue'
+import LinkVendaEvento from '~/components/produtor/LinkVendaEvento.vue'
 import { toast } from 'vue3-toastify'
 
 import {
@@ -144,6 +145,7 @@ onMounted(() => {
             </p>
           </div>
         </NuxtLink>
+        <LinkVendaEvento :slug="evento.slug" :nome="evento.nome" class="mt-2 px-1" />
       </li>
     </ul>
   </div>
