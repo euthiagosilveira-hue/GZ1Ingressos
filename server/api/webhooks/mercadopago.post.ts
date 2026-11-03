@@ -3,6 +3,11 @@ import type { H3Event } from 'h3'
 
 import { ehUuid } from '../../services/payments/payment-service'
 import { MercadoPagoProvider } from '../../services/payments/mercado-pago/mercado-pago-provider'
+import {
+  MercadoPagoPaymentsProvider,
+  valorConfere
+} from '../../services/payments/mercado-pago/mercado-pago-payments'
+import { obterAccessTokenProdutor } from '../../services/payments/mercado-pago/mercado-pago-conexao'
 import { validarAssinaturaMp } from '../../services/payments/mercado-pago/mercado-pago-signature'
 import { notificarVendaConfirmada } from '../../services/push/push-service'
 
@@ -63,6 +68,74 @@ export default defineEventHandler(async (event) => {
     await registrar(event, { ...base, ...extra, resultado, status })
     setResponseStatus(event, status)
     return status < 400 ? { ok: true } : { error: resultado }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Marketplace (evento em sociedade): aviso de um Pix criado na conta do
+  // produtor (notification_url com ?produtor=<id>). Tipo "payment".
+  // ---------------------------------------------------------------------------
+  const produtorId = String(query.produtor ?? '').trim()
+  if (produtorId) {
+    if (!ehUuid(produtorId)) return responder(400, 'PRODUTOR_INVALIDO')
+    // Outros topicos (merchant_order etc.) nao confirmam nada.
+    if (tipo && tipo !== 'payment') return responder(200, 'IGNORADO')
+    if (!dataId) return responder(200, 'IGNORADO')
+    // Aviso IPN (formato antigo) nao vem assinado; os demais, se assinados,
+    // precisam ser validos. Em todos os casos o pagamento e conferido no MP.
+    const ipn = Boolean(query.topic) && !query['data.id']
+    if (secret && xSignature && !ipn && !validarAssinaturaMp({ xSignature, xRequestId, dataId }, secret)) {
+      return responder(401, 'ASSINATURA_INVALIDA')
+    }
+
+    let tokenProdutor: string | null
+    try {
+      tokenProdutor = await obterAccessTokenProdutor(event, produtorId)
+    } catch (e) {
+      return responder(503, 'ERRO_CONEXAO_PRODUTOR', { detalhe: e instanceof Error ? e.message : String(e) })
+    }
+    if (!tokenProdutor) return responder(200, 'PRODUTOR_SEM_CONTA')
+
+    let pagamentoMp
+    try {
+      pagamentoMp = await new MercadoPagoPaymentsProvider(tokenProdutor).getCharge(dataId)
+    } catch (e) {
+      return responder(502, 'ERRO_CONSULTA_MP', { detalhe: e instanceof Error ? e.message : String(e) })
+    }
+    const extraMp = { statusMp: pagamentoMp.status, pagamentoId: pagamentoMp.externalReference }
+    if (pagamentoMp.status !== 'APROVADO' || !ehUuid(pagamentoMp.externalReference)) {
+      return responder(200, 'IGNORADO', extraMp)
+    }
+
+    const clientMp = serverSupabaseServiceRole(event)
+    const { data: pagamento } = await clientMp
+      .from('pagamentos')
+      .select('id,valor,status,produtor_recebedor_id')
+      .eq('id', pagamentoMp.externalReference)
+      .maybeSingle()
+    // So confirma pagamento que foi criado na conta deste produtor e com o valor certo.
+    if (!pagamento || String(pagamento.produtor_recebedor_id ?? '') !== produtorId) {
+      return responder(200, 'IGNORADO_OUTRA_CONTA', extraMp)
+    }
+    if (!valorConfere(pagamentoMp.amount, pagamento.valor)) {
+      return responder(200, 'VALOR_DIVERGENTE', {
+        ...extraMp,
+        detalhe: `mp=${pagamentoMp.amount} pedido=${pagamento.valor}`
+      })
+    }
+
+    const { data: confirmacao, error: erroConfirmacao } = await clientMp.rpc('confirmar_pagamento', {
+      p_pagamento_id: pagamentoMp.externalReference,
+      p_transaction_id: pagamentoMp.transactionId,
+      p_referencia_externa: pagamentoMp.externalReference
+    })
+    if (erroConfirmacao) {
+      return responder(500, 'ERRO_CONFIRMACAO', { ...extraMp, detalhe: erroConfirmacao.message })
+    }
+    const res = confirmacao as { resultado?: string; pedido_id?: string } | null
+    if (res?.resultado === 'confirmado' && res.pedido_id) {
+      await notificarVendaConfirmada(event, res.pedido_id)
+    }
+    return responder(200, String(res?.resultado ?? 'OK').toUpperCase(), extraMp)
   }
 
   if (!secret) return responder(500, 'WEBHOOK_NAO_CONFIGURADO')

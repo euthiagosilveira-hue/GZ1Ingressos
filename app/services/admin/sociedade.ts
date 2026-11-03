@@ -18,6 +18,7 @@ interface ProdutorRow {
   email: string | null
   ativo: boolean
   tem_login: boolean
+  mp_conectado?: boolean
   eventos_count?: number
 }
 
@@ -52,6 +53,7 @@ function mapearProdutor(row: ProdutorRow): Produtor {
     email: row.email ?? null,
     ativo: Boolean(row.ativo),
     temLogin: Boolean(row.tem_login),
+    mpConectado: Boolean(row.mp_conectado),
     eventosCount: row.eventos_count
   }
 }

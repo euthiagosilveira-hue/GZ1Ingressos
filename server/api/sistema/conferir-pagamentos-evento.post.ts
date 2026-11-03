@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { serverSupabaseServiceRole } from '#supabase/server'
 
 import { liberarPedidosExpiradosPagos } from '../../utils/pagamentos-expirados'
+import { providerParaPagamento } from '../../services/payments/recebedor'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const LIMITE_PEDIDOS = 300
@@ -54,7 +55,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const pedidoIds = (data ?? []).map((pedido: { id: string }) => pedido.id)
-  const liberados = await liberarPedidosExpiradosPagos(client, pedidoIds, accessToken)
+  const liberados = await liberarPedidosExpiradosPagos(client, pedidoIds, (produtorId) =>
+    providerParaPagamento(event, produtorId, accessToken)
+  )
   console.info('[conferencia-pagamentos]', { eventoId, conferidos: pedidoIds.length, liberados: liberados.length })
   return { conferidos: pedidoIds.length, liberados: liberados.length }
 })

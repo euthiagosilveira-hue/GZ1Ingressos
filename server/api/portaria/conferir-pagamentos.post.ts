@@ -1,5 +1,6 @@
 import { exigirEquipe } from '../../utils/admin-auth'
 import { liberarPedidosExpiradosPagos } from '../../utils/pagamentos-expirados'
+import { providerParaPagamento } from '../../services/payments/recebedor'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const LIMITE_INGRESSOS = 20
@@ -38,7 +39,7 @@ export default defineEventHandler(async (event) => {
     await liberarPedidosExpiradosPagos(
       client,
       [...new Set(ingressos.map((ingresso) => ingresso.pedido_id))],
-      accessToken
+      (produtorId) => providerParaPagamento(event, produtorId, accessToken)
     )
   )
 

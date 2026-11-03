@@ -321,6 +321,14 @@ onMounted(() => void carregar())
         <p class="text-sm font-medium text-white">Acesso do produtor</p>
         <template v-if="produtorSelecionado.temLogin">
           <p class="text-sm text-green-400">O produtor já tem acesso.</p>
+          <p v-if="produtorSelecionado.mpConectado" class="text-sm text-green-400">
+            Mercado Pago do produtor conectado: o Pix deste evento cai na conta dele, com a % da galeria
+            separada automaticamente.
+          </p>
+          <p v-else class="text-sm text-amber-300">
+            O produtor ainda não conectou o Mercado Pago. Enquanto isso, a venda online (Pix) deste evento
+            fica bloqueada. Peça para ele entrar na área dele e clicar em "Conectar Mercado Pago".
+          </p>
           <p class="text-xs text-zinc-500">
             Ele entra em gz-1-ingressos.vercel.app/login com o e-mail {{ produtorSelecionado.email ?? 'cadastrado' }}
             e vê só os eventos em sociedade dele. Para bloquear, desative o usuário em Configurações › Usuários.

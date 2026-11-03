@@ -2,9 +2,16 @@ import type { H3Event } from 'h3'
 
 import { serverSupabaseServiceRole } from '#supabase/server'
 
-import type { Gz1PaymentStatus, PixCharge } from './payment-provider'
+import type { Gz1PaymentStatus, PaymentProvider, PixCharge } from './payment-provider'
 import { verificarCredencialDeTeste } from './mercado-pago/mercado-pago-client'
 import { MercadoPagoProvider } from './mercado-pago/mercado-pago-provider'
+import {
+  MercadoPagoPaymentsProvider,
+  calcularComissaoGaleria,
+  montarNotificationUrl
+} from './mercado-pago/mercado-pago-payments'
+import { obterAccessTokenProdutor } from './mercado-pago/mercado-pago-conexao'
+import { obterSociedadeDoEvento, produtorRecebedorDoPagamento, providerParaPagamento } from './recebedor'
 import { deveAutoAprovarPixTeste, deveConfirmarPagamento, deveExpirarReserva, deveIgnorarFalhaConfirmacao } from './mercado-pago/mercado-pago-mapper'
 import { serializarLogErroMercadoPago } from './mercado-pago/mercado-pago-error'
 import { notificarVendaConfirmada } from '../push/push-service'
@@ -155,9 +162,55 @@ export async function criarPix(
     throw new PaymentServiceError('DADOS_INVALIDOS', 'E-mail do comprador ausente.', 422)
   }
 
-  const provider = new MercadoPagoProvider(accessToken)
+  // Evento em sociedade: Pix na conta do produtor (marketplace) com a % da
+  // galeria como comissao. Evento normal: Pix na conta da galeria (Orders).
+  const client = serverSupabaseServiceRole(event)
+  const { data: pedido, error: erroPedido } = await client
+    .from('pedidos')
+    .select('evento_id')
+    .eq('id', checkout.pedido_id)
+    .maybeSingle()
+  if (erroPedido || !pedido?.evento_id) {
+    throw new PaymentServiceError('ERRO_INESPERADO', 'Falha ao ler o pedido.', 500)
+  }
+  const sociedade = await obterSociedadeDoEvento(event, String(pedido.evento_id))
+
+  let provider: PaymentProvider
+  let tokenUsado = accessToken
+  let applicationFee: number | undefined
+  let notificationUrl: string | undefined
+  if (sociedade) {
+    const tokenProdutor = await obterAccessTokenProdutor(event, sociedade.produtorId)
+    if (!tokenProdutor) {
+      // Nunca cair na conta errada: sem conta do produtor, nao gera o Pix.
+      throw new PaymentServiceError(
+        'PAGAMENTO_INDISPONIVEL',
+        'O pagamento online deste evento ainda não foi liberado. Fale com a organização do evento.',
+        503
+      )
+    }
+    tokenUsado = tokenProdutor
+    applicationFee = calcularComissaoGaleria(Number(checkout.valor_total), sociedade.percentualGaleria)
+    const siteUrl = String(useRuntimeConfig(event).public.siteUrl || getRequestURL(event).origin)
+    notificationUrl = montarNotificationUrl(siteUrl, sociedade.produtorId)
+    provider = new MercadoPagoPaymentsProvider(tokenProdutor)
+  } else {
+    provider = new MercadoPagoProvider(accessToken)
+  }
+
+  // Grava ANTES de criar o Pix em qual conta ele sera criado: as consultas de
+  // status, o webhook e a conferencia da portaria usam essa informacao.
+  const { error: erroMarca } = await client
+    .from('pagamentos')
+    .update({
+      produtor_recebedor_id: sociedade?.produtorId ?? null,
+      comissao_galeria: sociedade ? (applicationFee ?? 0) : null
+    })
+    .eq('id', checkout.pagamento_id as string)
+  if (erroMarca) throw new PaymentServiceError('ERRO_INESPERADO', 'Falha ao preparar o pagamento.', 500)
+
   const credencialDeTeste = autoApproveTestEnabled
-    ? await verificarCredencialDeTeste(accessToken)
+    ? await verificarCredencialDeTeste(tokenUsado)
     : false
   let charge: PixCharge
   try {
@@ -167,7 +220,9 @@ export async function criarPix(
       payerEmail: email,
       expirationMinutes: minutosAte(checkout.reserva_expira_em),
       idempotencyKey: checkout.pagamento_id as string,
-      autoApproveTestPix: deveAutoAprovarPixTeste(autoApproveTestEnabled, credencialDeTeste)
+      autoApproveTestPix: deveAutoAprovarPixTeste(autoApproveTestEnabled, credencialDeTeste),
+      applicationFee,
+      notificationUrl
     })
   } catch (erro) {
     // Log tecnico sanitizado e serializado (sem token/headers/corpo bruto).
@@ -176,8 +231,8 @@ export async function criarPix(
       '[mercado-pago] createPixCharge failed',
       serializarLogErroMercadoPago(
         {
-          endpoint: 'POST /v1/orders',
-          operation: 'createOrder',
+          endpoint: sociedade ? 'POST /v1/payments' : 'POST /v1/orders',
+          operation: sociedade ? 'createPaymentMarketplace' : 'createOrder',
           pagamentoId: checkout.pagamento_id,
           pedidoCodigo: checkout.codigo_pedido
         },
@@ -187,7 +242,6 @@ export async function criarPix(
     throw erro
   }
 
-  const client = serverSupabaseServiceRole(event)
   const { error } = await client.rpc('registrar_cobranca_externa', {
     p_pagamento_id: checkout.pagamento_id,
     p_provider: 'MERCADO_PAGO',
@@ -271,9 +325,11 @@ export async function consultarStatus(
   // 1) Reconcilia com o provedor ANTES de qualquer expiracao: nunca perder um
   //    pagamento aprovado no limite da reserva. Se o provedor falhar, mantemos
   //    o status interno e seguimos para a expiracao (fonte de verdade e o banco).
-  if (checkout.cobranca_id && accessToken) {
+  if (checkout.cobranca_id && checkout.pagamento_id) {
     try {
-      const provider = new MercadoPagoProvider(accessToken)
+      const recebedor = await produtorRecebedorDoPagamento(event, checkout.pagamento_id)
+      const provider = await providerParaPagamento(event, recebedor, accessToken)
+      if (!provider) throw new Error('Sem credencial para consultar o pagamento.')
       const charge = await provider.getCharge(checkout.cobranca_id)
       const confirmou = await confirmarPagamentoOficial(event, checkoutToken, checkout, charge)
 

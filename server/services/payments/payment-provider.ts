@@ -18,6 +18,8 @@ export interface PixCharge {
   pixCopyPaste: string | null
   pixQrCode: string | null
   expiresAt: string | null
+  /** Valor cobrado no provedor (quando informado). */
+  amount?: number | null
 }
 
 export interface CreatePixChargeInput {
@@ -35,6 +37,13 @@ export interface CreatePixChargeInput {
    * Nunca deve ser true em producao.
    */
   autoApproveTestPix?: boolean
+  /**
+   * Marketplace (evento em sociedade): comissao da galeria em reais, enviada
+   * como application_fee. So usado pelo provider de Payments do produtor.
+   */
+  applicationFee?: number
+  /** URL de aviso por cobranca (marketplace). */
+  notificationUrl?: string
 }
 
 export interface PaymentProvider {
