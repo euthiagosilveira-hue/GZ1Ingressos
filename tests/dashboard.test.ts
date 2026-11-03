@@ -211,3 +211,42 @@ test('card: link de venda com copiar e "Ver evento" filtrando o dashboard', () =
   assert.ok(card.includes('`/?evento=${props.event.eventoId}`'))
   assert.ok(card.includes('Ver todos os eventos'))
 })
+
+// ---- Filtro: evento atual / periodo / todos ----
+import {
+  periodoDoFiltro,
+  valorSeletorFiltro,
+  rotaDoSeletorFiltro,
+  tituloCardEvento,
+  rotuloDiaEntrada
+} from '../app/utils/dashboard.ts'
+
+test('periodoDoFiltro: aceita so periodos oferecidos', () => {
+  assert.equal(periodoDoFiltro('7'), '7')
+  assert.equal(periodoDoFiltro(['30']), '30')
+  assert.equal(periodoDoFiltro('todos'), 'todos')
+  assert.equal(periodoDoFiltro('8'), null)
+  assert.equal(periodoDoFiltro(undefined), null)
+})
+
+test('seletor de filtro: valor <-> rota', () => {
+  assert.equal(valorSeletorFiltro(null, null), 'atual')
+  assert.equal(valorSeletorFiltro(null, '15'), 'periodo:15')
+  assert.equal(valorSeletorFiltro('abc', '15'), 'evento:abc')
+  assert.equal(rotaDoSeletorFiltro('atual'), '/')
+  assert.equal(rotaDoSeletorFiltro('periodo:todos'), '/?periodo=todos')
+  assert.equal(rotaDoSeletorFiltro('evento:abc'), '/?evento=abc')
+})
+
+test('tituloCardEvento: agora, proximo, ultimo ou selecionado', () => {
+  assert.equal(tituloCardEvento('EM_ANDAMENTO', false), 'Evento de agora')
+  assert.equal(tituloCardEvento('AGENDADO', false), 'Próximo evento')
+  assert.equal(tituloCardEvento('REALIZADO', false), 'Último evento')
+  assert.equal(tituloCardEvento('REALIZADO', true), 'Evento selecionado')
+})
+
+test('rotuloDiaEntrada: Hoje ou dd/mm (horario de Brasilia)', () => {
+  const agora = new Date('2026-11-03T15:00:00Z')
+  assert.equal(rotuloDiaEntrada('2026-11-03T12:00:00Z', agora), 'Hoje')
+  assert.equal(rotuloDiaEntrada('2026-11-01T02:00:00Z', agora), '31/10')
+})

@@ -46,7 +46,25 @@ export interface AdminDashboardEntry {
   metodo_validacao: string | null
 }
 
+/** Qual recorte o dashboard esta mostrando. */
+export interface AdminDashboardEscopo {
+  /** atual = evento de agora/proximo/ultimo; evento = um evento escolhido; periodo = ultimos N dias; todos. */
+  modo: 'atual' | 'evento' | 'periodo' | 'todos'
+  dias: number | null
+  quantidadeEventos: number
+}
+
+/** Evento listado no seletor do filtro. */
+export interface AdminDashboardEventoOpcao {
+  id: string
+  nome: string
+  inicio_em: string
+  status: string
+}
+
 export interface AdminDashboardData {
+  escopo: AdminDashboardEscopo
+  eventos: AdminDashboardEventoOpcao[]
   metricas: AdminDashboardMetrics
   evento: AdminDashboardEvento | null
   entradasPorHora: AdminDashboardEntryByHour[]

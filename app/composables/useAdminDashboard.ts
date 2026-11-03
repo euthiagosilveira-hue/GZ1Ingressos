@@ -2,9 +2,11 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import { obterDashboardAdmin } from '~/services/admin/dashboard'
 import type { AdminDashboardData } from '~/types/dashboard'
-import { eventoDoFiltro, mapearDashboard } from '~/utils/dashboard'
+import { eventoDoFiltro, mapearDashboard, periodoDoFiltro } from '~/utils/dashboard'
 
 const VAZIO: AdminDashboardData = {
+  escopo: { modo: 'atual', dias: null, quantidadeEventos: 0 },
+  eventos: [],
   metricas: { vendidos: 0, utilizados: 0, naoEntraram: 0, faturamento: 0, ticketMedio: 0 },
   evento: null,
   entradasPorHora: [],
@@ -15,11 +17,13 @@ const VAZIO: AdminDashboardData = {
 
 /**
  * Dashboard administrativo: dados reais via RPC + view-models prontos.
- * O filtro por evento vem da URL (?evento=<id>), entao sobrevive ao recarregar.
+ * O filtro vem da URL (?evento=<id> ou ?periodo=todos|7|15|30|90), entao
+ * sobrevive ao recarregar. Sem filtro: evento atual.
  */
 export function useAdminDashboard() {
   const route = useRoute()
   const eventoFiltro = computed(() => eventoDoFiltro(route.query.evento))
+  const periodoFiltro = computed(() => (eventoFiltro.value ? null : periodoDoFiltro(route.query.periodo)))
   const data = ref<AdminDashboardData>(VAZIO)
   const carregando = ref(true)
   const erro = ref('')
@@ -30,7 +34,7 @@ export function useAdminDashboard() {
     carregando.value = true
     erro.value = ''
     try {
-      data.value = await obterDashboardAdmin(eventoFiltro.value)
+      data.value = await obterDashboardAdmin({ eventoId: eventoFiltro.value, periodo: periodoFiltro.value })
     } catch {
       erro.value = 'Não foi possível carregar o dashboard.'
       data.value = VAZIO
@@ -43,7 +47,7 @@ export function useAdminDashboard() {
     void carregar()
   })
 
-  watch(eventoFiltro, () => {
+  watch([eventoFiltro, periodoFiltro], () => {
     void carregar()
   })
 
@@ -51,6 +55,7 @@ export function useAdminDashboard() {
     data,
     viewModel,
     eventoFiltro,
+    periodoFiltro,
     carregando,
     erro,
     carregar,

@@ -91,6 +91,39 @@ export function eventoDoFiltro(valor: unknown): string | null {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ? v : null
 }
 
+/** Periodos oferecidos no filtro do dashboard (valor da URL ?periodo=). */
+export const PERIODOS_DASHBOARD = ['7', '15', '30', '90', 'todos'] as const
+
+/** Le o periodo do filtro (?periodo=...); invalido ou vazio = evento atual. */
+export function periodoDoFiltro(valor: unknown): string | null {
+  const v = Array.isArray(valor) ? valor[0] : valor
+  if (typeof v !== 'string') return null
+  return (PERIODOS_DASHBOARD as readonly string[]).includes(v) ? v : null
+}
+
+/** Valor do seletor de filtro a partir da URL: 'atual', 'periodo:30', 'evento:<id>'. */
+export function valorSeletorFiltro(eventoId: string | null, periodo: string | null): string {
+  if (eventoId) return `evento:${eventoId}`
+  if (periodo) return `periodo:${periodo}`
+  return 'atual'
+}
+
+/** Rota do dashboard para um valor do seletor de filtro. */
+export function rotaDoSeletorFiltro(valor: string): string {
+  if (valor.startsWith('evento:')) return `/?evento=${encodeURIComponent(valor.slice(7))}`
+  if (valor.startsWith('periodo:')) return `/?periodo=${encodeURIComponent(valor.slice(8))}`
+  return '/'
+}
+
+/** Titulo do card de evento conforme o status (evento atual automatico). */
+export function tituloCardEvento(status: string | null | undefined, selecionado: boolean): string {
+  if (selecionado) return 'Evento selecionado'
+  if (status === 'EM_ANDAMENTO') return 'Evento de agora'
+  if (status === 'AGENDADO') return 'Próximo evento'
+  if (status) return 'Último evento'
+  return 'Próximo evento'
+}
+
 /**
  * Converte o evento real (EM_ANDAMENTO ou proximo AGENDADO) no view-model do
  * card. A capa usa imagem_url real validada; sem imagem, usa o fallback atual.
@@ -163,18 +196,35 @@ export function mapearPedidosRecentes(orders: AdminDashboardOrder[]): RecentOrde
   }))
 }
 
+const diaSP = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  timeZone: 'America/Sao_Paulo'
+})
+
+/** "Hoje" quando a entrada foi hoje (horario de Brasilia); senao dd/mm. */
+export function rotuloDiaEntrada(iso: string, agora: Date = new Date()): string {
+  const data = new Date(iso)
+  if (Number.isNaN(data.getTime())) return ''
+  const dia = diaSP.format(data)
+  return dia === diaSP.format(agora) ? 'Hoje' : dia
+}
+
 export function mapearEntradasRecentes(
   entries: { id: string; name: string; codigo: string; entrada_em: string; metodo_validacao: string | null }[]
 ): RecentEntry[] {
-  return entries.map((entry) => ({
-    id: entry.id,
-    name: entry.name,
-    ticket: `Ingresso ${entry.codigo}`,
-    time: formatHora(entry.entrada_em),
-    dateLabel: 'Hoje',
-    ok: true,
-    statusLabel: 'Hoje'
-  }))
+  return entries.map((entry) => {
+    const dia = rotuloDiaEntrada(entry.entrada_em)
+    return {
+      id: entry.id,
+      name: entry.name,
+      ticket: `Ingresso ${entry.codigo}`,
+      time: formatHora(entry.entrada_em),
+      dateLabel: dia,
+      ok: true,
+      statusLabel: dia
+    }
+  })
 }
 
 export interface AdminDashboardViewModel {

@@ -1,19 +1,29 @@
 import type { AdminDashboardData } from '~/types/dashboard'
 
+export interface FiltroDashboard {
+  /** Um evento especifico (tem prioridade sobre o periodo). */
+  eventoId?: string | null
+  /** 'todos' ou numero de dias ('7', '15', '30', '90'). Vazio = evento atual. */
+  periodo?: string | null
+}
+
 /**
  * Dashboard administrativo real (RPC segura, ADMINISTRADOR).
- * Com eventoId, todos os dados consideram somente aquele evento.
+ * Sem filtro, mostra o evento atual (em andamento, proximo ou ultimo).
  */
-export async function obterDashboardAdmin(eventoId: string | null = null): Promise<AdminDashboardData> {
+export async function obterDashboardAdmin(filtro: FiltroDashboard = {}): Promise<AdminDashboardData> {
   const client = useSupabaseClient()
-  const { data, error } = eventoId
-    ? await client.rpc('obter_dashboard_admin', { p_evento_id: eventoId })
-    : await client.rpc('obter_dashboard_admin')
+  const params: Record<string, string> = {}
+  if (filtro.eventoId) params.p_evento_id = filtro.eventoId
+  else if (filtro.periodo) params.p_periodo = filtro.periodo
+  const { data, error } = await client.rpc('obter_dashboard_admin', params)
   if (error) {
     throw new Error('Não foi possível carregar o dashboard.')
   }
   const d = (data ?? {}) as Partial<AdminDashboardData>
   return {
+    escopo: d.escopo ?? { modo: 'atual', dias: null, quantidadeEventos: 0 },
+    eventos: d.eventos ?? [],
     metricas: d.metricas ?? {
       vendidos: 0,
       utilizados: 0,
