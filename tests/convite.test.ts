@@ -91,3 +91,7 @@ test('seguranca: endpoint mantem service role server-side e sem secrets expostos
   assert.ok(!endpoint.includes('serviceKey'))
   assert.ok(!/SECRET_KEY|service_role/.test(endpoint))
 })
+
+test('destinoAposConvite: PRODUTOR -> /produtor', () => {
+  assert.equal(destinoAposConvite('PRODUTOR'), '/produtor')
+})

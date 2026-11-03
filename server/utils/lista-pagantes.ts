@@ -34,6 +34,8 @@ export interface CabecalhoLista {
   eventoNome: string
   eventoInicio: string | null
   geradaEm: Date
+  /** Lista para o produtor do evento: sem telefone dos compradores. */
+  semTelefone?: boolean
 }
 
 const FUSO = 'America/Sao_Paulo'
@@ -143,7 +145,7 @@ export function gerarTxtPagantes(cabecalho: CabecalhoLista, linhas: LinhaPagante
     if (linha.situacao === 'Já entrou') detalhes.push('JÁ ENTROU')
     saida.push(`      ${detalhes.join(' | ')}`)
     const compra = [`Comprador: ${linha.comprador || '-'}`]
-    if (linha.telefone) compra.push(`Tel: ${linha.telefone}`)
+    if (linha.telefone && !cabecalho.semTelefone) compra.push(`Tel: ${linha.telefone}`)
     compra.push(`Pedido: ${linha.pedido} (${linha.qtdPedido} ${linha.qtdPedido === 1 ? 'ingresso' : 'ingressos'})`)
     saida.push(`      ${compra.join(' | ')}`)
     saida.push('')
@@ -209,16 +211,17 @@ function planilhaXml(cabecalho: CabecalhoLista, linhas: LinhaPagante[]): string 
     resumo(linhas)
   ].filter(Boolean).join('   •   ')
 
+  const colunas = cabecalho.semTelefone ? COLUNAS.filter((c) => c.titulo !== 'Telefone') : COLUNAS
   const linhaTitulos = 3
   const rows = [
     linhaXml(1, ['GZ1 Ingressos - Lista de pagantes'], 1),
     linhaXml(2, [info]),
-    linhaXml(linhaTitulos, COLUNAS.map((c) => c.titulo), 1),
-    ...linhas.map((l, i) => linhaXml(linhaTitulos + 1 + i, COLUNAS.map((c) => c.valor(l))))
+    linhaXml(linhaTitulos, colunas.map((c) => c.titulo), 1),
+    ...linhas.map((l, i) => linhaXml(linhaTitulos + 1 + i, colunas.map((c) => c.valor(l))))
   ]
-  const ultimaColuna = letraColuna(COLUNAS.length - 1)
+  const ultimaColuna = letraColuna(colunas.length - 1)
   const ultimaLinha = linhaTitulos + Math.max(linhas.length, 0)
-  const cols = COLUNAS.map(
+  const cols = colunas.map(
     (c, i) => `<col min="${i + 1}" max="${i + 1}" width="${c.largura}" customWidth="1"/>`
   ).join('')
 

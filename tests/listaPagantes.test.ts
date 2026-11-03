@@ -91,3 +91,22 @@ test('endpoint exige admin e menu do evento tem os dois downloads', () => {
   assert.ok(menu.includes("selecionar('pagantes-xlsx')"))
   assert.ok(menu.includes("selecionar('pagantes-txt')"))
 })
+
+test('lista do produtor (semTelefone): sem telefone no txt e sem coluna Telefone no xlsx', () => {
+  const linhas = montarLinhasPagantes([ingresso({ participante_nome: 'Ana' })])
+  const txt = gerarTxtPagantes({ ...cabecalho, semTelefone: true }, linhas)
+  assert.ok(!txt.includes('Tel:'))
+  assert.ok(!txt.includes('99999'))
+  const xlsx = new TextDecoder().decode(gerarXlsxPagantes({ ...cabecalho, semTelefone: true }, linhas))
+  assert.ok(!xlsx.includes('>Telefone<'))
+  assert.ok(!xlsx.includes('99999'))
+  const xlsxAdmin = new TextDecoder().decode(gerarXlsxPagantes(cabecalho, linhas))
+  assert.ok(xlsxAdmin.includes('>Telefone<'))
+})
+
+test('endpoint do produtor exige o produtor do evento e nao busca telefone', () => {
+  const endpoint = ler('../server/api/produtor/eventos/[id]/pagantes.get.ts')
+  assert.ok(endpoint.includes('exigirProdutorDoEvento(event, eventoId)'))
+  assert.ok(!endpoint.includes('comprador_telefone,'))
+  assert.ok(endpoint.includes('semTelefone: true'))
+})

@@ -31,6 +31,9 @@ onMounted(async () => {
     if (perfil?.ativo && perfil.perfil === 'PORTARIA') {
       return navigateTo('/portaria', { replace: true })
     }
+    if (perfil?.ativo && perfil.perfil === 'PRODUTOR') {
+      return navigateTo('/produtor', { replace: true })
+    }
     if (perfil?.ativo && perfil.perfil === 'ADMINISTRADOR') {
       return navigateTo('/', { replace: true })
     }

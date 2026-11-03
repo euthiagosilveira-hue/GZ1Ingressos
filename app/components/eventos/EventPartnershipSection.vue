@@ -11,6 +11,7 @@ import FormField from '~/components/FormField.vue'
 import SegmentedControl from '~/components/SegmentedControl.vue'
 import SociedadeDivisao from '~/components/sociedade/SociedadeDivisao.vue'
 import {
+  criarAcessoProdutorAdmin,
   definirSociedadeEventoAdmin,
   listarProdutoresAdmin,
   obterSociedadeEventoAdmin,
@@ -38,8 +39,10 @@ const percentualGaleria = ref<string>('20')
 const erroPercentual = ref('')
 const erroProdutor = ref('')
 
-// Novo produtor
+// Novo produtor / editar produtor (mesmo formulario)
 const novoAberto = ref(false)
+const editandoId = ref<string | null>(null)
+const enviandoAcesso = ref(false)
 const salvandoProdutor = ref(false)
 const novo = reactive({ nome: '', documento: '', telefone: '', email: '' })
 const erroNovoNome = ref('')
@@ -92,13 +95,53 @@ async function carregar() {
   }
 }
 
+const produtorSelecionado = computed(
+  () => produtores.value.find((p) => p.produtorId === produtorId.value) ?? null
+)
+
+// O acesso so e oferecido depois que a sociedade com esse produtor foi salva.
+const sociedadeSalvaComSelecionado = computed(
+  () =>
+    sociedade.value?.ativa === true &&
+    sociedade.value.produtor?.produtorId === produtorId.value &&
+    ativa.value === 'sim'
+)
+
 function abrirNovoProdutor() {
+  editandoId.value = null
   novo.nome = ''
   novo.documento = ''
   novo.telefone = ''
   novo.email = ''
   erroNovoNome.value = ''
   novoAberto.value = true
+}
+
+function abrirEditarProdutor() {
+  const p = produtorSelecionado.value
+  if (!p) return
+  editandoId.value = p.produtorId
+  novo.nome = p.nome
+  novo.documento = p.documento ?? ''
+  novo.telefone = p.telefone ?? ''
+  novo.email = p.email ?? ''
+  erroNovoNome.value = ''
+  novoAberto.value = true
+}
+
+async function enviarAcesso() {
+  const p = produtorSelecionado.value
+  if (!p) return
+  enviandoAcesso.value = true
+  try {
+    await criarAcessoProdutorAdmin(p.produtorId)
+    toast.success(`Convite enviado para ${p.email}.`)
+    await carregar()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Não foi possível enviar o convite.')
+  } finally {
+    enviandoAcesso.value = false
+  }
 }
 
 async function salvarNovoProdutor() {
@@ -110,17 +153,21 @@ async function salvarNovoProdutor() {
   salvandoProdutor.value = true
   try {
     const criado = await salvarProdutorAdmin({
+      produtorId: editandoId.value,
       nome: novo.nome,
       documento: novo.documento,
       telefone: novo.telefone,
       email: novo.email
     })
-    produtores.value = [...produtores.value, criado].sort((a, b) =>
-      a.nome.localeCompare(b.nome, 'pt-BR')
-    )
+    const editando = Boolean(editandoId.value)
+    produtores.value = [
+      ...produtores.value.filter((p) => p.produtorId !== criado.produtorId),
+      criado
+    ].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
     produtorId.value = criado.produtorId
     novoAberto.value = false
-    toast.success('Produtor cadastrado.')
+    editandoId.value = null
+    toast.success(editando ? 'Produtor atualizado.' : 'Produtor cadastrado.')
   } catch (e) {
     toast.error(e instanceof Error ? e.message : 'Não foi possível salvar o produtor.')
   } finally {
@@ -204,13 +251,23 @@ onMounted(() => void carregar())
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField label="Produtor" required :error="erroProdutor">
             <BaseSelect v-model="produtorId" :options="opcoesProdutor" />
-            <button
-              type="button"
-              class="mt-2 text-xs font-semibold uppercase tracking-wide text-amber-400 hover:text-amber-300"
-              @click="abrirNovoProdutor"
-            >
-              + Cadastrar novo produtor
-            </button>
+            <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              <button
+                type="button"
+                class="text-xs font-semibold uppercase tracking-wide text-amber-400 hover:text-amber-300"
+                @click="abrirNovoProdutor"
+              >
+                + Cadastrar novo produtor
+              </button>
+              <button
+                v-if="produtorSelecionado"
+                type="button"
+                class="text-xs font-semibold uppercase tracking-wide text-zinc-400 hover:text-amber-300"
+                @click="abrirEditarProdutor"
+              >
+                Editar produtor
+              </button>
+            </div>
           </FormField>
 
           <FormField
@@ -231,7 +288,7 @@ onMounted(() => void carregar())
           v-if="novoAberto"
           class="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4"
         >
-          <p class="text-sm font-medium text-white">Novo produtor</p>
+          <p class="text-sm font-medium text-white">{{ editandoId ? 'Editar produtor' : 'Novo produtor' }}</p>
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormField label="Nome" required :error="erroNovoNome">
               <BaseInput v-model="novo.nome" :invalid="!!erroNovoNome" />
@@ -242,7 +299,7 @@ onMounted(() => void carregar())
             <FormField label="Telefone">
               <BaseInput v-model="novo.telefone" type="tel" />
             </FormField>
-            <FormField label="E-mail" hint="Será usado depois para o login do produtor.">
+            <FormField label="E-mail" hint="É o e-mail que o produtor usa para entrar.">
               <BaseInput v-model="novo.email" type="email" />
             </FormField>
           </div>
@@ -256,6 +313,37 @@ onMounted(() => void carregar())
           </div>
         </div>
       </template>
+
+      <div
+        v-if="sociedadeSalvaComSelecionado && produtorSelecionado"
+        class="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4"
+      >
+        <p class="text-sm font-medium text-white">Acesso do produtor</p>
+        <template v-if="produtorSelecionado.temLogin">
+          <p class="text-sm text-green-400">O produtor já tem acesso.</p>
+          <p class="text-xs text-zinc-500">
+            Ele entra em gz-1-ingressos.vercel.app/login com o e-mail {{ produtorSelecionado.email ?? 'cadastrado' }}
+            e vê só os eventos em sociedade dele. Para bloquear, desative o usuário em Configurações › Usuários.
+          </p>
+        </template>
+        <template v-else>
+          <p class="text-xs text-zinc-500">
+            O produtor recebe um e-mail para criar a senha. Depois ele vê só as vendas, a divisão, a lista
+            de pagantes (sem telefone) e a lista VIP dos eventos em que estiver incluído.
+          </p>
+          <p v-if="!produtorSelecionado.email" class="text-xs text-amber-300">
+            Cadastre o e-mail do produtor (Editar produtor) para enviar o convite.
+          </p>
+          <AppButton
+            variant="outline"
+            size="sm"
+            :disabled="enviandoAcesso || !produtorSelecionado.email"
+            @click="enviarAcesso"
+          >
+            {{ enviandoAcesso ? 'Enviando...' : 'Enviar convite de acesso' }}
+          </AppButton>
+        </template>
+      </div>
 
       <div class="flex flex-wrap items-center gap-3">
         <AppButton variant="outlineAccent" :disabled="salvando" @click="salvar">

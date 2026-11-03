@@ -48,6 +48,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
     ativo: perfil?.ativo ?? null
   })
 
+  if (perfil?.ativo && perfil.perfil === 'PRODUTOR') {
+    return navigateTo('/produtor')
+  }
+
   if (decisao !== 'PERMITIR') {
     await supabase.auth.signOut()
     return navigateTo('/login?erro=SEM_PERMISSAO')

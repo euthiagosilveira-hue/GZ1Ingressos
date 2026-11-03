@@ -5,7 +5,9 @@ import {
   codigoErroPerfil,
   decidirAcessoOperador,
   mensagemLoginErro,
+  paginaInicialPerfil,
   perfilPermitido,
+  perfilPodeEntrar,
   resolverUid,
   sanitizarRedirect,
   uidDoUsuario
@@ -148,4 +150,24 @@ test('sanitizarRedirect bloqueia destinos externos/perigosos', () => {
   assert.equal(sanitizarRedirect(null), null)
   assert.equal(sanitizarRedirect(undefined), null)
   assert.equal(sanitizarRedirect('/ok\nset-cookie'), null)
+})
+
+test('PRODUTOR pode fazer login, mas nao e equipe (portaria/admin)', () => {
+  assert.equal(perfilPermitido('PRODUTOR'), false)
+  assert.equal(perfilPodeEntrar('PRODUTOR'), true)
+  assert.equal(perfilPodeEntrar('ADMINISTRADOR'), true)
+  assert.equal(perfilPodeEntrar('FINANCEIRO'), false)
+  assert.equal(codigoErroPerfil({ ativo: true, perfil: 'PRODUTOR' }), null)
+  assert.equal(codigoErroPerfil({ ativo: false, perfil: 'PRODUTOR' }), 'INATIVO')
+  assert.equal(
+    decidirAcessoOperador({ temSessao: true, perfil: 'PRODUTOR', ativo: true }),
+    'NEGAR'
+  )
+})
+
+test('paginaInicialPerfil leva cada perfil para a sua area', () => {
+  assert.equal(paginaInicialPerfil('ADMINISTRADOR'), '/')
+  assert.equal(paginaInicialPerfil('PORTARIA'), '/portaria')
+  assert.equal(paginaInicialPerfil('PRODUTOR'), '/produtor')
+  assert.equal(paginaInicialPerfil(null), '/')
 })

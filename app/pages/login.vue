@@ -10,7 +10,7 @@ import {
 } from '@heroicons/vue/24/outline'
 
 import { AuthError, useOperatorAuth } from '~/composables/useOperatorAuth'
-import { mensagemLoginErro, sanitizarRedirect } from '~/utils/auth'
+import { mensagemLoginErro, paginaInicialPerfil, sanitizarRedirect } from '~/utils/auth'
 
 definePageMeta({
   layout: false
@@ -53,11 +53,15 @@ async function entrar() {
       typeof route.query.redirect === 'string' ? route.query.redirect : null
     )
     // Honra o redirect apenas se for interno e permitido ao perfil.
-    if (destino && (perfil.perfil === 'ADMINISTRADOR' || destino.startsWith('/portaria'))) {
+    const destinoPermitido =
+      perfil.perfil === 'PRODUTOR'
+        ? destino?.startsWith('/produtor')
+        : perfil.perfil === 'ADMINISTRADOR' || destino?.startsWith('/portaria')
+    if (destino && destinoPermitido) {
       await navigateTo(destino)
       return
     }
-    await navigateTo(perfil.perfil === 'PORTARIA' ? '/portaria' : '/')
+    await navigateTo(paginaInicialPerfil(perfil.perfil))
   } catch (e) {
     erro.value = e instanceof AuthError ? e.message : mensagemLoginErro('ERRO_TEMPORARIO')
     // Garante que uma sessao sem permissao nao permaneca ativa.

@@ -136,3 +136,27 @@ export async function definirSociedadeEventoAdmin(
   })
   if (error) throw new Error(mensagemErro(error, 'Não foi possível salvar a sociedade.'))
 }
+
+interface ErroFetch {
+  data?: { error?: string; message?: string }
+  status?: number
+  statusCode?: number
+}
+
+/**
+ * Cria o login do produtor e envia o convite por e-mail (ADMINISTRADOR).
+ * O produtor passa a ver somente os eventos em sociedade dele.
+ */
+export async function criarAcessoProdutorAdmin(produtorId: string): Promise<void> {
+  try {
+    const resposta = await $fetch<{ ok?: boolean; error?: string; message?: string }>(
+      `/api/admin/produtores/${encodeURIComponent(produtorId)}/acesso`,
+      { method: 'POST' }
+    )
+    if (!resposta?.ok) throw new Error(resposta?.message ?? 'Não foi possível enviar o convite.')
+  } catch (e) {
+    const erro = e as ErroFetch & Error
+    if (erro instanceof Error && !erro.data && !erro.status && !erro.statusCode) throw erro
+    throw new Error(erro.data?.message ?? 'Não foi possível enviar o convite.')
+  }
+}
