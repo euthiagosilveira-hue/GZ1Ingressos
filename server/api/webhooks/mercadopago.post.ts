@@ -83,7 +83,17 @@ export default defineEventHandler(async (event) => {
     // Aviso IPN (formato antigo) nao vem assinado; os demais, se assinados,
     // precisam ser validos. Em todos os casos o pagamento e conferido no MP.
     const ipn = Boolean(query.topic) && !query['data.id']
-    if (secret && xSignature && !ipn && !validarAssinaturaMp({ xSignature, xRequestId, dataId }, secret)) {
+    // O Pix do produtor e criado pelo app de marketplace, que pode ter a
+    // propria assinatura secreta (MERCADO_PAGO_MARKETPLACE_WEBHOOK_SECRET).
+    const segredos = [secret, config.mercadoPagoMarketplaceWebhookSecret]
+      .map((s) => String(s ?? ''))
+      .filter(Boolean)
+    if (
+      segredos.length &&
+      xSignature &&
+      !ipn &&
+      !segredos.some((s) => validarAssinaturaMp({ xSignature, xRequestId, dataId }, s))
+    ) {
       return responder(401, 'ASSINATURA_INVALIDA')
     }
 

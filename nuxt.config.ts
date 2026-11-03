@@ -18,6 +18,7 @@ export default defineNuxtConfig({
     // Somente backend. Nunca expor em public.
     mercadoPagoAccessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '',
     mercadoPagoWebhookSecret: process.env.MERCADO_PAGO_WEBHOOK_SECRET || '',
+    mercadoPagoMarketplaceWebhookSecret: process.env.MERCADO_PAGO_MARKETPLACE_WEBHOOK_SECRET || '',
     // Marketplace (eventos em sociedade): OAuth do aplicativo da galeria para
     // o produtor conectar a propria conta. TOKEN_KEY (32+ caracteres
     // aleatorios) cifra os tokens dos produtores no banco.
