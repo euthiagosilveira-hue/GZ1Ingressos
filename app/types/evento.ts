@@ -53,7 +53,7 @@ export interface EventFormValue {
   imagemUrl: string | null
   dataInicio: string
   horaInicio: string
-  /** Encerramento proprio das vendas online (vazio = inicio do evento). */
+  /** Encerramento proprio das vendas online (vazio = abertas ate o evento ser encerrado). */
   dataEncerramentoVendas: string
   horaEncerramentoVendas: string
   local: string

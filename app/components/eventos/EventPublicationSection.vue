@@ -63,7 +63,7 @@ const vendasOptions: SelectOption[] = [
         </FormField>
       </div>
       <p class="text-xs text-zinc-500">
-        Deixe vazio para encerrar as vendas online no horário de início do evento.
+        Deixe vazio para manter as vendas online abertas até o evento ser encerrado (mesmo depois do início). Preencha para parar as vendas num horário específico.
       </p>
     </div>
 

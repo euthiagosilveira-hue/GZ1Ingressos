@@ -169,24 +169,23 @@ export function mapearEventoAdminParaFormulario(evento: AdminEventDetail): Event
 }
 
 /**
- * Horario em que as vendas online encerram: o horario proprio do evento ou,
- * se vazio, o inicio. Nunca depois do inicio (mesma regra do banco,
- * private.limite_vendas_online).
+ * Horario em que as vendas online encerram: o horario proprio do evento
+ * (pode ser antes ou depois do inicio) ou, se vazio, null = sem limite de
+ * horario (vendas seguem ate o evento ser encerrado). Mesma regra do banco,
+ * private.limite_vendas_online.
  */
-export function limiteVendasOnline(inicioEm: string, vendasEncerramEm: string | null): string {
-  if (!vendasEncerramEm) return inicioEm
-  return new Date(vendasEncerramEm).getTime() < new Date(inicioEm).getTime()
-    ? vendasEncerramEm
-    : inicioEm
+export function limiteVendasOnline(_inicioEm: string, vendasEncerramEm: string | null): string | null {
+  return vendasEncerramEm || null
 }
 
-/** Vendas online abertas agora: status ABERTAS e antes do limite de horario. */
+/** Vendas online abertas agora: status ABERTAS e antes do limite de horario (se houver). */
 export function vendasOnlineAbertas(
   evento: Pick<EventListItem, 'vendasStatus' | 'inicioEm' | 'vendasEncerramEm'>,
   agora: Date = new Date()
 ): boolean {
   if (evento.vendasStatus !== 'ABERTAS') return false
   const limite = limiteVendasOnline(evento.inicioEm, evento.vendasEncerramEm ?? null)
+  if (!limite) return true
   return agora.getTime() < new Date(limite).getTime()
 }
 
