@@ -74,12 +74,6 @@ export function useEventForm(options: { initialValue?: Partial<EventFormValue> }
     const temHoraEncerramento = !!valor.horaEncerramentoVendas
     if (temDataEncerramento !== temHoraEncerramento) {
       erros.dataEncerramentoVendas = 'Informe a data e o horário, ou deixe os dois vazios.'
-    } else if (temDataEncerramento && valor.dataInicio && valor.horaInicio) {
-      const encerramento = montarInicioEm(valor.dataEncerramentoVendas, valor.horaEncerramentoVendas)
-      const inicio = montarInicioEm(valor.dataInicio, valor.horaInicio)
-      if (encerramento && inicio && new Date(encerramento) > new Date(inicio)) {
-        erros.dataEncerramentoVendas = 'O encerramento das vendas não pode ser depois do início do evento.'
-      }
     }
     if (!valor.local.trim()) erros.local = 'Informe o local.'
     if (!valor.endereco.trim()) erros.endereco = 'Informe o endereço.'

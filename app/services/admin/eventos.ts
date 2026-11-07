@@ -267,7 +267,8 @@ export async function atualizarEventoAdmin(
 
 /**
  * Define o horario proprio de encerramento das vendas online (RPC segura,
- * ADMINISTRADOR). null = vendas online encerram no inicio do evento.
+ * ADMINISTRADOR). Pode ser antes ou depois do inicio. null = vendas online
+ * seguem abertas ate o evento ser encerrado.
  */
 export async function definirEncerramentoVendasAdmin(
   eventoId: string,
@@ -279,10 +280,6 @@ export async function definirEncerramentoVendasAdmin(
     p_vendas_encerram_em: vendasEncerramEm
   })
   if (error) {
-    const mensagem = (error.message ?? '').toLowerCase()
-    if (mensagem.includes('depois do inicio')) {
-      throw new Error('O encerramento das vendas não pode ser depois do início do evento.')
-    }
     throw new Error(
       mensagemErroEvento(error, 'Não foi possível salvar o encerramento das vendas.')
     )

@@ -202,11 +202,11 @@ test('mapearEventoAdminParaFormulario: encerramento proprio em Sao Paulo', () =>
   )
 })
 
-test('limiteVendasOnline: vazio = inicio; nunca depois do inicio', () => {
+test('limiteVendasOnline: vazio = sem limite; aceita horario depois do inicio', () => {
   const inicio = '2026-10-29T23:00:00.000Z'
-  assert.equal(limiteVendasOnline(inicio, null), inicio)
+  assert.equal(limiteVendasOnline(inicio, null), null)
   assert.equal(limiteVendasOnline(inicio, '2026-10-29T18:00:00.000Z'), '2026-10-29T18:00:00.000Z')
-  assert.equal(limiteVendasOnline(inicio, '2026-10-30T01:00:00.000Z'), inicio)
+  assert.equal(limiteVendasOnline(inicio, '2026-10-30T01:00:00.000Z'), '2026-10-30T01:00:00.000Z')
 })
 
 test('vendasOnlineAbertas considera status e horario', () => {
@@ -222,8 +222,15 @@ test('vendasOnlineAbertas considera status e horario', () => {
     true
   )
   assert.equal(
-    vendasOnlineAbertas({ ...base, vendasEncerramEm: null }, new Date('2026-10-29T23:00:00.000Z')),
-    false
+    vendasOnlineAbertas({ ...base, vendasEncerramEm: null }, new Date('2026-10-30T02:00:00.000Z')),
+    true
+  )
+  assert.equal(
+    vendasOnlineAbertas(
+      { ...base, vendasEncerramEm: '2026-10-30T01:00:00.000Z' },
+      new Date('2026-10-30T00:30:00.000Z')
+    ),
+    true
   )
   assert.equal(
     vendasOnlineAbertas({ ...base, vendasStatus: 'ENCERRADAS' }, new Date('2026-10-29T10:00:00.000Z')),
