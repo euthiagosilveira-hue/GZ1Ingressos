@@ -28,6 +28,7 @@ import {
   fecharBarCaixa,
   linkComprovante,
   listarLancamentosCaixa,
+  ErroItensLancamento,
   salvarLancamentoCaixa
 } from '~/services/admin/caixa'
 import type {
@@ -213,7 +214,14 @@ async function salvarLancamento(input: LancamentoInput) {
     modalLancamento.value = false
     await recarregarTudo()
   } catch (e) {
-    toast.error(mensagemErroCaixa(e))
+    if (e instanceof ErroItensLancamento) {
+      // O lancamento entrou; so a lista de itens falhou.
+      toast.warning('Lançamento salvo, mas os itens não foram guardados. Abra o lançamento e tente de novo.')
+      modalLancamento.value = false
+      await recarregarTudo()
+    } else {
+      toast.error(mensagemErroCaixa(e))
+    }
   } finally {
     salvandoLancamento.value = false
   }

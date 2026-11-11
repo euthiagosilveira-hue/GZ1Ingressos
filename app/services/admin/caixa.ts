@@ -4,6 +4,8 @@ import type {
   ContaCaixa,
   FiltrosLancamentos,
   FluxoCaixa,
+  HistoricoItens,
+  ItemLancamento,
   LancamentoCaixa,
   LancamentoInput,
   ResumoLancamentos,
@@ -15,6 +17,8 @@ import {
   mapearCategoria,
   mapearConta,
   mapearFluxo,
+  mapearHistoricoItens,
+  mapearItemLancamento,
   mapearLancamento,
   mapearResumoLancamentos
 } from '~/utils/caixa'
@@ -113,7 +117,22 @@ export async function salvarLancamentoCaixa(input: LancamentoInput): Promise<str
     p_comprovante_path: input.comprovantePath
   })
   if (error) throw error
-  return String((data as Bruto)?.id ?? '')
+  const id = String((data as Bruto)?.id ?? input.id ?? '')
+  if (input.itens !== null && input.tipo !== 'TRANSFERENCIA' && id) {
+    try {
+      await salvarItensLancamento(id, input.itens)
+    } catch (e) {
+      throw new ErroItensLancamento(e)
+    }
+  }
+  return id
+}
+
+/** O lancamento foi salvo, mas os itens nao. */
+export class ErroItensLancamento extends Error {
+  constructor(public causa: unknown) {
+    super('Lancamento salvo, mas os itens nao')
+  }
 }
 
 export async function cancelarLancamentoCaixa(id: string, motivo: string): Promise<void> {
@@ -188,6 +207,7 @@ export type LeituraComprovanteIa = {
   data: string | null
   descricao: string | null
   categoriaId: string | null
+  itens: ItemLancamento[]
 }
 
 /** Pede para a IA (Gemini) ler o comprovante ja enviado e sugerir os campos. */
@@ -199,4 +219,34 @@ export async function lerComprovanteComIa(
     method: 'POST',
     body: { caminho, tipo }
   })
+}
+
+export async function salvarItensLancamento(lancamentoId: string, itens: ItemLancamento[]): Promise<void> {
+  const { error } = await useSupabaseClient().rpc('salvar_financeiro_lancamento_itens_admin', {
+    p_lancamento_id: lancamentoId,
+    p_itens: itens.map((i) => ({ descricao: i.descricao, quantidade: i.quantidade, valor_total: i.valorTotal }))
+  })
+  if (error) throw error
+}
+
+export async function listarItensLancamento(lancamentoId: string): Promise<ItemLancamento[]> {
+  const { data, error } = await useSupabaseClient().rpc('listar_financeiro_lancamento_itens_admin', {
+    p_lancamento_id: lancamentoId
+  })
+  if (error) throw error
+  return ((data ?? []) as Bruto[]).map(mapearItemLancamento)
+}
+
+export async function listarHistoricoItens(filtros: {
+  de: string | null
+  ate: string | null
+  busca: string
+}): Promise<HistoricoItens> {
+  const { data, error } = await useSupabaseClient().rpc('listar_financeiro_itens_historico_admin', {
+    p_de: filtros.de,
+    p_ate: filtros.ate,
+    p_busca: filtros.busca.trim() || null
+  })
+  if (error) throw error
+  return mapearHistoricoItens(data as Bruto)
 }

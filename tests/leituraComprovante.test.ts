@@ -24,7 +24,7 @@ test('interpreta resposta completa do Gemini', () => {
     categorias,
     hoje
   )
-  assert.deepEqual(r, { valor: 412.37, data: '2026-11-05', descricao: 'CEMIG - conta de luz', categoriaId: 'c1' })
+  assert.deepEqual(r, { valor: 412.37, data: '2026-11-05', descricao: 'CEMIG - conta de luz', categoriaId: 'c1', itens: [] })
 })
 
 test('aceita valor e data em formato brasileiro e categoria sem acento/caixa', () => {
@@ -90,4 +90,27 @@ test('mensagens de erro da leitura por IA', () => {
   assert.match(mensagemErroLeituraIa({ data: { statusMessage: 'IA_NAO_CONFIGURADA' } }), /chave do Gemini/)
   assert.match(mensagemErroLeituraIa({ statusMessage: 'LIMITE_IA' }), /Limite gratuito/)
   assert.match(mensagemErroLeituraIa(new Error('x')), /Preencha à mão/)
+})
+
+test('le os itens do comprovante e ignora linhas sem nome', () => {
+  const r = interpretarLeitura(
+    JSON.stringify({
+      valor: 1879.6,
+      itens: [
+        { descricao: 'RED LABEL 1L', quantidade: 6, valor_total: 419.4 },
+        { descricao: ' Coca cola  6x310ml ', quantidade: '5', valor_total: '91,50' },
+        { descricao: '', quantidade: 1, valor_total: 10 },
+        { descricao: 'Sem quantidade', valor_total: null }
+      ]
+    }),
+    categorias,
+    hoje
+  )
+  assert.deepEqual(r.itens, [
+    { descricao: 'RED LABEL 1L', quantidade: 6, valorTotal: 419.4 },
+    { descricao: 'Coca cola 6x310ml', quantidade: 5, valorTotal: 91.5 },
+    { descricao: 'Sem quantidade', quantidade: 1, valorTotal: 0 }
+  ])
+  assert.deepEqual(interpretarLeitura('{"valor":10}', categorias, hoje).itens, [])
+  assert.equal(leituraVazia(interpretarLeitura('{"itens":[{"descricao":"x"}]}', categorias, hoje)), false)
 })
