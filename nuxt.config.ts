@@ -32,6 +32,10 @@ export default defineNuxtConfig({
     // Notificacoes push de venda (Web Push/VAPID). Chave privada somente backend.
     vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || '',
     vapidSubject: process.env.VAPID_SUBJECT || '',
+    // Leitura de comprovantes com IA (Google Gemini). Vazia = leitura desligada.
+    geminiApiKey: process.env.GEMINI_API_KEY || '',
+    // Opcional: troca o modelo sem mexer no codigo (padrao gemini-3.5-flash).
+    geminiModel: process.env.GEMINI_MODEL || '',
     public: {
       // Chave publica VAPID (par da VAPID_PRIVATE_KEY). Vazia = push desativado.
       vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY || '',
