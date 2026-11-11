@@ -137,3 +137,16 @@ test('fluxo e planilhas', () => {
   assert.equal(zip[0], 0x50)
   assert.equal(zip[1], 0x4b)
 })
+
+test('compressao de comprovante: so fotos grandes, sem aumentar', async () => {
+  const { dimensoesReduzidas, nomeJpg, podeComprimir } = await import('../app/utils/comprimirImagem.ts')
+  assert.deepEqual(dimensoesReduzidas(4032, 3024), { largura: 2000, altura: 1500 })
+  assert.deepEqual(dimensoesReduzidas(3024, 4032), { largura: 1500, altura: 2000 })
+  assert.deepEqual(dimensoesReduzidas(1200, 800), { largura: 1200, altura: 800 })
+  assert.equal(podeComprimir('image/jpeg', 5 * 1024 * 1024), true)
+  assert.equal(podeComprimir('image/jpeg', 500 * 1024), false)
+  assert.equal(podeComprimir('application/pdf', 5 * 1024 * 1024), false)
+  assert.equal(podeComprimir('image/heic', 5 * 1024 * 1024), false)
+  assert.equal(nomeJpg('IMG_1234.PNG'), 'IMG_1234.jpg')
+  assert.equal(nomeJpg('recibo'), 'recibo.jpg')
+})
