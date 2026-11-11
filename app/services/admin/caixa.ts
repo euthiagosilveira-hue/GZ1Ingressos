@@ -10,6 +10,7 @@ import type {
   TipoCategoria,
   TipoConta
 } from '~/types/caixa'
+import { comprimirComprovante } from '~/utils/comprimirImagem'
 import {
   mapearCategoria,
   mapearConta,
@@ -159,7 +160,10 @@ export async function obterFluxoCaixa(input: {
 }
 
 /** Envia a foto/PDF do comprovante e devolve o caminho no bucket privado. */
-export async function enviarComprovante(arquivo: File): Promise<string> {
+export async function enviarComprovante(original: File): Promise<string> {
+  // Fotos grandes sao reduzidas antes de subir (sem perder a leitura).
+  const arquivo = await comprimirComprovante(original)
+  if (arquivo.size > 10 * 1024 * 1024) throw new Error('Arquivo maior que 10 MB')
   const extensao = (arquivo.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
   const agora = new Date()
   const caminho = `${agora.getFullYear()}/${String(agora.getMonth() + 1).padStart(2, '0')}/${crypto.randomUUID()}.${extensao}`

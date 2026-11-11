@@ -10,6 +10,7 @@ import BaseTextarea from '~/components/BaseTextarea.vue'
 import FormField from '~/components/FormField.vue'
 import SegmentedControl from '~/components/SegmentedControl.vue'
 import { enviarComprovante, linkComprovante } from '~/services/admin/caixa'
+import { podeComprimir } from '~/utils/comprimirImagem'
 import type {
   CategoriaCaixa,
   LancamentoCaixa,
@@ -129,8 +130,10 @@ async function aoEscolherArquivo(evento: Event) {
   const arquivo = alvo.files?.[0]
   alvo.value = ''
   if (!arquivo) return
-  if (arquivo.size > 10 * 1024 * 1024) {
-    erroArquivo.value = 'O arquivo deve ter no máximo 10 MB.'
+  // Fotos grandes sao reduzidas antes de subir; PDF e outros formatos tem limite de 10 MB.
+  const limite = podeComprimir(arquivo.type, arquivo.size) ? 40 * 1024 * 1024 : 10 * 1024 * 1024
+  if (arquivo.size > limite) {
+    erroArquivo.value = 'O arquivo é grande demais (máximo 10 MB para PDF, 40 MB para foto).'
     return
   }
   erroArquivo.value = ''
