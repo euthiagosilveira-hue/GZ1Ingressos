@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import BaseSelect from '~/components/BaseSelect.vue'
 import PageHeader from '~/components/PageHeader.vue'
+import FinanceiroAbas from '~/components/financeiro/caixa/FinanceiroAbas.vue'
 import FinancialSummary from '~/components/financeiro/FinancialSummary.vue'
 import PaymentDetailsModal from '~/components/financeiro/PaymentDetailsModal.vue'
 import PaymentEmptyState from '~/components/financeiro/PaymentEmptyState.vue'
@@ -72,8 +73,10 @@ function acaoPagamento(payload: { id: string; pedidoId: string; action: string }
   <div class="space-y-6">
     <PageHeader
       title="Financeiro"
-      subtitle="Acompanhe pagamentos, reembolsos e valores dos eventos."
+      subtitle="Todos os pagamentos de ingressos (Pix e dinheiro), inclusive os de antes do caixa começar."
     />
+
+    <FinanceiroAbas />
 
     <FinancialSummary :resumo="resumo" />
 

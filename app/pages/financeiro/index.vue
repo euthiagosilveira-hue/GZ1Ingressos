@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import FinancialDashboard from '~/components/financeiro/FinancialDashboard.vue'
+import CaixaPagina from '~/components/financeiro/caixa/CaixaPagina.vue'
 
 definePageMeta({
   title: 'Financeiro',
-  description: 'Acompanhe pagamentos, reembolsos e valores dos eventos.',
+  description: 'O caixa da galeria: contas, entradas, saídas e transferências.',
   layout: 'admin-layout',
   sidebarActive: 'Financeiro',
   middleware: ['admin-auth']
@@ -11,5 +11,5 @@ definePageMeta({
 </script>
 
 <template>
-  <FinancialDashboard />
+  <CaixaPagina />
 </template>
