@@ -1,6 +1,7 @@
 import { exigirEquipe } from '../../utils/admin-auth'
 import { liberarPedidosExpiradosPagos } from '../../utils/pagamentos-expirados'
 import { providerParaPagamento } from '../../services/payments/recebedor'
+import { notificarVendaConfirmada } from '../../services/push/push-service'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const LIMITE_INGRESSOS = 20
@@ -42,6 +43,8 @@ export default defineEventHandler(async (event) => {
       (produtorId) => providerParaPagamento(event, produtorId, accessToken)
     )
   )
+  // Pix pago depois de expirar tambem e venda: avisa os administradores.
+  for (const pedidoId of pedidosLiberados) await notificarVendaConfirmada(event, pedidoId)
 
   return {
     liberados: ingressos

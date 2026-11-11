@@ -12,6 +12,6 @@ export default defineEventHandler(async (event) => {
     return { error: 'PUSH_NAO_CONFIGURADO' }
   }
 
-  const enviadas = await enviarTeste(event, uid)
-  return { ok: true, enviadas }
+  const r = await enviarTeste(event, uid)
+  return { ok: true, enviadas: r.enviadas, aparelhos: r.aparelhos, removidas: r.removidas, falhas: r.falhas }
 })

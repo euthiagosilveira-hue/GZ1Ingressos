@@ -26,11 +26,20 @@ async function onDesativar() {
 
 async function onTestar() {
   try {
-    const enviadas = await testar()
-    if (enviadas > 0) toast.success('Notificação de teste enviada.')
-    else toast.error('Nenhum aparelho recebeu o teste. Desative e ative de novo.')
-  } catch {
-    toast.error('Não foi possível enviar o teste.')
+    const r = await testar()
+    const falha = r.falhas?.[0]
+    if (r.enviadas > 0 && !falha) toast.success('Notificação de teste enviada.')
+    else if (falha) {
+      toast.error(
+        `O serviço de notificações recusou o envio (código ${falha.status ?? '?'}). Desative e ative de novo; se continuar, avise o suporte.`
+      )
+    } else if (r.removidas > 0) {
+      toast.error('Este aparelho tinha cancelado as notificações. Toque em Desativar e depois em Ativar.')
+    } else toast.error('Nenhum aparelho recebeu o teste. Desative e ative de novo.')
+  } catch (erro) {
+    const status = (erro as { statusCode?: number }).statusCode
+    if (status === 503) toast.error('As notificações não estão configuradas no servidor (chaves VAPID).')
+    else toast.error('Não foi possível enviar o teste.')
   }
 }
 </script>

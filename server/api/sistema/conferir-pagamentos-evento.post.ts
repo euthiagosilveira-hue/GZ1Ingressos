@@ -4,6 +4,7 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 
 import { liberarPedidosExpiradosPagos } from '../../utils/pagamentos-expirados'
 import { providerParaPagamento } from '../../services/payments/recebedor'
+import { notificarVendaConfirmada } from '../../services/push/push-service'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const LIMITE_PEDIDOS = 300
@@ -58,6 +59,8 @@ export default defineEventHandler(async (event) => {
   const liberados = await liberarPedidosExpiradosPagos(client, pedidoIds, (produtorId) =>
     providerParaPagamento(event, produtorId, accessToken)
   )
+  // Pix pago depois de expirar tambem e venda: avisa os administradores.
+  for (const pedidoId of liberados) await notificarVendaConfirmada(event, pedidoId)
   console.info('[conferencia-pagamentos]', { eventoId, conferidos: pedidoIds.length, liberados: liberados.length })
   return { conferidos: pedidoIds.length, liberados: liberados.length }
 })

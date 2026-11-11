@@ -4,6 +4,13 @@ import { chaveVapidParaBytes, type EstadoPush } from '~/utils/push'
 
 const SW_URL = '/sw.js'
 
+export interface ResultadoTeste {
+  enviadas: number
+  aparelhos: number
+  removidas: number
+  falhas: { aparelho: string; status: number | null; motivo: string }[]
+}
+
 /** Liga/desliga as notificacoes push de venda neste aparelho. */
 export function usePushVendas() {
   const config = useRuntimeConfig()
@@ -92,9 +99,8 @@ export function usePushVendas() {
     }
   }
 
-  async function testar(): Promise<number> {
-    const resposta = await $fetch<{ enviadas: number }>('/api/push/teste', { method: 'POST' })
-    return resposta.enviadas
+  async function testar(): Promise<ResultadoTeste> {
+    return await $fetch<ResultadoTeste>('/api/push/teste', { method: 'POST' })
   }
 
   return { estado, processando, verificar, ativar, desativar, testar }
