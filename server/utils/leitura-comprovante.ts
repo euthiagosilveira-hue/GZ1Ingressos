@@ -4,6 +4,13 @@
 
 export type CategoriaParaIa = { id: string; nome: string }
 
+export type ItemLido = {
+  descricao: string
+  quantidade: number
+  /** Valor total da linha (quantidade x preco), em reais. */
+  valorTotal: number
+}
+
 export type LeituraComprovante = {
   /** Valor total pago, em reais (null = nao achou). */
   valor: number | null
@@ -13,6 +20,8 @@ export type LeituraComprovante = {
   descricao: string | null
   /** Categoria sugerida, sempre uma das enviadas (null = nenhuma serve). */
   categoriaId: string | null
+  /** Produtos do comprovante (vazio quando nao ha lista de itens). */
+  itens: ItemLido[]
 }
 
 export const MODELO_GEMINI_PADRAO = 'gemini-3.5-flash'
@@ -40,6 +49,7 @@ export function promptComprovante(
     '- descricao: uma frase curta em português dizendo quem recebeu e o quê (ex.: "CEMIG - conta de luz de outubro", "Pix para João - cachê da banda"). Máximo 80 caracteres.',
     '- categoria: o nome EXATO de uma destas categorias, a que melhor combina, ou vazio se nenhuma servir:',
     lista || '- (nenhuma)',
+    '- itens: se o comprovante listar produtos (nota fiscal, cupom, recibo de compra), a lista de cada linha com descricao (nome do produto como está escrito), quantidade (número) e valor_total (valor da linha em reais, já multiplicado pela quantidade). Se não houver lista de produtos (ex.: Pix, boleto, conta de luz), devolva lista vazia.',
     'Se não conseguir ler algum campo com segurança, deixe-o vazio (null). Não invente.'
   ].join('\n')
 }
@@ -65,7 +75,19 @@ export function corpoPedidoGemini(input: {
           valor: { type: 'NUMBER', nullable: true },
           data: { type: 'STRING', nullable: true },
           descricao: { type: 'STRING', nullable: true },
-          categoria: { type: 'STRING', nullable: true }
+          categoria: { type: 'STRING', nullable: true },
+          itens: {
+            type: 'ARRAY',
+            items: {
+              type: 'OBJECT',
+              properties: {
+                descricao: { type: 'STRING' },
+                quantidade: { type: 'NUMBER', nullable: true },
+                valor_total: { type: 'NUMBER', nullable: true }
+              },
+              required: ['descricao']
+            }
+          }
         }
       }
     }
@@ -89,7 +111,7 @@ function normalizar(texto: string): string {
     .trim()
 }
 
-function lerValor(bruto: unknown): number | null {
+function lerNumero(bruto: unknown): number | null {
   let n: number
   if (typeof bruto === 'number') n = bruto
   else if (typeof bruto === 'string') {
@@ -98,8 +120,29 @@ function lerValor(bruto: unknown): number | null {
     if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.')
     n = Number(s)
   } else return null
-  if (!Number.isFinite(n) || n <= 0 || n >= 100_000_000) return null
+  return Number.isFinite(n) ? n : null
+}
+
+function lerValor(bruto: unknown): number | null {
+  const n = lerNumero(bruto)
+  if (n === null || n <= 0 || n >= 100_000_000) return null
   return Math.round(n * 100) / 100
+}
+
+function lerItens(bruto: unknown): ItemLido[] {
+  if (!Array.isArray(bruto)) return []
+  const itens: ItemLido[] = []
+  for (const linha of bruto.slice(0, 200)) {
+    const l = (linha ?? {}) as Record<string, unknown>
+    const descricao = typeof l.descricao === 'string' ? l.descricao.trim().replace(/\s+/g, ' ').slice(0, 200) : ''
+    if (!descricao) continue
+    const q = lerNumero(l.quantidade)
+    const quantidade = q !== null && q > 0 && q < 1_000_000 ? Math.round(q * 1000) / 1000 : 1
+    const v = lerNumero(l.valor_total)
+    const valorTotal = v !== null && v >= 0 && v < 100_000_000 ? Math.round(v * 100) / 100 : 0
+    itens.push({ descricao, quantidade, valorTotal })
+  }
+  return itens
 }
 
 function lerData(bruto: unknown, hoje: string): string | null {
@@ -157,10 +200,11 @@ export function interpretarLeitura(
     valor: lerValor(bruto.valor),
     data: lerData(bruto.data, hoje),
     descricao,
-    categoriaId: lerCategoria(bruto.categoria, categorias)
+    categoriaId: lerCategoria(bruto.categoria, categorias),
+    itens: lerItens(bruto.itens)
   }
 }
 
 export function leituraVazia(l: LeituraComprovante): boolean {
-  return l.valor === null && l.data === null && l.descricao === null && l.categoriaId === null
+  return l.valor === null && l.data === null && l.descricao === null && l.categoriaId === null && l.itens.length === 0
 }

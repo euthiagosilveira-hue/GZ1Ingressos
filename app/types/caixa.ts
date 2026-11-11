@@ -82,6 +82,46 @@ export interface LancamentoInput {
   contaDestinoId: string | null
   eventoId: string | null
   comprovantePath: string | null
+  /** Itens do comprovante (null = nao mexer nos itens ja salvos). */
+  itens: ItemLancamento[] | null
+}
+
+/** Um produto do comprovante (ex.: "6x RED LABEL 1L = R$ 419,40"). */
+export interface ItemLancamento {
+  descricao: string
+  quantidade: number
+  valorTotal: number
+}
+
+export interface ItemHistorico extends ItemLancamento {
+  id: string
+  valorUnitario: number | null
+  lancamentoId: string
+  tipo: TipoLancamento
+  data: string
+  lancamentoDescricao: string | null
+  comprovantePath: string | null
+  categoriaNome: string | null
+  contaNome: string | null
+  eventoNome: string | null
+}
+
+export interface ProdutoHistorico {
+  descricao: string
+  compras: number
+  quantidade: number
+  valorTotal: number
+  precoMedio: number | null
+  ultimoPreco: number | null
+  ultimaData: string | null
+  menorPreco: number | null
+  maiorPreco: number | null
+}
+
+export interface HistoricoItens {
+  totais: { itens: number; valorTotal: number }
+  produtos: ProdutoHistorico[]
+  itens: ItemHistorico[]
 }
 
 export interface PeriodoFluxo {

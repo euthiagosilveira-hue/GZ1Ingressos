@@ -150,3 +150,38 @@ test('compressao de comprovante: so fotos grandes, sem aumentar', async () => {
   assert.equal(nomeJpg('IMG_1234.PNG'), 'IMG_1234.jpg')
   assert.equal(nomeJpg('recibo'), 'recibo.jpg')
 })
+
+test('itens do formulario: converte, soma e ignora linhas vazias', async () => {
+  const { itensDoForm, itemParaForm, somaItens, formatarQuantidade, mapearHistoricoItens } = await import('../app/utils/caixa.ts')
+  const itens = itensDoForm([
+    { descricao: ' RED LABEL 1L ', quantidade: '6', valorTotal: '419,40' },
+    { descricao: 'Gelo', quantidade: '1,5', valorTotal: '1.000,00' },
+    { descricao: 'Copo', quantidade: '2.5', valorTotal: '' },
+    { descricao: '   ', quantidade: '1', valorTotal: '5' },
+    { descricao: 'Sem qtd', quantidade: 'abc', valorTotal: '3' }
+  ])
+  assert.deepEqual(itens, [
+    { descricao: 'RED LABEL 1L', quantidade: 6, valorTotal: 419.4 },
+    { descricao: 'Gelo', quantidade: 1.5, valorTotal: 1000 },
+    { descricao: 'Copo', quantidade: 2.5, valorTotal: 0 },
+    { descricao: 'Sem qtd', quantidade: 1, valorTotal: 3 }
+  ])
+  assert.equal(somaItens(itens), 1422.4)
+  assert.deepEqual(itemParaForm({ descricao: 'Gelo', quantidade: 1.5, valorTotal: 12 }), {
+    descricao: 'Gelo',
+    quantidade: '1,5',
+    valorTotal: '12,00'
+  })
+  assert.equal(formatarQuantidade(6), '6')
+  const h = mapearHistoricoItens({
+    totais: { itens: 1, valor_total: '419.40' },
+    produtos: [{ descricao: 'RED LABEL 1L', compras: 1, quantidade: '6.000', valor_total: 419.4, preco_medio: 69.9, ultimo_preco: 69.9, ultima_data: '2026-11-11', menor_preco: 69.9, maior_preco: null }],
+    itens: [{ id: 'i1', descricao: 'RED LABEL 1L', quantidade: 6, valor_total: 419.4, valor_unitario: 69.9, lancamento_id: 'l1', tipo: 'SAIDA', data: '2026-11-11' }]
+  })
+  assert.equal(h.totais.valorTotal, 419.4)
+  assert.equal(h.produtos[0]!.quantidade, 6)
+  assert.equal(h.produtos[0]!.maiorPreco, null)
+  assert.equal(h.itens[0]!.valorUnitario, 69.9)
+  assert.equal(h.itens[0]!.lancamentoDescricao, null)
+  assert.deepEqual(mapearHistoricoItens(null).itens, [])
+})

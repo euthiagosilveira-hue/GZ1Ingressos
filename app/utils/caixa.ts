@@ -4,6 +4,8 @@ import type {
   CategoriaFluxo,
   ContaCaixa,
   FluxoCaixa,
+  HistoricoItens,
+  ItemLancamento,
   LancamentoCaixa,
   OrigemLancamento,
   PeriodoFluxo,
@@ -340,6 +342,98 @@ export function mensagemErroCaixa(erro: unknown, padrao = 'Não foi possível sa
   if (/destino/i.test(msg)) return 'Escolha uma conta de destino diferente da origem.'
   if (/motivo/i.test(msg)) return 'Informe o motivo do cancelamento.'
   return padrao
+}
+
+// -----------------------------------------------------------------------------
+// Itens do comprovante
+// -----------------------------------------------------------------------------
+/** Linha do formulario de itens (valores como texto, igual ao campo de valor). */
+export interface FormItem {
+  descricao: string
+  quantidade: string
+  valorTotal: string
+}
+
+export function itemParaForm(item: ItemLancamento): FormItem {
+  return {
+    descricao: item.descricao,
+    quantidade: String(Number(item.quantidade.toFixed(3))).replace('.', ','),
+    valorTotal: item.valorTotal.toFixed(2).replace('.', ',')
+  }
+}
+
+/** Converte as linhas do formulario; linhas sem nome sao ignoradas. */
+export function itensDoForm(linhas: FormItem[]): ItemLancamento[] {
+  const itens: ItemLancamento[] = []
+  for (const l of linhas) {
+    const descricao = l.descricao.trim().replace(/\s+/g, ' ')
+    if (!descricao) continue
+    const bruta = l.quantidade.trim()
+    const q = Number(bruta.includes(',') ? bruta.replace(/\./g, '').replace(',', '.') : bruta)
+    itens.push({
+      descricao,
+      quantidade: Number.isFinite(q) && q > 0 ? Math.round(q * 1000) / 1000 : 1,
+      valorTotal: lerValorReais(l.valorTotal) ?? 0
+    })
+  }
+  return itens
+}
+
+export function somaItens(itens: ItemLancamento[]): number {
+  return Math.round(itens.reduce((t, i) => t + i.valorTotal, 0) * 100) / 100
+}
+
+function numeroOuNull(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+export function mapearItemLancamento(r: Record<string, unknown>): ItemLancamento {
+  return {
+    descricao: String(r.descricao ?? ''),
+    quantidade: Number(r.quantidade ?? 1),
+    valorTotal: Number(r.valor_total ?? 0)
+  }
+}
+
+export function mapearHistoricoItens(r: Record<string, unknown> | null | undefined): HistoricoItens {
+  const bruto = (r ?? {}) as Record<string, unknown>
+  const totais = (bruto.totais ?? {}) as Record<string, unknown>
+  const produtos = Array.isArray(bruto.produtos) ? (bruto.produtos as Record<string, unknown>[]) : []
+  const itens = Array.isArray(bruto.itens) ? (bruto.itens as Record<string, unknown>[]) : []
+  return {
+    totais: { itens: Number(totais.itens ?? 0), valorTotal: Number(totais.valor_total ?? 0) },
+    produtos: produtos.map((p) => ({
+      descricao: String(p.descricao ?? ''),
+      compras: Number(p.compras ?? 0),
+      quantidade: Number(p.quantidade ?? 0),
+      valorTotal: Number(p.valor_total ?? 0),
+      precoMedio: numeroOuNull(p.preco_medio),
+      ultimoPreco: numeroOuNull(p.ultimo_preco),
+      ultimaData: p.ultima_data ? String(p.ultima_data) : null,
+      menorPreco: numeroOuNull(p.menor_preco),
+      maiorPreco: numeroOuNull(p.maior_preco)
+    })),
+    itens: itens.map((i) => ({
+      ...mapearItemLancamento(i),
+      id: String(i.id ?? ''),
+      valorUnitario: numeroOuNull(i.valor_unitario),
+      lancamentoId: String(i.lancamento_id ?? ''),
+      tipo: String(i.tipo ?? 'SAIDA') as TipoLancamento,
+      data: String(i.data ?? ''),
+      lancamentoDescricao: i.lancamento_descricao ? String(i.lancamento_descricao) : null,
+      comprovantePath: i.comprovante_path ? String(i.comprovante_path) : null,
+      categoriaNome: i.categoria_nome ? String(i.categoria_nome) : null,
+      contaNome: i.conta_nome ? String(i.conta_nome) : null,
+      eventoNome: i.evento_nome ? String(i.evento_nome) : null
+    }))
+  }
+}
+
+/** Quantidade sem zeros sobrando: 6 -> "6", 1.5 -> "1,5". */
+export function formatarQuantidade(q: number): string {
+  return String(Number(q.toFixed(3))).replace('.', ',')
 }
 
 /** Mensagem amigavel quando a leitura do comprovante pela IA falha. */
