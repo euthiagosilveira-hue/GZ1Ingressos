@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { PaperClipIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { PaperClipIcon, SparklesIcon, TrashIcon } from '@heroicons/vue/24/outline'
 
 import AppButton from '~/components/AppButton.vue'
 import BaseInput from '~/components/BaseInput.vue'
@@ -9,7 +9,7 @@ import BaseSelect from '~/components/BaseSelect.vue'
 import BaseTextarea from '~/components/BaseTextarea.vue'
 import FormField from '~/components/FormField.vue'
 import SegmentedControl from '~/components/SegmentedControl.vue'
-import { enviarComprovante, linkComprovante } from '~/services/admin/caixa'
+import { enviarComprovante, lerComprovanteComIa, linkComprovante } from '~/services/admin/caixa'
 import { podeComprimir } from '~/utils/comprimirImagem'
 import type {
   CategoriaCaixa,
@@ -23,6 +23,7 @@ import {
   type FormLancamento,
   hojeIso,
   lerValorReais,
+  mensagemErroLeituraIa,
   validarLancamento
 } from '~/utils/caixa'
 
@@ -64,6 +65,9 @@ const erros = ref<ErrosLancamento>({})
 const enviandoArquivo = ref(false)
 const erroArquivo = ref('')
 const inputArquivo = ref<HTMLInputElement | null>(null)
+const lendoIa = ref(false)
+const avisoIa = ref('')
+const erroIa = ref('')
 
 const editando = computed(() => !!props.lancamento)
 
@@ -108,6 +112,8 @@ watch(
     comprovante.value = l?.comprovantePath ?? null
     erros.value = {}
     erroArquivo.value = ''
+    avisoIa.value = ''
+    erroIa.value = ''
   }
 )
 
@@ -142,8 +148,53 @@ async function aoEscolherArquivo(evento: Event) {
     comprovante.value = await enviarComprovante(arquivo)
   } catch {
     erroArquivo.value = 'Não foi possível enviar o comprovante. Use foto (JPG/PNG) ou PDF.'
+    return
   } finally {
     enviandoArquivo.value = false
+  }
+  // Lancamento novo: a IA ja tenta preencher o que estiver em branco.
+  if (!editando.value && form.tipo !== 'TRANSFERENCIA') await lerComIa(false)
+}
+
+const podeLerIa = computed(() => !!comprovante.value && form.tipo !== 'TRANSFERENCIA')
+
+/**
+ * Pede para a IA ler o comprovante. Automatico (sobrescrever=false) so
+ * preenche campos vazios; pelo botao, troca pelo que a IA leu.
+ */
+async function lerComIa(sobrescrever: boolean) {
+  if (!comprovante.value || form.tipo === 'TRANSFERENCIA') return
+  const tipo = form.tipo
+  lendoIa.value = true
+  avisoIa.value = ''
+  erroIa.value = ''
+  try {
+    const r = await lerComprovanteComIa(comprovante.value, tipo)
+    if (form.tipo !== tipo) return
+    const preenchidos: string[] = []
+    if (r.valor !== null && (sobrescrever || !form.valor.trim())) {
+      form.valor = r.valor.toFixed(2).replace('.', ',')
+      preenchidos.push('valor')
+    }
+    if (r.data && (sobrescrever || form.data === hojeIso() || !form.data)) {
+      form.data = r.data
+      preenchidos.push('data')
+    }
+    if (r.descricao && (sobrescrever || !form.descricao.trim())) {
+      form.descricao = r.descricao
+      preenchidos.push('descrição')
+    }
+    if (r.categoriaId && (sobrescrever || !form.categoriaId) && props.categorias.some((c) => c.id === r.categoriaId)) {
+      form.categoriaId = r.categoriaId
+      preenchidos.push('categoria')
+    }
+    avisoIa.value = preenchidos.length
+      ? `A IA preencheu: ${preenchidos.join(', ')}. Confira antes de lançar.`
+      : 'A IA leu o comprovante, mas não havia nada novo para preencher.'
+  } catch (e) {
+    erroIa.value = mensagemErroLeituraIa(e)
+  } finally {
+    lendoIa.value = false
   }
 }
 
@@ -184,6 +235,57 @@ function enviar() {
         Itaú). Não conta como entrada nem como saída.
       </p>
 
+      <FormField label="Comprovante" :error="erroArquivo">
+        <input
+          ref="inputArquivo"
+          type="file"
+          accept="image/*,application/pdf"
+          class="hidden"
+          @change="aoEscolherArquivo"
+        />
+        <div v-if="comprovante" class="flex items-center gap-2">
+          <button
+            type="button"
+            class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-left text-sm text-amber-400 hover:bg-zinc-800"
+            @click="verComprovante"
+          >
+            <PaperClipIcon class="h-4 w-4 shrink-0" />
+            <span class="truncate">Ver comprovante anexado</span>
+          </button>
+          <button
+            v-if="podeLerIa"
+            type="button"
+            title="Ler o comprovante com IA e preencher"
+            aria-label="Ler o comprovante com IA e preencher"
+            :disabled="lendoIa"
+            class="cursor-pointer rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-amber-400 disabled:cursor-wait disabled:opacity-50"
+            @click="lerComIa(true)"
+          >
+            <SparklesIcon class="h-5 w-5" :class="lendoIa ? 'animate-pulse text-amber-400' : ''" />
+          </button>
+          <button
+            type="button"
+            aria-label="Remover comprovante"
+            class="cursor-pointer rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
+            @click="comprovante = null"
+          >
+            <TrashIcon class="h-5 w-5" />
+          </button>
+        </div>
+        <AppButton v-else variant="ghost" size="sm" :disabled="enviandoArquivo" @click="escolherArquivo">
+          <PaperClipIcon class="h-4 w-4" />
+          {{ enviandoArquivo ? 'Enviando...' : 'Anexar foto ou PDF (opcional)' }}
+        </AppButton>
+        <p v-if="lendoIa" class="mt-2 flex items-center gap-1.5 text-xs text-amber-400">
+          <SparklesIcon class="h-4 w-4 animate-pulse" /> Lendo o comprovante com IA...
+        </p>
+        <p v-else-if="avisoIa" class="mt-2 text-xs text-amber-300">{{ avisoIa }}</p>
+        <p v-else-if="erroIa" class="mt-2 text-xs text-zinc-400">{{ erroIa }}</p>
+        <p v-else-if="!comprovante && !editando && form.tipo !== 'TRANSFERENCIA'" class="mt-2 text-xs text-zinc-500">
+          Anexe primeiro: a IA lê o comprovante e preenche valor, data, descrição e categoria.
+        </p>
+      </FormField>
+
       <div class="grid grid-cols-2 gap-3">
         <FormField label="Data" required :error="erros.data">
           <BaseInput v-model="form.data" type="date" :invalid="!!erros.data" />
@@ -218,43 +320,12 @@ function enviar() {
         <BaseSelect v-model="form.eventoId" :options="props.eventoOptions" />
       </FormField>
 
-      <FormField label="Comprovante" :error="erroArquivo">
-        <input
-          ref="inputArquivo"
-          type="file"
-          accept="image/*,application/pdf"
-          class="hidden"
-          @change="aoEscolherArquivo"
-        />
-        <div v-if="comprovante" class="flex items-center gap-2">
-          <button
-            type="button"
-            class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-left text-sm text-amber-400 hover:bg-zinc-800"
-            @click="verComprovante"
-          >
-            <PaperClipIcon class="h-4 w-4 shrink-0" />
-            <span class="truncate">Ver comprovante anexado</span>
-          </button>
-          <button
-            type="button"
-            aria-label="Remover comprovante"
-            class="cursor-pointer rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
-            @click="comprovante = null"
-          >
-            <TrashIcon class="h-5 w-5" />
-          </button>
-        </div>
-        <AppButton v-else variant="ghost" size="sm" :disabled="enviandoArquivo" @click="escolherArquivo">
-          <PaperClipIcon class="h-4 w-4" />
-          {{ enviandoArquivo ? 'Enviando...' : 'Anexar foto ou PDF (opcional)' }}
-        </AppButton>
-      </FormField>
     </div>
 
     <template #footer>
       <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <AppButton variant="ghost" :disabled="props.salvando" @click="emit('close')">Cancelar</AppButton>
-        <AppButton variant="primary" :disabled="props.salvando || enviandoArquivo" @click="enviar">
+        <AppButton variant="primary" :disabled="props.salvando || enviandoArquivo || lendoIa" @click="enviar">
           {{ props.salvando ? 'Salvando...' : editando ? 'Salvar alterações' : 'Lançar' }}
         </AppButton>
       </div>

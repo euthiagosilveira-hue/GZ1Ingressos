@@ -182,3 +182,21 @@ export async function linkComprovante(caminho: string): Promise<string> {
   if (error || !data?.signedUrl) throw error ?? new Error('Sem link')
   return data.signedUrl
 }
+
+export type LeituraComprovanteIa = {
+  valor: number | null
+  data: string | null
+  descricao: string | null
+  categoriaId: string | null
+}
+
+/** Pede para a IA (Gemini) ler o comprovante ja enviado e sugerir os campos. */
+export async function lerComprovanteComIa(
+  caminho: string,
+  tipo: 'ENTRADA' | 'SAIDA'
+): Promise<LeituraComprovanteIa> {
+  return await $fetch<LeituraComprovanteIa>('/api/admin/financeiro/ler-comprovante', {
+    method: 'POST',
+    body: { caminho, tipo }
+  })
+}

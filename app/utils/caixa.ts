@@ -342,6 +342,18 @@ export function mensagemErroCaixa(erro: unknown, padrao = 'Não foi possível sa
   return padrao
 }
 
+/** Mensagem amigavel quando a leitura do comprovante pela IA falha. */
+export function mensagemErroLeituraIa(erro: unknown): string {
+  const e = (erro ?? {}) as { statusMessage?: unknown; data?: { statusMessage?: unknown } }
+  const codigo = String(e.data?.statusMessage ?? e.statusMessage ?? '')
+  if (codigo === 'IA_NAO_CONFIGURADA') return 'A leitura automática ainda não está ligada (falta a chave do Gemini).'
+  if (codigo === 'IA_CHAVE_INVALIDA') return 'A chave do Gemini foi recusada. Confira a chave na Vercel.'
+  if (codigo === 'LIMITE_IA') return 'Limite gratuito da IA atingido por agora. Preencha à mão ou tente daqui a pouco.'
+  if (codigo === 'NAO_LEU') return 'A IA não conseguiu ler este comprovante. Preencha à mão.'
+  if (codigo === 'FORMATO_NAO_SUPORTADO') return 'A IA só lê foto (JPG/PNG) ou PDF.'
+  return 'Não foi possível ler o comprovante agora. Preencha à mão.'
+}
+
 // -----------------------------------------------------------------------------
 // Planilha
 // -----------------------------------------------------------------------------
