@@ -11,6 +11,7 @@ import {
   UserGroupIcon
 } from '@heroicons/vue/24/outline'
 
+import LinkPaginaEventos from '~/components/LinkPaginaEventos.vue'
 import SociedadeDashboardCard from '~/components/sociedade/SociedadeDashboardCard.vue'
 import { useAdminDashboard } from '~/composables/useAdminDashboard'
 import { formatMoeda } from '~/utils/format'
@@ -157,6 +158,9 @@ const metrics = computed<Metric[]>(() => {
 </script>
 
 <template>
+  <!-- Link da pagina publica com todos os eventos (copiar / WhatsApp) -->
+  <LinkPaginaEventos />
+
   <!-- Filtro: evento atual (padrao), um evento, ultimos N dias ou todos -->
   <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
     <div class="min-w-0">
