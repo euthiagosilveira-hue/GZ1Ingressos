@@ -250,3 +250,13 @@ test('rotuloDiaEntrada: Hoje ou dd/mm (horario de Brasilia)', () => {
   assert.equal(rotuloDiaEntrada('2026-11-03T12:00:00Z', agora), 'Hoje')
   assert.equal(rotuloDiaEntrada('2026-11-01T02:00:00Z', agora), '31/10')
 })
+
+test('dashboard mostra o link da pagina publica de eventos com copiar e WhatsApp', () => {
+  const dash = readFileSync(fileURLToPath(new URL('../app/components/AdminDashboard.vue', import.meta.url)), 'utf8')
+  const comp = readFileSync(fileURLToPath(new URL('../app/components/LinkPaginaEventos.vue', import.meta.url)), 'utf8')
+  assert.ok(dash.includes('<LinkPaginaEventos />'))
+  assert.ok(comp.includes("'/eventos-publicos'"))
+  assert.ok(comp.includes('Link da página de eventos'))
+  assert.ok(comp.includes('navigator.clipboard.writeText'))
+  assert.ok(comp.includes('https://wa.me/?text='))
+})
