@@ -1,0 +1,393 @@
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref } from 'vue'
+import { toast } from 'vue3-toastify'
+import {
+  ArrowDownOnSquareStackIcon,
+  MagnifyingGlassIcon,
+  PencilSquareIcon,
+  PlusIcon,
+  TrashIcon
+} from '@heroicons/vue/24/outline'
+
+import AppButton from '~/components/AppButton.vue'
+import BaseInput from '~/components/BaseInput.vue'
+import BaseModal from '~/components/BaseModal.vue'
+import ConfirmDialog from '~/components/ConfirmDialog.vue'
+import FormField from '~/components/FormField.vue'
+import { listarHistoricoItens } from '~/services/admin/caixa'
+import {
+  excluirProdutoReposicao,
+  importarProdutosReposicao,
+  listarProdutosReposicao,
+  salvarProdutoReposicao
+} from '~/services/admin/reposicao'
+import type { ProdutoReposicao } from '~/types/reposicao'
+import { lerValorReais } from '~/utils/caixa'
+import { formatMoeda } from '~/utils/format'
+import {
+  agruparPorFornecedor,
+  lerQuantidade,
+  mensagemErroReposicao,
+  mesmoNome,
+  quantidadeParaTexto
+} from '~/utils/reposicao'
+
+// Cadastro dos produtos que a galeria pede toda semana.
+
+const emit = defineEmits<{ alterou: [] }>()
+
+const produtos = ref<ProdutoReposicao[]>([])
+const carregando = ref(true)
+const erro = ref('')
+const busca = ref('')
+
+async function carregar() {
+  carregando.value = true
+  erro.value = ''
+  try {
+    produtos.value = await listarProdutosReposicao()
+  } catch (e) {
+    erro.value = mensagemErroReposicao(e, 'Não foi possível carregar os produtos.')
+  } finally {
+    carregando.value = false
+  }
+}
+
+onMounted(carregar)
+
+const filtrados = computed(() => {
+  const b = busca.value.trim().toLowerCase()
+  if (!b) return produtos.value
+  return produtos.value.filter(
+    (p) => p.nome.toLowerCase().includes(b) || (p.fornecedor ?? '').toLowerCase().includes(b)
+  )
+})
+
+// Agrupa por fornecedor reaproveitando o agrupamento do pedido.
+const grupos = computed(() => {
+  const porId = new Map(filtrados.value.map((p) => [p.id, p]))
+  return agruparPorFornecedor(
+    filtrados.value.map((p) => ({
+      id: p.id,
+      produtoId: p.id,
+      nome: p.nome,
+      unidade: p.unidade,
+      fornecedor: p.fornecedor,
+      preco: p.ultimoPreco,
+      quantidadeIdeal: p.quantidadeIdeal,
+      estoqueAtual: null,
+      quantidade: 0,
+      pedidoFeito: false,
+      pedidoFeitoEm: null
+    }))
+  ).map((g) => ({ fornecedor: g.fornecedor, produtos: g.itens.map((i) => porId.get(i.id)!) }))
+})
+
+const fornecedores = computed(() =>
+  [...new Set(produtos.value.map((p) => p.fornecedor).filter((f): f is string => !!f))].sort((a, b) =>
+    a.localeCompare(b, 'pt-BR')
+  )
+)
+const UNIDADES = ['unidade', 'fardo', 'caixa', 'pacote', 'saco', 'garrafa', 'lata', 'galão', 'kg', 'litro']
+
+// --- Produto ---------------------------------------------------------------
+const modal = ref(false)
+const form = reactive({
+  id: null as string | null,
+  nome: '',
+  unidade: 'unidade',
+  fornecedor: '',
+  preco: '',
+  ideal: '',
+  ativo: true
+})
+const erros = reactive({ nome: '', preco: '', ideal: '' })
+const salvando = ref(false)
+
+function abrir(p: ProdutoReposicao | null) {
+  form.id = p?.id ?? null
+  form.nome = p?.nome ?? ''
+  form.unidade = p?.unidade ?? 'unidade'
+  form.fornecedor = p?.fornecedor ?? ''
+  form.preco = p?.ultimoPreco !== null && p?.ultimoPreco !== undefined ? p.ultimoPreco.toFixed(2).replace('.', ',') : ''
+  form.ideal = p ? quantidadeParaTexto(p.quantidadeIdeal) : ''
+  form.ativo = p ? p.ativo : true
+  erros.nome = erros.preco = erros.ideal = ''
+  modal.value = true
+}
+
+async function salvar() {
+  erros.nome = form.nome.trim() ? '' : 'Informe o nome.'
+  const preco = form.preco.trim() ? lerValorReais(form.preco) : null
+  erros.preco = form.preco.trim() && (preco === null || preco < 0) ? 'Preço inválido.' : ''
+  const ideal = lerQuantidade(form.ideal)
+  erros.ideal = ideal !== null && Number.isNaN(ideal) ? 'Quantidade inválida.' : ''
+  if (erros.nome || erros.preco || erros.ideal) return
+
+  salvando.value = true
+  try {
+    await salvarProdutoReposicao({
+      id: form.id,
+      nome: form.nome,
+      unidade: form.unidade,
+      fornecedor: form.fornecedor,
+      ultimoPreco: preco,
+      quantidadeIdeal: ideal ?? 0,
+      ativo: form.ativo
+    })
+    toast.success('Produto salvo.')
+    modal.value = false
+    await carregar()
+    emit('alterou')
+  } catch (e) {
+    toast.error(mensagemErroReposicao(e))
+  } finally {
+    salvando.value = false
+  }
+}
+
+// --- Excluir ---------------------------------------------------------------
+const excluindo = ref<ProdutoReposicao | null>(null)
+const excluindoCarregando = ref(false)
+
+async function confirmarExclusao() {
+  if (!excluindo.value) return
+  excluindoCarregando.value = true
+  try {
+    await excluirProdutoReposicao(excluindo.value.id)
+    toast.success('Produto excluído.')
+    excluindo.value = null
+    modal.value = false
+    await carregar()
+    emit('alterou')
+  } catch (e) {
+    toast.error(mensagemErroReposicao(e, 'Não foi possível excluir.'))
+  } finally {
+    excluindoCarregando.value = false
+  }
+}
+
+// --- Importar de "Itens comprados" ---------------------------------------
+const modalImportar = ref(false)
+const carregandoImportar = ref(false)
+const importando = ref(false)
+const sugestoes = ref<{ nome: string; ultimoPreco: number | null; marcado: boolean }[]>([])
+
+async function abrirImportar() {
+  modalImportar.value = true
+  carregandoImportar.value = true
+  sugestoes.value = []
+  try {
+    const hist = await listarHistoricoItens({ de: null, ate: null, busca: '' })
+    sugestoes.value = hist.produtos
+      .filter((h) => !produtos.value.some((p) => mesmoNome(p.nome, h.descricao)))
+      .sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR'))
+      .map((h) => ({ nome: h.descricao, ultimoPreco: h.ultimoPreco, marcado: true }))
+  } catch {
+    toast.error('Não foi possível carregar os itens comprados.')
+    modalImportar.value = false
+  } finally {
+    carregandoImportar.value = false
+  }
+}
+
+const marcadosImportar = computed(() => sugestoes.value.filter((s) => s.marcado))
+
+function marcarTodosImportar(valor: boolean) {
+  sugestoes.value.forEach((s) => (s.marcado = valor))
+}
+
+async function importar() {
+  if (!marcadosImportar.value.length) return
+  importando.value = true
+  try {
+    const n = await importarProdutosReposicao(marcadosImportar.value)
+    toast.success(n === 1 ? '1 produto cadastrado.' : `${n} produtos cadastrados.`)
+    modalImportar.value = false
+    await carregar()
+    emit('alterou')
+  } catch (e) {
+    toast.error(mensagemErroReposicao(e, 'Não foi possível cadastrar.'))
+  } finally {
+    importando.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="space-y-4">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="relative sm:w-72">
+        <MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+        <input
+          v-model="busca"
+          type="search"
+          placeholder="Buscar produto ou fornecedor"
+          class="w-full rounded-lg border border-zinc-700 bg-zinc-950 py-2 pl-9 pr-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-amber-400 focus:outline-none"
+        />
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <AppButton variant="outline" size="sm" @click="abrirImportar">
+          <ArrowDownOnSquareStackIcon class="h-4 w-4" /> Puxar de Itens comprados
+        </AppButton>
+        <AppButton variant="primary" size="sm" @click="abrir(null)">
+          <PlusIcon class="h-4 w-4" /> Novo produto
+        </AppButton>
+      </div>
+    </div>
+
+    <p v-if="erro" class="rounded-xl border border-red-400/30 bg-red-400/5 p-4 text-sm text-red-300">{{ erro }}</p>
+
+    <div v-if="carregando && !produtos.length" class="flex items-center gap-3 p-6 text-sm text-zinc-400">
+      <span class="h-5 w-5 animate-spin rounded-full border-2 border-amber-400/30 border-t-amber-400" aria-hidden="true" />
+      Carregando...
+    </div>
+
+    <div
+      v-else-if="!produtos.length && !erro"
+      class="rounded-xl border border-dashed border-zinc-800 p-8 text-center text-sm text-zinc-400"
+    >
+      Nenhum produto cadastrado ainda.
+      <span class="mt-1 block text-xs text-zinc-500">
+        Cadastre o que vocês pedem toda semana (bebidas, gelo, descartáveis...) ou puxe os produtos que já aparecem em
+        "Itens comprados".
+      </span>
+    </div>
+
+    <p v-else-if="!filtrados.length" class="p-4 text-sm text-zinc-400">Nenhum produto encontrado.</p>
+
+    <div v-for="g in grupos" :key="g.fornecedor ?? ''" class="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+      <p class="border-b border-zinc-800 bg-zinc-950/50 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        {{ g.fornecedor ?? 'Sem fornecedor' }}
+        <span class="font-normal normal-case text-zinc-500">· {{ g.produtos.length }}</span>
+      </p>
+      <ul class="divide-y divide-zinc-800">
+        <li v-for="p in g.produtos" :key="p.id" class="flex items-center gap-3 px-4 py-3" :class="p.ativo ? '' : 'opacity-50'">
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium text-zinc-100">
+              {{ p.nome }}
+              <span v-if="!p.ativo" class="ml-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] uppercase text-zinc-400">inativo</span>
+            </p>
+            <p class="text-xs text-zinc-500">
+              Ideal na semana: <span class="text-zinc-300">{{ quantidadeParaTexto(p.quantidadeIdeal) }} {{ p.unidade }}</span>
+              <template v-if="p.ultimoPreco !== null"> · {{ formatMoeda(p.ultimoPreco) }} / {{ p.unidade }}</template>
+            </p>
+          </div>
+          <button
+            type="button"
+            class="shrink-0 cursor-pointer rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-amber-400"
+            :aria-label="`Editar ${p.nome}`"
+            @click="abrir(p)"
+          >
+            <PencilSquareIcon class="h-4 w-4" />
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Produto -->
+    <BaseModal :open="modal" :title="form.id ? 'Editar produto' : 'Novo produto'" @close="modal = false">
+      <form class="space-y-4" @submit.prevent="salvar">
+        <FormField label="Nome do produto" required :error="erros.nome">
+          <BaseInput v-model="form.nome" placeholder="Ex.: Skol lata 350ml" :invalid="!!erros.nome" />
+        </FormField>
+        <div class="grid grid-cols-2 gap-3">
+          <FormField label="Unidade do pedido" hint="Como você pede: fardo, caixa...">
+            <input v-model="form.unidade" list="reposicao-unidades" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30" />
+            <datalist id="reposicao-unidades">
+              <option v-for="u in UNIDADES" :key="u" :value="u" />
+            </datalist>
+          </FormField>
+          <FormField label="Quantidade ideal na semana" :error="erros.ideal">
+            <input v-model="form.ideal" inputmode="decimal" placeholder="Ex.: 10" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30" :class="erros.ideal ? 'border-red-500/60' : ''" />
+          </FormField>
+        </div>
+        <FormField label="Fornecedor" hint="Os pedidos são separados por fornecedor.">
+          <input v-model="form.fornecedor" list="reposicao-fornecedores" placeholder="Ex.: Distribuidora Ambev" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30" />
+          <datalist id="reposicao-fornecedores">
+            <option v-for="f in fornecedores" :key="f" :value="f" />
+          </datalist>
+        </FormField>
+        <FormField label="Último preço (por unidade do pedido)" :error="erros.preco">
+          <BaseInput v-model="form.preco" prefix="R$" placeholder="0,00" :invalid="!!erros.preco" />
+        </FormField>
+        <label class="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
+          <input v-model="form.ativo" type="checkbox" class="h-4 w-4 accent-amber-400" />
+          Ativo (aparece no pedido da semana)
+        </label>
+        <button type="submit" class="hidden" />
+      </form>
+      <template #footer>
+        <div class="flex items-center justify-between gap-2">
+          <AppButton v-if="form.id" variant="ghost" size="sm" @click="excluindo = produtos.find((p) => p.id === form.id) ?? null">
+            <TrashIcon class="h-4 w-4" /> Excluir
+          </AppButton>
+          <span v-else />
+          <div class="flex gap-2">
+            <AppButton variant="ghost" @click="modal = false">Cancelar</AppButton>
+            <AppButton variant="primary" :disabled="salvando" @click="salvar">
+              {{ salvando ? 'Salvando...' : 'Salvar' }}
+            </AppButton>
+          </div>
+        </div>
+      </template>
+    </BaseModal>
+
+    <ConfirmDialog
+      :open="!!excluindo"
+      title="Excluir produto?"
+      :description="`${excluindo?.nome ?? ''} sai da lista de produtos e do pedido em aberto. Os pedidos antigos continuam guardados. Se só não quiser pedir por um tempo, desmarque 'Ativo'.`"
+      confirm-label="Excluir"
+      tone="danger"
+      :loading="excluindoCarregando"
+      @confirm="confirmarExclusao"
+      @cancel="excluindo = null"
+    />
+
+    <!-- Importar -->
+    <BaseModal
+      :open="modalImportar"
+      title="Puxar de Itens comprados"
+      subtitle="Produtos lidos dos comprovantes que ainda não estão cadastrados aqui."
+      size="lg"
+      @close="modalImportar = false"
+    >
+      <div v-if="carregandoImportar" class="flex items-center gap-3 p-4 text-sm text-zinc-400">
+        <span class="h-5 w-5 animate-spin rounded-full border-2 border-amber-400/30 border-t-amber-400" aria-hidden="true" />
+        Carregando...
+      </div>
+      <p v-else-if="!sugestoes.length" class="text-sm text-zinc-400">
+        Não há produtos novos em "Itens comprados". Todos já estão cadastrados (ou ainda não há comprovantes com itens).
+      </p>
+      <template v-else>
+        <div class="mb-3 flex items-center justify-between text-xs">
+          <span class="text-zinc-400">{{ marcadosImportar.length }} de {{ sugestoes.length }} marcados</span>
+          <span class="flex gap-3">
+            <button type="button" class="cursor-pointer text-amber-400 hover:underline" @click="marcarTodosImportar(true)">Marcar todos</button>
+            <button type="button" class="cursor-pointer text-zinc-400 hover:underline" @click="marcarTodosImportar(false)">Desmarcar todos</button>
+          </span>
+        </div>
+        <ul class="divide-y divide-zinc-800 rounded-lg border border-zinc-800">
+          <li v-for="s in sugestoes" :key="s.nome">
+            <label class="flex cursor-pointer items-center gap-3 px-3 py-2.5">
+              <input v-model="s.marcado" type="checkbox" class="h-4 w-4 shrink-0 accent-amber-400" />
+              <span class="min-w-0 flex-1 truncate text-sm text-zinc-100">{{ s.nome }}</span>
+              <span v-if="s.ultimoPreco !== null" class="shrink-0 text-xs text-zinc-500">{{ formatMoeda(s.ultimoPreco) }}</span>
+            </label>
+          </li>
+        </ul>
+        <p class="mt-3 text-xs text-zinc-500">
+          Depois de puxar, edite cada produto para colocar a unidade (fardo, caixa...), o fornecedor e a quantidade ideal.
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <AppButton variant="ghost" @click="modalImportar = false">Cancelar</AppButton>
+          <AppButton variant="primary" :disabled="importando || !marcadosImportar.length" @click="importar">
+            {{ importando ? 'Cadastrando...' : `Cadastrar ${marcadosImportar.length}` }}
+          </AppButton>
+        </div>
+      </template>
+    </BaseModal>
+  </div>
+</template>
