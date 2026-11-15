@@ -5,6 +5,7 @@ const abas = [
   { to: '/financeiro', label: 'Caixa' },
   { to: '/financeiro/fluxo', label: 'Fluxo de caixa' },
   { to: '/financeiro/itens', label: 'Itens comprados' },
+  { to: '/financeiro/reposicao', label: 'Reposição' },
   { to: '/financeiro/pagamentos', label: 'Pagamentos de ingressos' },
   { to: '/financeiro/configuracoes', label: 'Contas e categorias' }
 ]
