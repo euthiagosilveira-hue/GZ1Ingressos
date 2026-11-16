@@ -58,6 +58,8 @@ export function corpoPedidoGemini(input: {
   base64: string
   mimeType: string
   prompt: string
+  /** Formato da resposta (padrao: o do comprovante de lancamento). */
+  schema?: Record<string, unknown>
 }): Record<string, unknown> {
   return {
     contents: [
@@ -69,7 +71,7 @@ export function corpoPedidoGemini(input: {
     generationConfig: {
       temperature: 0,
       responseMimeType: 'application/json',
-      responseSchema: {
+      responseSchema: input.schema ?? {
         type: 'OBJECT',
         properties: {
           valor: { type: 'NUMBER', nullable: true },
@@ -117,6 +119,7 @@ function lerNumero(bruto: unknown): number | null {
   else if (typeof bruto === 'string') {
     // Aceita "1.234,56", "1234,56", "1234.56", "R$ 50"
     let s = bruto.replace(/[^0-9.,-]/g, '')
+    if (!/\d/.test(s)) return null
     if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.')
     n = Number(s)
   } else return null
@@ -207,4 +210,85 @@ export function interpretarLeitura(
 
 export function leituraVazia(l: LeituraComprovante): boolean {
   return l.valor === null && l.data === null && l.descricao === null && l.categoriaId === null && l.itens.length === 0
+}
+
+// -----------------------------------------------------------------------------
+// Fechamento do caixa do bar (comprovante impresso na maquininha)
+// -----------------------------------------------------------------------------
+
+export type LeituraFechamentoBar = {
+  /** Data do fechamento em AAAA-MM-DD (null = nao achou). */
+  data: string | null
+  /** Vendas por forma de pagamento, em reais (null = nao aparece no comprovante). */
+  dinheiro: number | null
+  credito: number | null
+  debito: number | null
+  pix: number | null
+  /** Vale, voucher e outras formas que nao sao as de cima. */
+  outros: number | null
+  /** Total de vendas impresso no comprovante (null = nao achou). */
+  total: number | null
+}
+
+export function promptFechamentoBar(hoje: string): string {
+  return [
+    'Você lê o comprovante de FECHAMENTO DE CAIXA do bar de uma casa de shows (Galeria Zero 1), impresso na maquininha ou no sistema do bar no fim da noite.',
+    `Hoje é ${hoje}.`,
+    'Extraia o total VENDIDO em cada forma de pagamento, em reais, como número (ex.: 1234.56):',
+    '- dinheiro: vendas recebidas em dinheiro (espécie).',
+    '- credito: vendas no cartão de crédito.',
+    '- debito: vendas no cartão de débito.',
+    '- pix: vendas por Pix (inclua QR Code Pix).',
+    '- outros: soma de outras formas (vale, voucher, ticket alimentação etc.). Não coloque aqui crédito, débito, Pix nem dinheiro.',
+    '- total: o total de vendas impresso no comprovante.',
+    '- data: a data do fechamento (ou do movimento) no formato AAAA-MM-DD.',
+    'Se o comprovante mostrar só "cartão" sem separar crédito e débito, coloque o valor em credito.',
+    'NÃO conte como venda: troco inicial/abertura/fundo de caixa, sangria, suprimento, reforço, cancelamentos, estornos, descontos nem saldo final da gaveta. Use os valores líquidos de vendas (já sem cancelamentos), se houver.',
+    'Se uma forma de pagamento não aparecer no comprovante, deixe-a vazia (null). Não invente.'
+  ].join('\n')
+}
+
+export const SCHEMA_FECHAMENTO_BAR: Record<string, unknown> = {
+  type: 'OBJECT',
+  properties: {
+    data: { type: 'STRING', nullable: true },
+    dinheiro: { type: 'NUMBER', nullable: true },
+    credito: { type: 'NUMBER', nullable: true },
+    debito: { type: 'NUMBER', nullable: true },
+    pix: { type: 'NUMBER', nullable: true },
+    outros: { type: 'NUMBER', nullable: true },
+    total: { type: 'NUMBER', nullable: true }
+  }
+}
+
+/** Valor de venda: zero e permitido (forma que nao vendeu nada). */
+function lerValorVenda(bruto: unknown): number | null {
+  const n = lerNumero(bruto)
+  if (n === null || n < 0 || n >= 100_000_000) return null
+  return Math.round(n * 100) / 100
+}
+
+export function interpretarFechamentoBar(texto: string, hoje: string): LeituraFechamentoBar {
+  let bruto: Record<string, unknown> = {}
+  try {
+    const limpo = texto.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+    const parsed = JSON.parse(limpo)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) bruto = parsed as Record<string, unknown>
+  } catch {
+    bruto = {}
+  }
+  return {
+    data: lerData(bruto.data, hoje),
+    dinheiro: lerValorVenda(bruto.dinheiro),
+    credito: lerValorVenda(bruto.credito),
+    debito: lerValorVenda(bruto.debito),
+    pix: lerValorVenda(bruto.pix),
+    outros: lerValorVenda(bruto.outros),
+    total: lerValorVenda(bruto.total)
+  }
+}
+
+/** Nenhuma forma de pagamento lida (a data sozinha nao ajuda). */
+export function fechamentoVazio(l: LeituraFechamentoBar): boolean {
+  return [l.dinheiro, l.credito, l.debito, l.pix, l.outros, l.total].every((v) => v === null)
 }

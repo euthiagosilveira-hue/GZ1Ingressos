@@ -14,6 +14,7 @@ import type {
 } from '~/types/caixa'
 import { comprimirComprovante } from '~/utils/comprimirImagem'
 import {
+  type LeituraFechamentoBar,
   mapearCategoria,
   mapearConta,
   mapearFluxo,
@@ -146,14 +147,16 @@ export async function cancelarLancamentoCaixa(id: string, motivo: string): Promi
 export async function fecharBarCaixa(input: {
   data: string
   eventoId: string | null
-  valores: { contaId: string; valor: number }[]
+  valores: { contaId: string; valor: number; detalhe?: string | null }[]
   observacao: string
+  comprovantePath?: string | null
 }): Promise<{ total: number; lancamentos: number }> {
   const { data, error } = await useSupabaseClient().rpc('fechar_bar_financeiro_admin', {
     p_data: input.data,
     p_evento_id: input.eventoId,
-    p_valores: input.valores.map((v) => ({ conta_id: v.contaId, valor: v.valor })),
-    p_observacao: input.observacao.trim() || null
+    p_valores: input.valores.map((v) => ({ conta_id: v.contaId, valor: v.valor, detalhe: v.detalhe || null })),
+    p_observacao: input.observacao.trim() || null,
+    p_comprovante_path: input.comprovantePath || null
   })
   if (error) throw error
   const r = (data ?? {}) as Bruto
@@ -218,6 +221,14 @@ export async function lerComprovanteComIa(
   return await $fetch<LeituraComprovanteIa>('/api/admin/financeiro/ler-comprovante', {
     method: 'POST',
     body: { caminho, tipo }
+  })
+}
+
+/** Pede para a IA ler a foto do fechamento de caixa do bar (formas de pagamento). */
+export async function lerFechamentoBarComIa(caminho: string): Promise<LeituraFechamentoBar> {
+  return await $fetch<LeituraFechamentoBar>('/api/admin/financeiro/ler-fechamento-bar', {
+    method: 'POST',
+    body: { caminho }
   })
 }
 
