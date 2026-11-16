@@ -19,7 +19,7 @@ import {
 } from '~/services/admin/caixa'
 import type { CategoriaCaixa, ContaCaixa, TipoCategoria, TipoConta } from '~/types/caixa'
 import type { SelectOption } from '~/types/ui'
-import { TIPOS_CONTA, mensagemErroCaixa, rotuloTipoConta } from '~/utils/caixa'
+import { TIPOS_CONTA, lerDiaVencimento, mensagemErroCaixa, rotuloTipoConta } from '~/utils/caixa'
 import { formatDataHora, formatMoeda } from '~/utils/format'
 
 const { contas, categorias, erroBase, carregarBase, carregarContas, carregarCategorias } = useCaixaBase()
@@ -103,9 +103,11 @@ const formCategoria = reactive({
   nome: '',
   tipo: 'SAIDA' as TipoCategoria,
   ativa: 'true',
-  sistema: false
+  sistema: false,
+  diaVencimento: ''
 })
 const erroCategoria = ref('')
+const erroDia = ref('')
 const salvandoCategoria = ref(false)
 
 function abrirCategoria(categoria: CategoriaCaixa | null, tipo: TipoCategoria = 'SAIDA') {
@@ -114,7 +116,9 @@ function abrirCategoria(categoria: CategoriaCaixa | null, tipo: TipoCategoria = 
   formCategoria.tipo = categoria?.tipo ?? tipo
   formCategoria.ativa = categoria && !categoria.ativa ? 'false' : 'true'
   formCategoria.sistema = !!categoria?.chaveSistema
+  formCategoria.diaVencimento = categoria?.diaVencimento ? String(categoria.diaVencimento) : ''
   erroCategoria.value = ''
+  erroDia.value = ''
   modalCategoria.value = true
 }
 
@@ -123,13 +127,20 @@ async function salvarCategoria() {
     erroCategoria.value = 'Informe o nome.'
     return
   }
+  const diaVencimento = formCategoria.tipo === 'SAIDA' ? lerDiaVencimento(formCategoria.diaVencimento) : null
+  if (diaVencimento === undefined) {
+    erroDia.value = 'Use um dia de 1 a 31, ou deixe vazio.'
+    return
+  }
+  erroDia.value = ''
   salvandoCategoria.value = true
   try {
     await salvarCategoriaCaixa({
       id: formCategoria.id,
       nome: formCategoria.nome,
       tipo: formCategoria.tipo,
-      ativa: formCategoria.ativa === 'true'
+      ativa: formCategoria.ativa === 'true',
+      diaVencimento
     })
     toast.success('Categoria salva.')
     modalCategoria.value = false
@@ -205,6 +216,7 @@ async function salvarCategoria() {
               {{ cat.nome }}
               <span v-if="cat.chaveSistema === 'INGRESSOS' || cat.chaveSistema === 'REEMBOLSO_INGRESSO'" class="ml-1 text-xs text-zinc-500">(automática)</span>
               <span v-if="!cat.ativa" class="ml-1 text-xs text-zinc-500">(inativa)</span>
+              <span v-if="cat.diaVencimento" class="ml-1 text-xs text-amber-400/80">· vence dia {{ cat.diaVencimento }}</span>
             </p>
             <button
               type="button"
@@ -255,6 +267,14 @@ async function salvarCategoria() {
           </FormField>
         </template>
         <p v-else class="text-xs text-zinc-500">Esta categoria é usada pelo sistema: só o nome pode mudar.</p>
+        <FormField
+          v-if="formCategoria.tipo === 'SAIDA'"
+          label="Conta fixa: vence todo dia"
+          hint="Opcional. Ex.: 10 para o aluguel que vence dia 10. O sistema avisa no celular 3 dias antes se ainda não estiver lançada."
+          :error="erroDia"
+        >
+          <BaseInput v-model="formCategoria.diaVencimento" placeholder="Ex.: 10" :invalid="!!erroDia" />
+        </FormField>
       </div>
       <template #footer>
         <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

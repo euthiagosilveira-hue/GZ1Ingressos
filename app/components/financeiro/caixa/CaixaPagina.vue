@@ -14,6 +14,7 @@ import BaseInput from '~/components/BaseInput.vue'
 import BasePagination from '~/components/BasePagination.vue'
 import BaseSelect from '~/components/BaseSelect.vue'
 import PageHeader from '~/components/PageHeader.vue'
+import AvisosCaixa from '~/components/financeiro/caixa/AvisosCaixa.vue'
 import CancelarLancamentoModal from '~/components/financeiro/caixa/CancelarLancamentoModal.vue'
 import ContasCaixaCards from '~/components/financeiro/caixa/ContasCaixaCards.vue'
 import FecharBarModal from '~/components/financeiro/caixa/FecharBarModal.vue'
@@ -314,6 +315,8 @@ function baixarExcel() {
     </p>
 
     <ContasCaixaCards v-else :contas="contas" @informar-saldo="contaSaldo = $event" />
+
+    <AvisosCaixa v-if="!erroBase" />
 
     <section class="space-y-4">
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

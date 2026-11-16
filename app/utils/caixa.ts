@@ -1,5 +1,6 @@
 import type {
   Agrupamento,
+  AvisoCaixa,
   CategoriaCaixa,
   CategoriaFluxo,
   ContaCaixa,
@@ -60,8 +61,29 @@ export function mapearCategoria(bruto: Bruto): CategoriaCaixa {
     nome: texto(bruto.nome),
     tipo: (texto(bruto.tipo) || 'SAIDA') as TipoCategoria,
     chaveSistema: textoOuNull(bruto.chave_sistema),
-    ativa: bruto.ativa !== false
+    ativa: bruto.ativa !== false,
+    diaVencimento: Number(bruto.dia_vencimento) >= 1 ? Number(bruto.dia_vencimento) : null
   }
+}
+
+export function mapearAvisoCaixa(bruto: Bruto): AvisoCaixa {
+  return {
+    id: texto(bruto.id),
+    tipo: (texto(bruto.tipo) || 'CONTA_FIXA') as AvisoCaixa['tipo'],
+    titulo: texto(bruto.titulo),
+    mensagem: texto(bruto.mensagem),
+    criadoEm: texto(bruto.criado_em),
+    atualizadoEm: texto(bruto.atualizado_em) || texto(bruto.criado_em)
+  }
+}
+
+/** Texto do campo "Vence todo dia" (vazio = sem vencimento). null = invalido. */
+export function lerDiaVencimento(valor: string): number | null | undefined {
+  const limpo = String(valor ?? '').trim()
+  if (!limpo) return null
+  if (!/^\d{1,2}$/.test(limpo)) return undefined
+  const dia = Number(limpo)
+  return dia >= 1 && dia <= 31 ? dia : undefined
 }
 
 export function mapearLancamento(bruto: Bruto): LancamentoCaixa {
@@ -341,6 +363,7 @@ export function mensagemErroCaixa(erro: unknown, padrao = 'Não foi possível sa
   if (/trocar entre entrada e saida/i.test(msg)) return 'Esta categoria já tem lançamentos: não dá para trocar entre entrada e saída.'
   if (/destino/i.test(msg)) return 'Escolha uma conta de destino diferente da origem.'
   if (/motivo/i.test(msg)) return 'Informe o motivo do cancelamento.'
+  if (/Dia de vencimento/i.test(msg)) return 'O dia de vencimento deve ser de 1 a 31.'
   return padrao
 }
 
