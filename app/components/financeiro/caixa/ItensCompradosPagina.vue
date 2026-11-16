@@ -21,6 +21,7 @@ import {
 } from '~/utils/caixa'
 import { formatMoeda } from '~/utils/format'
 import { baixarPlanilhaXlsx } from '~/utils/planilhaXlsx'
+import { abrirLinkEmNovaAba } from '~/utils/abrirLink'
 
 // Historico dos produtos lidos dos comprovantes: quanto se comprou de cada
 // coisa, por quanto, e quando foi a ultima compra.
@@ -94,7 +95,7 @@ function variacao(menor: number | null, maior: number | null): string {
 
 async function abrirComprovante(caminho: string) {
   try {
-    window.open(await linkComprovante(caminho), '_blank', 'noopener')
+    await abrirLinkEmNovaAba(() => linkComprovante(caminho))
   } catch {
     erro.value = 'Não foi possível abrir o comprovante.'
   }

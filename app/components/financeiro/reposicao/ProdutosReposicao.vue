@@ -20,9 +20,11 @@ import { listarHistoricoItens } from '~/services/admin/caixa'
 import {
   excluirProdutoReposicao,
   importarProdutosReposicao,
+  listarNomesCompraReposicao,
   listarProdutosReposicao,
   obterConsumoBar,
-  salvarProdutoReposicao
+  salvarProdutoReposicao,
+  vincularNomeCompraReposicao
 } from '~/services/admin/reposicao'
 import type { ConsumoBar, ProdutoReposicao } from '~/types/reposicao'
 import type { SelectOption } from '~/types/ui'
@@ -277,18 +279,33 @@ async function confirmarExclusao() {
 const modalImportar = ref(false)
 const carregandoImportar = ref(false)
 const importando = ref(false)
-const sugestoes = ref<{ nome: string; ultimoPreco: number | null; marcado: boolean }[]>([])
+// O que fazer com cada nome da nota: 'novo' cadastra, 'depois' deixa para
+// outra vez, 'ignorar' nunca mais mostra, ou o id do produto ja cadastrado.
+const sugestoes = ref<{ nome: string; ultimoPreco: number | null; acao: string }[]>([])
+
+const acaoImportarOptions = computed<SelectOption[]>(() => [
+  { value: 'novo', label: 'Cadastrar como produto novo' },
+  { value: 'depois', label: 'Deixar para depois' },
+  { value: 'ignorar', label: 'Não é de reposição (não mostrar mais)' },
+  ...[...produtos.value]
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+    .map((p) => ({ value: p.id, label: `É o mesmo que: ${p.nome}` }))
+])
 
 async function abrirImportar() {
   modalImportar.value = true
   carregandoImportar.value = true
   sugestoes.value = []
   try {
-    const hist = await listarHistoricoItens({ de: null, ate: null, busca: '' })
+    const [hist, nomes] = await Promise.all([
+      listarHistoricoItens({ de: null, ate: null, busca: '' }),
+      listarNomesCompraReposicao()
+    ])
+    const conhecidos = [...produtos.value.map((p) => p.nome), ...nomes.map((n) => n.nome)]
     sugestoes.value = hist.produtos
-      .filter((h) => !produtos.value.some((p) => mesmoNome(p.nome, h.descricao)))
+      .filter((h) => !conhecidos.some((nome) => mesmoNome(nome, h.descricao)))
       .sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR'))
-      .map((h) => ({ nome: h.descricao, ultimoPreco: h.ultimoPreco, marcado: true }))
+      .map((h) => ({ nome: h.descricao, ultimoPreco: h.ultimoPreco, acao: 'novo' }))
   } catch {
     toast.error('Não foi possível carregar os itens comprados.')
     modalImportar.value = false
@@ -297,23 +314,34 @@ async function abrirImportar() {
   }
 }
 
-const marcadosImportar = computed(() => sugestoes.value.filter((s) => s.marcado))
+const novosImportar = computed(() => sugestoes.value.filter((s) => s.acao === 'novo'))
+const decididosImportar = computed(() => sugestoes.value.filter((s) => s.acao !== 'depois'))
 
-function marcarTodosImportar(valor: boolean) {
-  sugestoes.value.forEach((s) => (s.marcado = valor))
+function marcarTodosImportar(acao: 'novo' | 'depois') {
+  sugestoes.value.forEach((s) => (s.acao = acao))
 }
 
 async function importar() {
-  if (!marcadosImportar.value.length) return
+  if (!decididosImportar.value.length) return
   importando.value = true
   try {
-    const n = await importarProdutosReposicao(marcadosImportar.value)
-    toast.success(n === 1 ? '1 produto cadastrado.' : `${n} produtos cadastrados.`)
+    const vinculos = decididosImportar.value.filter((s) => s.acao !== 'novo')
+    for (const s of vinculos) {
+      await vincularNomeCompraReposicao(s.nome, s.acao === 'ignorar' ? null : s.acao)
+    }
+    const n = novosImportar.value.length ? await importarProdutosReposicao(novosImportar.value) : 0
+    const partes: string[] = []
+    if (n) partes.push(n === 1 ? '1 produto cadastrado' : `${n} produtos cadastrados`)
+    const ligados = vinculos.filter((s) => s.acao !== 'ignorar').length
+    if (ligados) partes.push(ligados === 1 ? '1 nome ligado a um produto' : `${ligados} nomes ligados a produtos`)
+    const ignorados = vinculos.length - ligados
+    if (ignorados) partes.push(ignorados === 1 ? '1 item ignorado' : `${ignorados} itens ignorados`)
+    toast.success(`${partes.join(', ')}.`)
     modalImportar.value = false
     await carregar()
     emit('alterou')
   } catch (e) {
-    toast.error(mensagemErroReposicao(e, 'Não foi possível cadastrar.'))
+    toast.error(mensagemErroReposicao(e, 'Não foi possível salvar.'))
   } finally {
     importando.value = false
   }
@@ -500,7 +528,7 @@ async function importar() {
     <BaseModal
       :open="modalImportar"
       title="Puxar de Itens comprados"
-      subtitle="Produtos lidos dos comprovantes que ainda não estão cadastrados aqui."
+      subtitle="Produtos lidos dos comprovantes que ainda não estão ligados a nenhum produto daqui."
       size="lg"
       @close="modalImportar = false"
     >
@@ -512,20 +540,23 @@ async function importar() {
         Não há produtos novos em "Itens comprados". Todos já estão cadastrados (ou ainda não há comprovantes com itens).
       </p>
       <template v-else>
+        <p class="mb-3 text-xs text-zinc-400">
+          Se algum já está cadastrado com outro nome, escolha "É o mesmo que" e ele não aparece mais aqui.
+        </p>
         <div class="mb-3 flex items-center justify-between text-xs">
-          <span class="text-zinc-400">{{ marcadosImportar.length }} de {{ sugestoes.length }} marcados</span>
+          <span class="text-zinc-400">{{ novosImportar.length }} novo(s) de {{ sugestoes.length }}</span>
           <span class="flex gap-3">
-            <button type="button" class="cursor-pointer text-amber-400 hover:underline" @click="marcarTodosImportar(true)">Marcar todos</button>
-            <button type="button" class="cursor-pointer text-zinc-400 hover:underline" @click="marcarTodosImportar(false)">Desmarcar todos</button>
+            <button type="button" class="cursor-pointer text-amber-400 hover:underline" @click="marcarTodosImportar('novo')">Todos como novos</button>
+            <button type="button" class="cursor-pointer text-zinc-400 hover:underline" @click="marcarTodosImportar('depois')">Todos para depois</button>
           </span>
         </div>
         <ul class="divide-y divide-zinc-800 rounded-lg border border-zinc-800">
-          <li v-for="s in sugestoes" :key="s.nome">
-            <label class="flex cursor-pointer items-center gap-3 px-3 py-2.5">
-              <input v-model="s.marcado" type="checkbox" class="h-4 w-4 shrink-0 accent-amber-400" />
-              <span class="min-w-0 flex-1 truncate text-sm text-zinc-100">{{ s.nome }}</span>
+          <li v-for="s in sugestoes" :key="s.nome" class="space-y-2 px-3 py-2.5">
+            <div class="flex items-center gap-3">
+              <span class="min-w-0 flex-1 text-sm text-zinc-100">{{ s.nome }}</span>
               <span v-if="s.ultimoPreco !== null" class="shrink-0 text-xs text-zinc-500">{{ formatMoeda(s.ultimoPreco) }}</span>
-            </label>
+            </div>
+            <BaseSelect v-model="s.acao" :options="acaoImportarOptions" />
           </li>
         </ul>
         <p class="mt-3 text-xs text-zinc-500">
@@ -535,8 +566,8 @@ async function importar() {
       <template #footer>
         <div class="flex justify-end gap-2">
           <AppButton variant="ghost" @click="modalImportar = false">Cancelar</AppButton>
-          <AppButton variant="primary" :disabled="importando || !marcadosImportar.length" @click="importar">
-            {{ importando ? 'Cadastrando...' : `Cadastrar ${marcadosImportar.length}` }}
+          <AppButton variant="primary" :disabled="importando || !decididosImportar.length" @click="importar">
+            {{ importando ? 'Salvando...' : 'Salvar' }}
           </AppButton>
         </div>
       </template>

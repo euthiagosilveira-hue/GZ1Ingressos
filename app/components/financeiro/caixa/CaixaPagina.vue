@@ -51,6 +51,7 @@ import {
 import { formatMoeda } from '~/utils/format'
 import { paginar, totalPaginas } from '~/utils/paginacao'
 import { baixarPlanilhaXlsx } from '~/utils/planilhaXlsx'
+import { abrirLinkEmNovaAba } from '~/utils/abrirLink'
 
 const POR_PAGINA = 30
 
@@ -267,7 +268,7 @@ async function confirmarCancelamento(motivo: string) {
 async function abrirComprovante(l: LancamentoCaixa) {
   if (!l.comprovantePath) return
   try {
-    window.open(await linkComprovante(l.comprovantePath), '_blank', 'noopener')
+    await abrirLinkEmNovaAba(() => linkComprovante(l.comprovantePath!))
   } catch {
     toast.error('Não foi possível abrir o comprovante.')
   }
