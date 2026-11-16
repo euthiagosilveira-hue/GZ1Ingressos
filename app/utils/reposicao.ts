@@ -394,7 +394,12 @@ export function mensagemErroVendasBar(erro: unknown, padrao = 'Não foi possíve
 // -----------------------------------------------------------------------------
 
 /** De onde veio o produto sugerido para um item da nota. */
-export type OrigemCasamento = 'lembrado' | 'mesmo-nome' | 'parecido' | 'ignorado' | 'nenhum'
+export type OrigemCasamento = 'lembrado' | 'mesmo-nome' | 'parecido' | 'ia' | 'ignorado' | 'nenhum'
+
+/** Itens que vale perguntar para a IA: sem nome lembrado/igual. */
+export function precisaDaIa(origem: OrigemCasamento): boolean {
+  return origem === 'parecido' || origem === 'nenhum'
+}
 
 /**
  * Acha o produto da Reposicao de um item da nota: primeiro o nome ja lembrado

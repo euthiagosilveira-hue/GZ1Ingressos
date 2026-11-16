@@ -7,6 +7,7 @@ import BaseModal from '~/components/BaseModal.vue'
 import BaseSelect from '~/components/BaseSelect.vue'
 import { listarItensLancamento } from '~/services/admin/caixa'
 import {
+  casarItensComIa,
   darBaixaReposicaoCompra,
   listarNomesCompraReposicao,
   listarProdutosReposicao,
@@ -22,6 +23,7 @@ import {
   lerQuantidade,
   mensagemErroBaixaReposicao,
   nomeEmbalagem,
+  precisaDaIa,
   quantidadeParaTexto,
   unidadeComPlural
 } from '~/utils/reposicao'
@@ -51,6 +53,8 @@ interface Linha {
   produtoId: string
   origem: OrigemCasamento
   quantidade: string
+  /** O administrador mexeu: a IA nao troca mais. */
+  mexido: boolean
 }
 
 const carregando = ref(false)
@@ -60,6 +64,8 @@ const pedido = ref<PedidoReposicao | null>(null)
 const produtos = ref<ProdutoReposicao[]>([])
 const linhas = ref<Linha[]>([])
 const visivel = ref(false)
+const iaConferindo = ref(false)
+const avisoIa = ref('')
 
 const produtoOptions = computed<SelectOption[]>(() => [
   { value: '', label: 'Não é da reposição' },
@@ -110,9 +116,15 @@ async function carregar() {
         valorTotal: i.valorTotal,
         produtoId: c.produtoId ?? '',
         origem: c.origem,
-        quantidade: quantidadeParaTexto(i.quantidade)
+        quantidade: quantidadeParaTexto(i.quantidade),
+        mexido: false
       }
     })
+    if (aberto) {
+      // No automatico espera a IA para decidir se a janela aparece.
+      if (props.automatico) await conferirComIa()
+      else void conferirComIa()
+    }
     if (props.automatico && (!aberto || !linhas.value.some((l) => l.produtoId))) {
       emit('close')
       return
@@ -130,6 +142,35 @@ async function carregar() {
   }
 }
 
+/** A IA confere os nomes que nao foram reconhecidos com certeza. */
+async function conferirComIa() {
+  const alvo = linhas.value.map((l, i) => ({ l, i })).filter(({ l }) => precisaDaIa(l.origem))
+  avisoIa.value = ''
+  if (alvo.length === 0) return
+  const lista = linhas.value
+  iaConferindo.value = true
+  try {
+    const r = await casarItensComIa(alvo.map(({ l }) => ({ nome: l.nome, quantidade: l.quantidadeNota })))
+    if (linhas.value !== lista) return
+    for (const c of r) {
+      const linha = alvo[c.item]?.l
+      if (!linha || linha.mexido) continue
+      if (c.produtoId && produto(c.produtoId)) {
+        linha.produtoId = c.produtoId
+        linha.origem = 'ia'
+        if (c.quantidade !== null && c.quantidade > 0) linha.quantidade = quantidadeParaTexto(c.quantidade)
+      } else {
+        linha.produtoId = ''
+        linha.origem = 'nenhum'
+      }
+    }
+  } catch {
+    avisoIa.value = 'A IA não respondeu agora; as sugestões abaixo são pelo nome. Confira antes de confirmar.'
+  } finally {
+    iaConferindo.value = false
+  }
+}
+
 watch(
   () => [props.open, props.lancamentoId] as const,
   ([aberto, id]) => {
@@ -143,6 +184,7 @@ watch(
 )
 
 function escolher(l: Linha, id: string) {
+  l.mexido = true
   l.produtoId = id
   l.origem = id ? 'lembrado' : 'ignorado'
 }
@@ -209,7 +251,12 @@ async function confirmar() {
         Esta saída não tem itens. Abra a saída, adicione os itens (ou leia o comprovante com a IA) e tente de novo.
       </p>
 
-      <ul v-else class="space-y-3">
+      <p v-if="pedido && linhas.length && iaConferindo" class="text-xs text-sky-300">
+        A IA está conferindo os nomes da nota...
+      </p>
+      <p v-if="avisoIa" class="text-xs text-amber-300">{{ avisoIa }}</p>
+
+      <ul v-if="!carregando && pedido && linhas.length" class="space-y-3">
         <li
           v-for="(l, i) in linhas"
           :key="i"
@@ -224,7 +271,19 @@ async function confirmar() {
               </p>
             </div>
             <span
-              v-if="l.produtoId && l.origem === 'parecido'"
+              v-if="l.produtoId && l.origem === 'ia'"
+              class="shrink-0 rounded-md bg-sky-500/15 px-2 py-0.5 text-[11px] font-semibold text-sky-300"
+            >
+              IA · confira
+            </span>
+            <span
+              v-else-if="iaConferindo && precisaDaIa(l.origem)"
+              class="shrink-0 rounded-md bg-zinc-800 px-2 py-0.5 text-[11px] font-semibold text-zinc-400"
+            >
+              IA conferindo...
+            </span>
+            <span
+              v-else-if="l.produtoId && l.origem === 'parecido'"
               class="shrink-0 rounded-md bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300"
             >
               Confira
@@ -240,6 +299,7 @@ async function confirmar() {
             <label v-if="l.produtoId" class="relative block">
               <input
                 v-model="l.quantidade"
+                @input="l.mexido = true"
                 inputmode="decimal"
                 class="h-11 w-full rounded-lg border border-zinc-700 bg-zinc-950 pl-3 pr-16 text-right text-sm text-zinc-100 focus:border-amber-400 focus:outline-none"
                 aria-label="Quantidade comprada"
@@ -275,7 +335,7 @@ async function confirmar() {
         <AppButton variant="ghost" :disabled="salvando" @click="emit('close')">Agora não</AppButton>
         <AppButton
           v-if="pedido && linhas.length"
-          :disabled="salvando || carregando || marcadas.length === 0"
+          :disabled="salvando || carregando || iaConferindo || marcadas.length === 0"
           @click="confirmar"
         >
           {{ salvando ? 'Dando baixa...' : `Dar baixa (${marcadas.length})` }}

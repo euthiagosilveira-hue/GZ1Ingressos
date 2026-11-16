@@ -221,3 +221,15 @@ export async function darBaixaReposicaoCompra(
   if (error) throw error
   return Number((data as Bruto)?.baixados ?? 0)
 }
+
+/** A IA sugere o produto de cada item da nota (so sugere; nada e salvo). */
+export async function casarItensComIa(
+  itens: { nome: string; quantidade: number | null }[]
+): Promise<{ item: number; produtoId: string | null; quantidade: number | null }[]> {
+  const r = await $fetch<{ itens?: Bruto[] }>('/api/admin/reposicao/casar-itens', { method: 'POST', body: { itens } })
+  return (r.itens ?? []).map((i) => ({
+    item: Number(i.item),
+    produtoId: i.produtoId ? String(i.produtoId) : null,
+    quantidade: i.quantidade === null || i.quantidade === undefined ? null : Number(i.quantidade)
+  }))
+}
