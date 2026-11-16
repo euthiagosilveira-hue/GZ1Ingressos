@@ -320,6 +320,9 @@ async function descartar() {
   }
 }
 
+// Nome pequeno dentro do campo (ex.: FARDOS), a esquerda; o numero fica a direita.
+const rotuloCampo =
+  'pointer-events-none absolute inset-y-0 left-2.5 flex max-w-[3.75rem] items-center truncate text-[10px] uppercase text-zinc-500'
 const campo =
   'w-full rounded-lg border bg-zinc-950 px-2.5 py-2 text-right text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-400/30'
 </script>
@@ -441,7 +444,7 @@ const campo =
           </div>
         </header>
 
-        <div class="hidden grid-cols-[1fr_9.5rem_6rem_6.5rem_5.5rem] gap-3 px-4 pt-3 text-[11px] uppercase tracking-wide text-zinc-500 sm:grid">
+        <div class="hidden grid-cols-[minmax(0,1fr)_13rem_6.5rem_6.5rem_5rem] gap-3 px-4 pt-3 text-[11px] uppercase tracking-wide text-zinc-500 lg:grid">
           <span>Produto</span>
           <span class="text-right">Tem hoje</span>
           <span class="text-right">Pedir</span>
@@ -453,7 +456,7 @@ const campo =
           <li
             v-for="item in g.itens"
             :key="item.id"
-            class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[1fr_9.5rem_6rem_6.5rem_5.5rem]"
+            class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_13rem_6.5rem_6.5rem_5rem]"
             :class="item.pedidoFeito ? 'bg-emerald-500/5' : ''"
           >
             <div class="min-w-0">
@@ -479,7 +482,7 @@ const campo =
             <!-- Celular: botao "Pedido" ao lado do nome -->
             <button
               type="button"
-              class="cursor-pointer rounded-md border px-2.5 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-30 sm:hidden"
+              class="cursor-pointer rounded-md border px-2.5 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-30 lg:hidden"
               :class="item.pedidoFeito ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300' : 'border-zinc-700 text-zinc-400'"
               :disabled="item.quantidade <= 0"
               @click="alternarPedido(item)"
@@ -487,44 +490,48 @@ const campo =
               {{ item.pedidoFeito ? '✓ Pedido' : 'Pedido?' }}
             </button>
 
-            <div class="col-span-2 grid grid-cols-[1.7fr_1fr_1fr] items-end gap-2 sm:contents">
-              <div v-if="item.unidadesPorEmbalagem > 1" class="grid grid-cols-2 gap-1.5 sm:self-center">
-                <label class="block">
-                  <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500">{{ unidadeComPlural(nomeEmbalagem(item), 2) }}</span>
-                  <input
-                    :value="textoFechados[item.id]"
-                    inputmode="decimal"
-                    placeholder="—"
-                    :aria-label="`${unidadeComPlural(nomeEmbalagem(item), 2)} fechados de ${item.nome}`"
-                    :class="[campo, invalidos[`f-${item.id}`] ? 'border-red-500/60' : 'border-zinc-700']"
-                    @input="aoDigitarEstoque(item, ($event.target as HTMLInputElement).value, 'fechados')"
-                  />
-                </label>
-                <label class="block">
-                  <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500">{{ unidadeComPlural(item.unidadeAvulsa, 2) }}</span>
+            <div class="col-span-2 grid grid-cols-2 items-end gap-2 lg:contents">
+              <!-- "Tem hoje": o nome (fardos/unidades) fica DENTRO do campo, para todas as linhas terem a mesma altura -->
+              <div class="col-span-2 lg:col-span-1">
+                <span class="mb-1 block text-[10px] uppercase tracking-wide text-zinc-500 lg:hidden">Tem hoje</span>
+                <div v-if="item.unidadesPorEmbalagem > 1" class="grid grid-cols-2 gap-1.5">
+                  <label class="relative block">
+                    <span :class="rotuloCampo">{{ unidadeComPlural(nomeEmbalagem(item), 2) }}</span>
+                    <input
+                      :value="textoFechados[item.id]"
+                      inputmode="decimal"
+                      placeholder="—"
+                      :aria-label="`${unidadeComPlural(nomeEmbalagem(item), 2)} fechados de ${item.nome}`"
+                      :class="[campo, 'pl-[4.5rem]', invalidos[`f-${item.id}`] ? 'border-red-500/60' : 'border-zinc-700']"
+                      @input="aoDigitarEstoque(item, ($event.target as HTMLInputElement).value, 'fechados')"
+                    />
+                  </label>
+                  <label class="relative block">
+                    <span :class="rotuloCampo">{{ unidadeComPlural(item.unidadeAvulsa, 2) }}</span>
+                    <input
+                      :value="textoEstoque[item.id]"
+                      inputmode="decimal"
+                      placeholder="—"
+                      :aria-label="`${unidadeComPlural(item.unidadeAvulsa, 2)} soltas de ${item.nome}`"
+                      :class="[campo, 'pl-[4.5rem]', invalidos[`e-${item.id}`] ? 'border-red-500/60' : 'border-zinc-700']"
+                      @input="aoDigitarEstoque(item, ($event.target as HTMLInputElement).value, 'soltos')"
+                    />
+                  </label>
+                </div>
+                <label v-else class="relative block">
+                  <span :class="rotuloCampo">{{ unidadeComPlural(item.unidade, 2) }}</span>
                   <input
                     :value="textoEstoque[item.id]"
                     inputmode="decimal"
                     placeholder="—"
-                    :aria-label="`${unidadeComPlural(item.unidadeAvulsa, 2)} soltas de ${item.nome}`"
-                    :class="[campo, invalidos[`e-${item.id}`] ? 'border-red-500/60' : 'border-zinc-700']"
-                    @input="aoDigitarEstoque(item, ($event.target as HTMLInputElement).value, 'soltos')"
+                    :aria-label="`Quanto tem hoje de ${item.nome}`"
+                    :class="[campo, 'pl-[4.5rem]', invalidos[`e-${item.id}`] ? 'border-red-500/60' : 'border-zinc-700']"
+                    @input="aoDigitarEstoque(item, ($event.target as HTMLInputElement).value)"
                   />
                 </label>
               </div>
-              <label v-else class="block sm:self-center">
-                <span class="mb-1 block text-[10px] uppercase tracking-wide text-zinc-500 sm:hidden">Tem hoje</span>
-                <input
-                  :value="textoEstoque[item.id]"
-                  inputmode="decimal"
-                  placeholder="—"
-                  :aria-label="`Quanto tem hoje de ${item.nome}`"
-                  :class="[campo, invalidos[`e-${item.id}`] ? 'border-red-500/60' : 'border-zinc-700']"
-                  @input="aoDigitarEstoque(item, ($event.target as HTMLInputElement).value)"
-                />
-              </label>
               <label class="block">
-                <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500 sm:hidden">Pedir ({{ unidadeComPlural(nomeEmbalagem(item), 2) }})</span>
+                <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500 lg:hidden">Pedir ({{ unidadeComPlural(nomeEmbalagem(item), 2) }})</span>
                 <input
                   :value="textoQuantidade[item.id]"
                   inputmode="decimal"
@@ -538,15 +545,15 @@ const campo =
                   @input="aoDigitarQuantidade(item, ($event.target as HTMLInputElement).value)"
                 />
               </label>
-              <p class="text-right text-sm sm:self-center">
-                <span class="mb-1 block text-[10px] uppercase tracking-wide text-zinc-500 sm:hidden">Estimado</span>
-                <span :class="valorEstimado(item) !== null ? 'text-zinc-200' : 'text-zinc-600'">
+              <p class="text-right text-sm lg:self-center">
+                <span class="mb-1 block text-[10px] uppercase tracking-wide text-zinc-500 lg:hidden">Estimado</span>
+                <span class="block py-[9px] lg:py-0" :class="valorEstimado(item) !== null ? 'text-zinc-200' : 'text-zinc-600'">
                   {{ valorEstimado(item) !== null ? formatMoeda(valorEstimado(item)!) : '—' }}
                 </span>
               </p>
             </div>
 
-            <div class="hidden justify-center sm:flex">
+            <div class="hidden justify-center lg:flex">
               <input
                 type="checkbox"
                 class="h-5 w-5 cursor-pointer accent-emerald-500 disabled:cursor-not-allowed disabled:opacity-30"
