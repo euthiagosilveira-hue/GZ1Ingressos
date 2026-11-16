@@ -5,6 +5,7 @@ import {
   ArrowUpRightIcon,
   PaperClipIcon,
   PencilSquareIcon,
+  ShoppingCartIcon,
   TicketIcon,
   XCircleIcon
 } from '@heroicons/vue/24/outline'
@@ -21,7 +22,13 @@ const emit = defineEmits<{
   editar: [l: LancamentoCaixa]
   cancelar: [l: LancamentoCaixa]
   comprovante: [l: LancamentoCaixa]
+  reposicao: [l: LancamentoCaixa]
 }>()
+
+/** Saida manual: pode dar baixa no pedido da semana da reposicao. */
+function podeDarBaixa(l: LancamentoCaixa) {
+  return l.tipo === 'SAIDA' && !l.canceladoEm && !!l.lancamentoId
+}
 
 function corValor(l: LancamentoCaixa) {
   if (l.canceladoEm) return 'text-zinc-500 line-through'
@@ -92,6 +99,15 @@ function titulo(l: LancamentoCaixa) {
                 >
                   <TicketIcon class="h-4 w-4" />
                 </NuxtLink>
+                <button
+                  v-if="podeDarBaixa(l)"
+                  type="button"
+                  title="Dar baixa na reposição"
+                  class="cursor-pointer rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-emerald-400"
+                  @click="emit('reposicao', l)"
+                >
+                  <ShoppingCartIcon class="h-4 w-4" />
+                </button>
                 <template v-if="podeEditar(l)">
                   <button
                     type="button"
@@ -156,13 +172,16 @@ function titulo(l: LancamentoCaixa) {
             <p v-if="l.canceladoEm" class="text-xs text-red-400">Cancelado: {{ l.motivoCancelamento }}</p>
 
             <div
-              v-if="l.comprovantePath || l.pedidoId || podeEditar(l)"
+              v-if="l.comprovantePath || l.pedidoId || podeEditar(l) || podeDarBaixa(l)"
               class="mt-2 flex flex-wrap gap-3 text-xs font-semibold"
             >
               <button v-if="l.comprovantePath" type="button" class="cursor-pointer text-amber-400" @click="emit('comprovante', l)">
                 Comprovante
               </button>
               <NuxtLink v-if="l.pedidoId" :to="`/pedidos/${l.pedidoId}`" class="text-amber-400">Ver pedido</NuxtLink>
+              <button v-if="podeDarBaixa(l)" type="button" class="cursor-pointer text-emerald-400" @click="emit('reposicao', l)">
+                Reposição
+              </button>
               <template v-if="podeEditar(l)">
                 <button type="button" class="cursor-pointer text-amber-400" @click="emit('editar', l)">Editar</button>
                 <button type="button" class="cursor-pointer text-red-400" @click="emit('cancelar', l)">Cancelar</button>

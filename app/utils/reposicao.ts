@@ -58,7 +58,8 @@ export function mapearItemPedidoReposicao(r: Bruto): ItemPedidoReposicao {
     estoqueSoltos: numOuNull(r.estoque_soltos),
     quantidade: numOuNull(r.quantidade) ?? 0,
     pedidoFeito: r.pedido_feito === true,
-    pedidoFeitoEm: r.pedido_feito_em ? String(r.pedido_feito_em) : null
+    pedidoFeitoEm: r.pedido_feito_em ? String(r.pedido_feito_em) : null,
+    quantidadeComprada: numOuNull(r.quantidade_comprada)
   }
 }
 
@@ -386,4 +387,48 @@ export function mensagemErroVendasBar(erro: unknown, padrao = 'Não foi possíve
   if (/Ja existe um relatorio/i.test(msg)) return 'Esse relatório (mesmo período) já foi importado. Para trocar, exclua o antigo no histórico.'
   if (/schema cache|Could not find the function/i.test(msg)) return 'As vendas do bar ainda não foram ativadas no banco (falta rodar o SQL).'
   return mensagemErroReposicao(erro, padrao)
+}
+
+// -----------------------------------------------------------------------------
+// Dar baixa no pedido da semana pela saida do caixa
+// -----------------------------------------------------------------------------
+
+/** De onde veio o produto sugerido para um item da nota. */
+export type OrigemCasamento = 'lembrado' | 'mesmo-nome' | 'parecido' | 'ia' | 'ignorado' | 'nenhum'
+
+/** Itens que vale perguntar para a IA: sem nome lembrado/igual. */
+export function precisaDaIa(origem: OrigemCasamento): boolean {
+  return origem === 'parecido' || origem === 'nenhum'
+}
+
+/**
+ * Acha o produto da Reposicao de um item da nota: primeiro o nome ja lembrado
+ * (reposicao_nomes_compra), depois o nome igual, depois o mais parecido.
+ */
+export function casarItemCompra(
+  nome: string,
+  nomesCompra: { nome: string; produtoId: string | null }[],
+  produtos: ProdutoReposicao[]
+): { produtoId: string | null; origem: OrigemCasamento } {
+  const lembrado = nomesCompra.find((n) => mesmoNome(n.nome, nome))
+  if (lembrado) {
+    if (lembrado.produtoId === null) return { produtoId: null, origem: 'ignorado' }
+    if (produtos.some((p) => p.id === lembrado.produtoId)) return { produtoId: lembrado.produtoId, origem: 'lembrado' }
+  }
+  const igual = produtos.find((p) => p.ativo && mesmoNome(p.nome, nome))
+  if (igual) return { produtoId: igual.id, origem: 'mesmo-nome' }
+  const parecido = sugerirProdutoReposicao(nome, produtos)
+  if (parecido) return { produtoId: parecido.id, origem: 'parecido' }
+  return { produtoId: null, origem: 'nenhum' }
+}
+
+export function mensagemErroBaixaReposicao(erro: unknown): string {
+  const msg = erro && typeof erro === 'object' && 'message' in erro ? String((erro as { message: unknown }).message) : ''
+  if (/Nenhum pedido da semana aberto/i.test(msg)) return 'Não tem pedido da semana aberto. Abra o pedido em Financeiro > Reposição.'
+  if (/Saida nao encontrada/i.test(msg)) return 'Essa saída não foi encontrada (pode ter sido cancelada).'
+  if (/Quantidade comprada invalida/i.test(msg)) return 'Confira as quantidades: precisam ser maiores que zero.'
+  if (/dar_baixa_reposicao_compra_admin/i.test(msg) || /schema cache|Could not find the function/i.test(msg)) {
+    return 'A baixa na reposição ainda não foi ativada no banco (falta rodar o SQL).'
+  }
+  return mensagemErroReposicao(erro, 'Não foi possível dar baixa. Tente novamente.')
 }

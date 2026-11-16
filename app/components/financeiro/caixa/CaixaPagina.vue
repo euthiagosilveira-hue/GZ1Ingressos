@@ -22,6 +22,7 @@ import FinanceiroAbas from '~/components/financeiro/caixa/FinanceiroAbas.vue'
 import LancamentoModal from '~/components/financeiro/caixa/LancamentoModal.vue'
 import LancamentosLista from '~/components/financeiro/caixa/LancamentosLista.vue'
 import SaldoInicialModal from '~/components/financeiro/caixa/SaldoInicialModal.vue'
+import BaixaReposicaoModal from '~/components/financeiro/reposicao/BaixaReposicaoModal.vue'
 import { useCaixaBase } from '~/composables/useCaixaBase'
 import {
   cancelarLancamentoCaixa,
@@ -34,6 +35,7 @@ import {
 } from '~/services/admin/caixa'
 import type {
   ContaCaixa,
+  ItemLancamento,
   LancamentoCaixa,
   LancamentoInput,
   ResumoLancamentos,
@@ -211,9 +213,14 @@ function editarLancamento(l: LancamentoCaixa) {
 async function salvarLancamento(input: LancamentoInput) {
   salvandoLancamento.value = true
   try {
-    await salvarLancamentoCaixa(input)
+    const id = await salvarLancamentoCaixa(input)
     toast.success(input.id ? 'Lançamento atualizado.' : 'Lançamento registrado.')
     modalLancamento.value = false
+    // Saida com itens: oferece dar baixa no pedido da semana (so aparece se
+    // houver pedido aberto e algum item parecer da reposicao).
+    if (input.tipo === 'SAIDA' && id && input.itens?.length) {
+      baixa.value = { lancamentoId: id, descricao: input.descricao ?? '', itens: input.itens, automatico: true }
+    }
     await recarregarTudo()
   } catch (e) {
     if (e instanceof ErroItensLancamento) {
@@ -227,6 +234,19 @@ async function salvarLancamento(input: LancamentoInput) {
   } finally {
     salvandoLancamento.value = false
   }
+}
+
+// --- Baixa na reposicao ----------------------------------------------------
+const baixa = ref<{
+  lancamentoId: string
+  descricao: string
+  itens: ItemLancamento[] | null
+  automatico: boolean
+} | null>(null)
+
+function abrirBaixaReposicao(l: LancamentoCaixa) {
+  if (!l.lancamentoId) return
+  baixa.value = { lancamentoId: l.lancamentoId, descricao: l.descricao, itens: null, automatico: false }
 }
 
 // --- Fechar bar -----------------------------------------------------------
@@ -376,6 +396,7 @@ function baixarExcel() {
           @editar="editarLancamento"
           @cancelar="lancamentoCancelar = $event"
           @comprovante="abrirComprovante"
+          @reposicao="abrirBaixaReposicao"
         />
         <BasePagination v-if="numeroPaginas > 1" :pagina="pagina" :total-paginas="numeroPaginas" @ir="pagina = $event" />
       </template>
@@ -400,6 +421,16 @@ function baixarExcel() {
       :salvando="salvandoLancamento"
       @close="modalLancamento = false"
       @submit="salvarLancamento"
+    />
+
+    <BaixaReposicaoModal
+      :open="!!baixa"
+      :lancamento-id="baixa?.lancamentoId ?? null"
+      :descricao="baixa?.descricao"
+      :itens="baixa?.itens ?? null"
+      :automatico="baixa?.automatico ?? false"
+      @close="baixa = null"
+      @concluido="baixa = null"
     />
 
     <FecharBarModal
