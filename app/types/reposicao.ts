@@ -3,8 +3,14 @@
 export interface ProdutoReposicao {
   id: string
   nome: string
+  /** Embalagem de compra (fardo, caixa, unidade...). */
   unidade: string
+  /** Quantas unidades vem em 1 embalagem (1 = compra avulsa). */
+  unidadesPorEmbalagem: number
+  /** Nome da unidade solta (lata, garrafa, unidade). */
+  unidadeAvulsa: string
   fornecedor: string | null
+  /** Preco de 1 embalagem. */
   ultimoPreco: number | null
   quantidadeIdeal: number
   ativo: boolean
@@ -15,10 +21,18 @@ export interface ItemPedidoReposicao {
   produtoId: string | null
   nome: string
   unidade: string
+  unidadesPorEmbalagem: number
+  unidadeAvulsa: string
   fornecedor: string | null
+  /** Preco de 1 embalagem. */
   preco: number | null
+  /** Em unidades soltas. */
   quantidadeIdeal: number
+  /** Total em unidades soltas. */
   estoqueAtual: number | null
+  estoqueFechados: number | null
+  estoqueSoltos: number | null
+  /** Embalagens a pedir. */
   quantidade: number
   pedidoFeito: boolean
   pedidoFeitoEm: string | null

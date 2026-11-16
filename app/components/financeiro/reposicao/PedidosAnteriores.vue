@@ -14,6 +14,7 @@ import {
   mensagemPedido,
   quantidadeParaTexto,
   totalEstimado,
+  unidadeComPlural,
   valorEstimado
 } from '~/utils/reposicao'
 
@@ -95,7 +96,7 @@ async function copiar(p: PedidoReposicao) {
                 {{ i.pedidoFeito ? '✓' : '•' }}
               </span>
               <span class="min-w-0 flex-1 truncate text-zinc-200">
-                {{ quantidadeParaTexto(i.quantidade) }} {{ i.unidade }} · {{ i.nome }}
+                {{ quantidadeParaTexto(i.quantidade) }} {{ unidadeComPlural(i.unidade, i.quantidade) }}<template v-if="i.unidadesPorEmbalagem > 1"> ({{ quantidadeParaTexto(i.unidadesPorEmbalagem) }} un.)</template> · {{ i.nome }}
               </span>
               <span class="shrink-0 text-xs text-zinc-500">{{ valorEstimado(i) !== null ? formatMoeda(valorEstimado(i)!) : '' }}</span>
             </li>

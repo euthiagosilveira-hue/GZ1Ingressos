@@ -25,7 +25,11 @@ import {
   mensagemErroReposicao,
   mensagemPedido,
   quantidadeParaTexto,
+  descreverEmbalagem,
+  estoqueTotal,
   sugerirQuantidade,
+  unidadeComPlural,
+  unidadesComEmbalagens,
   totalEstimado,
   valorEstimado
 } from '~/utils/reposicao'
@@ -41,16 +45,28 @@ const erro = ref('')
 const iniciando = ref(false)
 
 // Texto digitado em cada campo (para nao "pular" enquanto a pessoa digita).
+// Produto em fardo/caixa: textoFechados = embalagens fechadas, textoEstoque = soltas.
+// Produto avulso: so textoEstoque (total).
 const textoEstoque = ref<Record<string, string>>({})
+const textoFechados = ref<Record<string, string>>({})
 const textoQuantidade = ref<Record<string, string>>({})
 const invalidos = ref<Record<string, boolean>>({})
 
 function prepararTextos(p: PedidoReposicao | null) {
   textoEstoque.value = {}
+  textoFechados.value = {}
   textoQuantidade.value = {}
   invalidos.value = {}
   for (const i of p?.itens ?? []) {
-    textoEstoque.value[i.id] = quantidadeParaTexto(i.estoqueAtual)
+    if (i.unidadesPorEmbalagem > 1) {
+      textoFechados.value[i.id] = quantidadeParaTexto(i.estoqueFechados)
+      // Total antigo sem fechados/soltos: mostra como soltas.
+      textoEstoque.value[i.id] = quantidadeParaTexto(
+        i.estoqueFechados === null && i.estoqueSoltos === null ? i.estoqueAtual : i.estoqueSoltos
+      )
+    } else {
+      textoEstoque.value[i.id] = quantidadeParaTexto(i.estoqueAtual)
+    }
     textoQuantidade.value[i.id] = i.quantidade > 0 ? quantidadeParaTexto(i.quantidade) : ''
   }
 }
@@ -121,6 +137,8 @@ async function salvarAgora(item: ItemPedidoReposicao) {
     await salvarItemPedidoReposicao({
       id: item.id,
       estoqueAtual: item.estoqueAtual,
+      estoqueFechados: item.unidadesPorEmbalagem > 1 ? item.estoqueFechados : null,
+      estoqueSoltos: item.unidadesPorEmbalagem > 1 ? item.estoqueSoltos : null,
       quantidade: item.quantidade,
       pedidoFeito: item.pedidoFeito
     })
@@ -147,17 +165,27 @@ onBeforeUnmount(() => {
   void salvarTudoPendente()
 })
 
-function aoDigitarEstoque(item: ItemPedidoReposicao, texto: string) {
-  textoEstoque.value[item.id] = texto
-  const v = lerQuantidade(texto)
-  if (v !== null && Number.isNaN(v)) {
-    invalidos.value[`e-${item.id}`] = true
+function aoDigitarEstoque(item: ItemPedidoReposicao, texto: string, campo: 'soltos' | 'fechados' = 'soltos') {
+  const chave = campo === 'fechados' ? `f-${item.id}` : `e-${item.id}`
+  if (campo === 'fechados') textoFechados.value[item.id] = texto
+  else textoEstoque.value[item.id] = texto
+  const lido = lerQuantidade(texto)
+  if (lido !== null && Number.isNaN(lido)) {
+    invalidos.value[chave] = true
     return
   }
-  invalidos.value[`e-${item.id}`] = false
+  invalidos.value[chave] = false
+  let v: number | null
+  if (item.unidadesPorEmbalagem > 1) {
+    if (campo === 'fechados') item.estoqueFechados = lido
+    else item.estoqueSoltos = lido
+    v = estoqueTotal(item.estoqueFechados, item.estoqueSoltos, item.unidadesPorEmbalagem)
+  } else {
+    v = lido
+  }
   item.estoqueAtual = v
   // Recalcula a sugestao (a pessoa pode ajustar depois no campo "Pedir").
-  const sugestao = sugerirQuantidade(item.quantidadeIdeal, v)
+  const sugestao = sugerirQuantidade(item.quantidadeIdeal, v, item.unidadesPorEmbalagem)
   if (v !== null || item.quantidade === 0) {
     item.quantidade = sugestao
     textoQuantidade.value[item.id] = sugestao > 0 ? quantidadeParaTexto(sugestao) : ''
@@ -357,9 +385,10 @@ const campo =
       </div>
 
       <p class="text-xs text-zinc-500">
-        Digite em <span class="text-zinc-300">Tem hoje</span> quanto há no estoque: o sistema sugere
-        <span class="text-zinc-300">Pedir</span> = ideal da semana − o que tem. Você pode mudar o valor. Depois de mandar
-        para o fornecedor, marque <span class="text-zinc-300">Pedido</span>.
+        Digite em <span class="text-zinc-300">Tem hoje</span> quanto há no estoque (nos produtos em fardo/caixa:
+        quantos fechados e quantas soltas). O sistema sugere <span class="text-zinc-300">Pedir</span> em embalagens
+        fechadas, arredondando para cima. Você pode mudar o valor. Depois de mandar para o fornecedor, marque
+        <span class="text-zinc-300">Pedido</span>.
       </p>
 
       <p v-if="!grupos.length" class="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-400">
@@ -411,7 +440,7 @@ const campo =
           </div>
         </header>
 
-        <div class="hidden grid-cols-[1fr_6rem_6rem_6.5rem_5.5rem] gap-3 px-4 pt-3 text-[11px] uppercase tracking-wide text-zinc-500 sm:grid">
+        <div class="hidden grid-cols-[1fr_9.5rem_6rem_6.5rem_5.5rem] gap-3 px-4 pt-3 text-[11px] uppercase tracking-wide text-zinc-500 sm:grid">
           <span>Produto</span>
           <span class="text-right">Tem hoje</span>
           <span class="text-right">Pedir</span>
@@ -423,7 +452,7 @@ const campo =
           <li
             v-for="item in g.itens"
             :key="item.id"
-            class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[1fr_6rem_6rem_6.5rem_5.5rem]"
+            class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[1fr_9.5rem_6rem_6.5rem_5.5rem]"
             :class="item.pedidoFeito ? 'bg-emerald-500/5' : ''"
           >
             <div class="min-w-0">
@@ -431,11 +460,18 @@ const campo =
                 {{ item.nome }}
               </p>
               <p class="text-xs text-zinc-500">
-                {{ item.unidade }} · ideal {{ quantidadeParaTexto(item.quantidadeIdeal) }}
-                <template v-if="item.preco !== null"> · {{ formatMoeda(item.preco) }}</template>
+                {{ descreverEmbalagem(item) }} · ideal {{ unidadesComEmbalagens(item.quantidadeIdeal, item) }}
+                <template v-if="item.preco !== null"> · {{ formatMoeda(item.preco) }}/{{ item.unidade }}</template>
+              </p>
+              <p v-if="item.unidadesPorEmbalagem > 1 && item.estoqueAtual !== null" class="text-xs text-zinc-500">
+                Tem {{ quantidadeParaTexto(item.estoqueAtual) }} {{ unidadeComPlural(item.unidadeAvulsa, item.estoqueAtual) }}
+                <template v-if="item.quantidade > 0">
+                  · pedindo {{ quantidadeParaTexto(item.quantidade * item.unidadesPorEmbalagem) }}
+                  {{ unidadeComPlural(item.unidadeAvulsa, item.quantidade * item.unidadesPorEmbalagem) }}
+                </template>
               </p>
               <p v-if="consumoDe(item.produtoId)" class="text-xs text-amber-300/90">
-                Saiu no bar: ~{{ quantidadeParaTexto(consumoDe(item.produtoId)!.mediaSemanal) }} por semana
+                Saiu no bar: ~{{ unidadesComEmbalagens(Math.round(consumoDe(item.produtoId)!.mediaSemanal * item.unidadesPorEmbalagem * 10) / 10, item) }} por semana
               </p>
             </div>
 
@@ -450,8 +486,32 @@ const campo =
               {{ item.pedidoFeito ? '✓ Pedido' : 'Pedido?' }}
             </button>
 
-            <div class="col-span-2 grid grid-cols-3 items-center gap-2 sm:contents">
-              <label class="block">
+            <div class="col-span-2 grid grid-cols-[1.7fr_1fr_1fr] items-end gap-2 sm:contents">
+              <div v-if="item.unidadesPorEmbalagem > 1" class="grid grid-cols-2 gap-1.5 sm:self-center">
+                <label class="block">
+                  <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500">{{ unidadeComPlural(item.unidade, 2) }}</span>
+                  <input
+                    :value="textoFechados[item.id]"
+                    inputmode="decimal"
+                    placeholder="—"
+                    :aria-label="`${unidadeComPlural(item.unidade, 2)} fechados de ${item.nome}`"
+                    :class="[campo, invalidos[`f-${item.id}`] ? 'border-red-500/60' : 'border-zinc-700']"
+                    @input="aoDigitarEstoque(item, ($event.target as HTMLInputElement).value, 'fechados')"
+                  />
+                </label>
+                <label class="block">
+                  <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500">{{ unidadeComPlural(item.unidadeAvulsa, 2) }}</span>
+                  <input
+                    :value="textoEstoque[item.id]"
+                    inputmode="decimal"
+                    placeholder="—"
+                    :aria-label="`${unidadeComPlural(item.unidadeAvulsa, 2)} soltas de ${item.nome}`"
+                    :class="[campo, invalidos[`e-${item.id}`] ? 'border-red-500/60' : 'border-zinc-700']"
+                    @input="aoDigitarEstoque(item, ($event.target as HTMLInputElement).value, 'soltos')"
+                  />
+                </label>
+              </div>
+              <label v-else class="block sm:self-center">
                 <span class="mb-1 block text-[10px] uppercase tracking-wide text-zinc-500 sm:hidden">Tem hoje</span>
                 <input
                   :value="textoEstoque[item.id]"
@@ -463,7 +523,7 @@ const campo =
                 />
               </label>
               <label class="block">
-                <span class="mb-1 block text-[10px] uppercase tracking-wide text-zinc-500 sm:hidden">Pedir</span>
+                <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500 sm:hidden">Pedir ({{ unidadeComPlural(item.unidade, 2) }})</span>
                 <input
                   :value="textoQuantidade[item.id]"
                   inputmode="decimal"
