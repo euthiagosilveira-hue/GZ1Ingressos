@@ -90,3 +90,17 @@ test('dia de vencimento da conta fixa', () => {
   assert.equal(mapearCategoria({ id: 'x', nome: 'Aluguel', tipo: 'SAIDA', dia_vencimento: 10 }).diaVencimento, 10)
   assert.equal(mapearCategoria({ id: 'x', nome: 'Bar', tipo: 'ENTRADA', dia_vencimento: null }).diaVencimento, null)
 })
+
+test('le o vencimento da foto da conta', async () => {
+  const { interpretarVencimento, promptVencimento } = await import('../server/utils/leitura-vencimento.ts')
+  assert.deepEqual(interpretarVencimento('{"vencimento":"2026-12-10","valor":350.904,"empresa":" CEMIG "}'), {
+    dia: 10,
+    vencimento: '2026-12-10',
+    valor: 350.9,
+    empresa: 'CEMIG'
+  })
+  assert.equal(interpretarVencimento('{"vencimento":null,"valor":10}'), null)
+  assert.equal(interpretarVencimento('{"vencimento":"10/12/2026"}'), null)
+  assert.equal(interpretarVencimento('quebrado'), null)
+  assert.match(promptVencimento('2026-11-16'), /VENCIMENTO/)
+})

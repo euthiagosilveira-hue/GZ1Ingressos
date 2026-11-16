@@ -279,3 +279,18 @@ export async function listarAvisosCaixa(limite = 15): Promise<AvisoCaixa[]> {
 export async function gerarResumoCaixaAgora(): Promise<{ ia: boolean }> {
   return await $fetch<{ ia: boolean }>('/api/admin/financeiro/resumo-semanal', { method: 'POST' })
 }
+
+export type LeituraVencimentoIa = {
+  dia: number
+  vencimento: string | null
+  valor: number | null
+  empresa: string | null
+}
+
+/** Pede para a IA ler o vencimento na foto da conta (boleto, fatura). */
+export async function lerVencimentoComIa(caminho: string): Promise<LeituraVencimentoIa> {
+  return await $fetch<LeituraVencimentoIa>('/api/admin/financeiro/ler-vencimento', {
+    method: 'POST',
+    body: { caminho }
+  })
+}

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { toast } from 'vue3-toastify'
-import { PencilSquareIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import { CameraIcon, PencilSquareIcon, PlusIcon } from '@heroicons/vue/24/outline'
 
 import AppButton from '~/components/AppButton.vue'
 import BaseInput from '~/components/BaseInput.vue'
@@ -14,12 +14,15 @@ import SaldoInicialModal from '~/components/financeiro/caixa/SaldoInicialModal.v
 import { useCaixaBase } from '~/composables/useCaixaBase'
 import {
   definirSaldoInicialConta,
+  enviarComprovante,
+  lerVencimentoComIa,
   salvarCategoriaCaixa,
   salvarContaCaixa
 } from '~/services/admin/caixa'
 import type { CategoriaCaixa, ContaCaixa, TipoCategoria, TipoConta } from '~/types/caixa'
 import type { SelectOption } from '~/types/ui'
-import { TIPOS_CONTA, lerDiaVencimento, mensagemErroCaixa, rotuloTipoConta } from '~/utils/caixa'
+import { TIPOS_CONTA, lerDiaVencimento, mensagemErroCaixa, mensagemErroLeituraIa, rotuloTipoConta } from '~/utils/caixa'
+import { podeComprimir } from '~/utils/comprimirImagem'
 import { formatDataHora, formatMoeda } from '~/utils/format'
 
 const { contas, categorias, erroBase, carregarBase, carregarContas, carregarCategorias } = useCaixaBase()
@@ -108,6 +111,41 @@ const formCategoria = reactive({
 })
 const erroCategoria = ref('')
 const erroDia = ref('')
+
+// Foto da conta (boleto/fatura): a IA le o vencimento e preenche o dia.
+const inputFotoConta = ref<HTMLInputElement | null>(null)
+const lendoFotoConta = ref(false)
+const avisoFotoConta = ref('')
+
+async function aoEscolherFotoConta(evento: Event) {
+  const alvo = evento.target as HTMLInputElement
+  const arquivo = alvo.files?.[0]
+  alvo.value = ''
+  if (!arquivo) return
+  const limite = podeComprimir(arquivo.type, arquivo.size) ? 40 * 1024 * 1024 : 10 * 1024 * 1024
+  avisoFotoConta.value = ''
+  if (arquivo.size > limite) {
+    erroDia.value = 'O arquivo é grande demais (máximo 10 MB para PDF, 40 MB para foto).'
+    return
+  }
+  erroDia.value = ''
+  lendoFotoConta.value = true
+  try {
+    const caminho = await enviarComprovante(arquivo)
+    const r = await lerVencimentoComIa(caminho)
+    formCategoria.diaVencimento = String(r.dia)
+    const detalhes = [
+      r.vencimento ? `vencimento ${r.vencimento.slice(8, 10)}/${r.vencimento.slice(5, 7)}/${r.vencimento.slice(0, 4)}` : '',
+      r.valor !== null ? formatMoeda(r.valor) : '',
+      r.empresa ?? ''
+    ].filter(Boolean)
+    avisoFotoConta.value = `A IA leu dia ${r.dia}${detalhes.length ? ` (${detalhes.join(' · ')})` : ''}. Confira e salve.`
+  } catch (e) {
+    erroDia.value = mensagemErroLeituraIa(e).replace('comprovante', 'conta')
+  } finally {
+    lendoFotoConta.value = false
+  }
+}
 const salvandoCategoria = ref(false)
 
 function abrirCategoria(categoria: CategoriaCaixa | null, tipo: TipoCategoria = 'SAIDA') {
@@ -119,6 +157,7 @@ function abrirCategoria(categoria: CategoriaCaixa | null, tipo: TipoCategoria = 
   formCategoria.diaVencimento = categoria?.diaVencimento ? String(categoria.diaVencimento) : ''
   erroCategoria.value = ''
   erroDia.value = ''
+  avisoFotoConta.value = ''
   modalCategoria.value = true
 }
 
@@ -273,7 +312,16 @@ async function salvarCategoria() {
           hint="Opcional. Ex.: 10 para o aluguel que vence dia 10. O sistema avisa no celular 3 dias antes se ainda não estiver lançada."
           :error="erroDia"
         >
-          <BaseInput v-model="formCategoria.diaVencimento" placeholder="Ex.: 10" :invalid="!!erroDia" />
+          <div class="flex gap-2">
+            <div class="w-28 shrink-0">
+              <BaseInput v-model="formCategoria.diaVencimento" placeholder="Ex.: 10" :invalid="!!erroDia" />
+            </div>
+            <input ref="inputFotoConta" type="file" accept="image/*,application/pdf" class="hidden" @change="aoEscolherFotoConta" />
+            <AppButton variant="ghost" :disabled="lendoFotoConta" @click="inputFotoConta?.click()">
+              <CameraIcon class="h-4 w-4" /> {{ lendoFotoConta ? 'Lendo a conta...' : 'Ler da foto da conta' }}
+            </AppButton>
+          </div>
+          <p v-if="avisoFotoConta" class="mt-1.5 text-xs text-amber-400">{{ avisoFotoConta }}</p>
         </FormField>
       </div>
       <template #footer>
