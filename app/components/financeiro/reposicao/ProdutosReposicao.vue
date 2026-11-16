@@ -19,13 +19,15 @@ import {
   excluirProdutoReposicao,
   importarProdutosReposicao,
   listarProdutosReposicao,
+  obterConsumoBar,
   salvarProdutoReposicao
 } from '~/services/admin/reposicao'
-import type { ProdutoReposicao } from '~/types/reposicao'
+import type { ConsumoBar, ProdutoReposicao } from '~/types/reposicao'
 import { lerValorReais } from '~/utils/caixa'
 import { formatMoeda } from '~/utils/format'
 import {
   agruparPorFornecedor,
+  idealPeloConsumo,
   lerQuantidade,
   mensagemErroReposicao,
   mesmoNome,
@@ -41,9 +43,25 @@ const carregando = ref(true)
 const erro = ref('')
 const busca = ref('')
 
+// Quanto saiu no bar por semana (relatorios do bar ligados aos produtos).
+const consumo = ref<ConsumoBar | null>(null)
+
+async function carregarConsumo() {
+  try {
+    consumo.value = await obterConsumoBar(4)
+  } catch {
+    consumo.value = null // SQL das vendas do bar ainda nao rodado: so nao mostra
+  }
+}
+
+function consumoDe(id: string | null) {
+  return id ? (consumo.value?.porProduto[id] ?? null) : null
+}
+
 async function carregar() {
   carregando.value = true
   erro.value = ''
+  void carregarConsumo()
   try {
     produtos.value = await listarProdutosReposicao()
   } catch (e) {
@@ -272,6 +290,9 @@ async function importar() {
               Ideal na semana: <span class="text-zinc-300">{{ quantidadeParaTexto(p.quantidadeIdeal) }} {{ p.unidade }}</span>
               <template v-if="p.ultimoPreco !== null"> · {{ formatMoeda(p.ultimoPreco) }} / {{ p.unidade }}</template>
             </p>
+            <p v-if="consumoDe(p.id)" class="text-xs text-amber-300/90">
+              Saiu no bar: ~{{ quantidadeParaTexto(consumoDe(p.id)!.mediaSemanal) }} {{ p.unidade }} por semana
+            </p>
           </div>
           <button
             type="button"
@@ -300,6 +321,15 @@ async function importar() {
           </FormField>
           <FormField label="Quantidade ideal na semana" :error="erros.ideal">
             <input v-model="form.ideal" inputmode="decimal" placeholder="Ex.: 10" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30" :class="erros.ideal ? 'border-red-500/60' : ''" />
+            <button
+              v-if="consumoDe(form.id)"
+              type="button"
+              class="mt-1 cursor-pointer text-left text-xs text-amber-400 hover:underline"
+              @click="form.ideal = quantidadeParaTexto(idealPeloConsumo(consumoDe(form.id)!.mediaSemanal))"
+            >
+              Usar o consumo do bar: {{ quantidadeParaTexto(idealPeloConsumo(consumoDe(form.id)!.mediaSemanal)) }}
+              (média ~{{ quantidadeParaTexto(consumoDe(form.id)!.mediaSemanal) }} + 20% de folga)
+            </button>
           </FormField>
         </div>
         <FormField label="Fornecedor" hint="Os pedidos são separados por fornecedor.">

@@ -1,5 +1,19 @@
-import type { PedidoReposicao, ProdutoReposicao } from '~/types/reposicao'
-import { mapearPedidoReposicao, mapearProdutoReposicao } from '~/utils/reposicao'
+import type {
+  ConsumoBar,
+  PedidoReposicao,
+  PreviaRelatorioBar,
+  ProdutoReposicao,
+  VendaBar,
+  VinculoBar
+} from '~/types/reposicao'
+import {
+  mapearConsumoBar,
+  mapearPedidoReposicao,
+  mapearPreviaRelatorioBar,
+  mapearProdutoReposicao,
+  mapearVendaBar,
+  mapearVinculoBar
+} from '~/utils/reposicao'
 
 // Reposicao semanal de estoque: RPCs seguras (somente ADMINISTRADOR).
 // Os erros sobem como estao para a tela traduzir com mensagemErroReposicao().
@@ -90,4 +104,69 @@ export async function listarPedidosReposicao(limite = 20): Promise<PedidoReposic
   const { data, error } = await useSupabaseClient().rpc('listar_reposicao_pedidos_admin', { p_limite: limite })
   if (error) throw error
   return ((data ?? []) as Bruto[]).map(mapearPedidoReposicao)
+}
+
+// --- Vendas do bar -----------------------------------------------------------
+
+/** Le o relatorio do bar pelo link ou pelo HTML do arquivo (nao salva nada). */
+export async function lerRelatorioBar(entrada: { url: string } | { html: string }): Promise<PreviaRelatorioBar> {
+  const r = await $fetch<Bruto>('/api/admin/reposicao/relatorio-bar', { method: 'POST', body: entrada })
+  return mapearPreviaRelatorioBar(r)
+}
+
+export async function salvarVendaBar(input: {
+  previa: PreviaRelatorioBar
+  eventoId: string | null
+}): Promise<VendaBar> {
+  const { data, error } = await useSupabaseClient().rpc('salvar_bar_venda_admin', {
+    p_de: input.previa.de,
+    p_ate: input.previa.ate,
+    p_evento_id: input.eventoId,
+    p_origem: input.previa.origem,
+    p_itens: input.previa.produtos.map((p) => ({
+      grupo: p.grupo,
+      codigo: p.codigo,
+      descricao: p.descricao,
+      quantidade: p.quantidade,
+      valor: p.valor
+    }))
+  })
+  if (error) throw error
+  return mapearVendaBar(data as Bruto)
+}
+
+export async function listarVendasBar(limite = 30): Promise<VendaBar[]> {
+  const { data, error } = await useSupabaseClient().rpc('listar_bar_vendas_admin', { p_limite: limite })
+  if (error) throw error
+  return ((data ?? []) as Bruto[]).map(mapearVendaBar)
+}
+
+export async function excluirVendaBar(id: string): Promise<void> {
+  const { error } = await useSupabaseClient().rpc('excluir_bar_venda_admin', { p_id: id })
+  if (error) throw error
+}
+
+export async function listarVinculosBar(): Promise<VinculoBar[]> {
+  const { data, error } = await useSupabaseClient().rpc('listar_bar_produtos_vinculo_admin')
+  if (error) throw error
+  return ((data ?? []) as Bruto[]).map(mapearVinculoBar)
+}
+
+export async function salvarVinculoBar(input: {
+  codigo: string
+  produtoId: string | null
+  vendasPorUnidade: number
+}): Promise<void> {
+  const { error } = await useSupabaseClient().rpc('salvar_bar_produto_vinculo_admin', {
+    p_codigo: input.codigo,
+    p_produto_id: input.produtoId,
+    p_vendas_por_unidade: input.vendasPorUnidade
+  })
+  if (error) throw error
+}
+
+export async function obterConsumoBar(semanas = 4): Promise<ConsumoBar> {
+  const { data, error } = await useSupabaseClient().rpc('listar_consumo_bar_reposicao_admin', { p_semanas: semanas })
+  if (error) throw error
+  return mapearConsumoBar(data as Bruto)
 }

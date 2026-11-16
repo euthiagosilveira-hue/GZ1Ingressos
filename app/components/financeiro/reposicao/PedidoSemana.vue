@@ -10,10 +10,11 @@ import {
   descartarPedidoReposicao,
   finalizarPedidoReposicao,
   iniciarPedidoReposicao,
+  obterConsumoBar,
   obterPedidoAbertoReposicao,
   salvarItemPedidoReposicao
 } from '~/services/admin/reposicao'
-import type { ItemPedidoReposicao, PedidoReposicao } from '~/types/reposicao'
+import type { ConsumoBar, ItemPedidoReposicao, PedidoReposicao } from '~/types/reposicao'
 import type { SelectOption } from '~/types/ui'
 import { formatarDataCurta, hojeIso } from '~/utils/caixa'
 import { formatMoeda } from '~/utils/format'
@@ -54,9 +55,19 @@ function prepararTextos(p: PedidoReposicao | null) {
   }
 }
 
+// Quanto saiu no bar por semana (relatorios do bar ligados aos produtos).
+const consumo = ref<ConsumoBar | null>(null)
+
+function consumoDe(id: string | null) {
+  return id ? (consumo.value?.porProduto[id] ?? null) : null
+}
+
 async function carregar() {
   carregando.value = true
   erro.value = ''
+  obterConsumoBar(4)
+    .then((c) => (consumo.value = c))
+    .catch(() => (consumo.value = null))
   try {
     pedido.value = await obterPedidoAbertoReposicao()
     prepararTextos(pedido.value)
@@ -422,6 +433,9 @@ const campo =
               <p class="text-xs text-zinc-500">
                 {{ item.unidade }} · ideal {{ quantidadeParaTexto(item.quantidadeIdeal) }}
                 <template v-if="item.preco !== null"> · {{ formatMoeda(item.preco) }}</template>
+              </p>
+              <p v-if="consumoDe(item.produtoId)" class="text-xs text-amber-300/90">
+                Saiu no bar: ~{{ quantidadeParaTexto(consumoDe(item.produtoId)!.mediaSemanal) }} por semana
               </p>
             </div>
 
