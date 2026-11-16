@@ -197,3 +197,27 @@ export async function obterConsumoBar(semanas = 4): Promise<ConsumoBar> {
   if (error) throw error
   return mapearConsumoBar(data as Bruto)
 }
+
+// --- Baixa pela saida do caixa -----------------------------------------------
+
+/**
+ * Marca no pedido da semana (aberto) os produtos comprados numa saida do caixa.
+ * produtoId nulo + ignorar = "nao e da reposicao" (o nome fica lembrado).
+ */
+export async function darBaixaReposicaoCompra(
+  lancamentoId: string,
+  itens: { nome: string; produtoId: string | null; quantidade: number; valorTotal: number | null; ignorar: boolean }[]
+): Promise<number> {
+  const { data, error } = await useSupabaseClient().rpc('dar_baixa_reposicao_compra_admin', {
+    p_lancamento_id: lancamentoId,
+    p_itens: itens.map((i) => ({
+      nome: i.nome,
+      produto_id: i.produtoId,
+      quantidade: i.quantidade,
+      valor_total: i.valorTotal,
+      ignorar: i.ignorar
+    }))
+  })
+  if (error) throw error
+  return Number((data as Bruto)?.baixados ?? 0)
+}

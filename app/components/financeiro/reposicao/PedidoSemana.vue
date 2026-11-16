@@ -474,6 +474,13 @@ const campo =
                   {{ unidadeComPlural(item.unidadeAvulsa, item.quantidade * item.unidadesPorEmbalagem) }}
                 </template>
               </p>
+              <p v-if="item.quantidadeComprada !== null" class="text-xs font-medium text-emerald-300">
+                Comprado: {{ quantidadeParaTexto(item.quantidadeComprada) }}
+                {{ unidadeComPlural(nomeEmbalagem(item), item.quantidadeComprada) }}
+                <template v-if="item.quantidade > 0 && item.quantidadeComprada < item.quantidade">
+                  (faltam {{ quantidadeParaTexto(item.quantidade - item.quantidadeComprada) }})
+                </template>
+              </p>
               <p v-if="consumoDe(item.produtoId)" class="text-xs text-amber-300/90">
                 Saiu no bar: ~{{ unidadesComEmbalagens(consumoDe(item.produtoId)!.mediaSemanal, item) }} por semana
               </p>

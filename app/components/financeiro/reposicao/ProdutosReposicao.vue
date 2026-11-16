@@ -110,7 +110,8 @@ const grupos = computed(() => {
       estoqueSoltos: null,
       quantidade: 0,
       pedidoFeito: false,
-      pedidoFeitoEm: null
+      pedidoFeitoEm: null,
+      quantidadeComprada: null
     }))
   ).map((g) => ({ fornecedor: g.fornecedor, produtos: g.itens.map((i) => porId.get(i.id)!) }))
 })

@@ -36,6 +36,8 @@ export interface ItemPedidoReposicao {
   quantidade: number
   pedidoFeito: boolean
   pedidoFeitoEm: string | null
+  /** Embalagens compradas (baixa pela saida do caixa); null = sem baixa. */
+  quantidadeComprada: number | null
 }
 
 export interface PedidoReposicao {
