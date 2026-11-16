@@ -188,3 +188,24 @@ export async function enviarTeste(event: H3Event, usuarioId: string): Promise<Re
 export function pushConfigurado(event: H3Event): boolean {
   return configurarVapid(event)
 }
+
+/**
+ * Envia uma notificacao a todos os administradores (ex.: avisos do caixa).
+ * Nunca lanca erro. Registra o resultado na auditoria com a acao informada.
+ */
+export async function notificarAdmins(
+  event: H3Event,
+  notificacao: NotificacaoPush,
+  acao: string,
+  entidade: string,
+  entidadeId: string | null = null
+): Promise<ResultadoEnvio | null> {
+  try {
+    const resultado = await enviarPara(event, await inscricoesDeAdmins(event), notificacao)
+    await registrarEnvio(event, acao, entidade, entidadeId, resultado)
+    return resultado
+  } catch (erro) {
+    console.error('[push] erro ao notificar administradores', { acao, message: (erro as Error)?.message })
+    return null
+  }
+}

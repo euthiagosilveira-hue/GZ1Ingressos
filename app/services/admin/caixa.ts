@@ -1,5 +1,6 @@
 import type {
   Agrupamento,
+  AvisoCaixa,
   CategoriaCaixa,
   ContaCaixa,
   FiltrosLancamentos,
@@ -15,6 +16,7 @@ import type {
 import { comprimirComprovante } from '~/utils/comprimirImagem'
 import {
   type LeituraFechamentoBar,
+  mapearAvisoCaixa,
   mapearCategoria,
   mapearConta,
   mapearFluxo,
@@ -72,12 +74,14 @@ export async function salvarCategoriaCaixa(input: {
   nome: string
   tipo: TipoCategoria
   ativa: boolean
+  diaVencimento: number | null
 }): Promise<string> {
   const { data, error } = await useSupabaseClient().rpc('salvar_financeiro_categoria_admin', {
     p_id: input.id,
     p_nome: input.nome.trim(),
     p_tipo: input.tipo,
-    p_ativa: input.ativa
+    p_ativa: input.ativa,
+    p_dia_vencimento: input.tipo === 'SAIDA' ? input.diaVencimento : null
   })
   if (error) throw error
   return String((data as Bruto)?.id ?? '')
@@ -260,4 +264,33 @@ export async function listarHistoricoItens(filtros: {
   })
   if (error) throw error
   return mapearHistoricoItens(data as Bruto)
+}
+
+// --- Monitor do caixa ---------------------------------------------------------
+
+/** Ultimos avisos do caixa e resumos da semana (mais novos primeiro). */
+export async function listarAvisosCaixa(limite = 15): Promise<AvisoCaixa[]> {
+  const { data, error } = await useSupabaseClient().rpc('listar_financeiro_alertas_admin', { p_limite: limite })
+  if (error) throw error
+  return ((data ?? []) as Bruto[]).map(mapearAvisoCaixa)
+}
+
+/** Refaz agora o resumo da ultima semana fechada (sem notificacao). */
+export async function gerarResumoCaixaAgora(): Promise<{ ia: boolean }> {
+  return await $fetch<{ ia: boolean }>('/api/admin/financeiro/resumo-semanal', { method: 'POST' })
+}
+
+export type LeituraVencimentoIa = {
+  dia: number
+  vencimento: string | null
+  valor: number | null
+  empresa: string | null
+}
+
+/** Pede para a IA ler o vencimento na foto da conta (boleto, fatura). */
+export async function lerVencimentoComIa(caminho: string): Promise<LeituraVencimentoIa> {
+  return await $fetch<LeituraVencimentoIa>('/api/admin/financeiro/ler-vencimento', {
+    method: 'POST',
+    body: { caminho }
+  })
 }

@@ -24,6 +24,8 @@ export interface CategoriaCaixa {
   tipo: TipoCategoria
   chaveSistema: string | null
   ativa: boolean
+  /** Dia do mes em que a conta fixa vence (so saidas). */
+  diaVencimento: number | null
 }
 
 export interface LancamentoCaixa {
@@ -152,4 +154,22 @@ export interface FluxoCaixa {
   }
   periodos: PeriodoFluxo[]
   porCategoria: CategoriaFluxo[]
+}
+
+// Monitor do caixa: avisos automaticos e resumo semanal da IA.
+export type TipoAvisoCaixa =
+  | 'CONTA_FIXA'
+  | 'CONTA_ATRASADA'
+  | 'DUPLICADO'
+  | 'SEM_FECHAR_BAR'
+  | 'GASTO_ALTO'
+  | 'RESUMO_SEMANAL'
+
+export interface AvisoCaixa {
+  id: string
+  tipo: TipoAvisoCaixa
+  titulo: string
+  mensagem: string
+  criadoEm: string
+  atualizadoEm: string
 }

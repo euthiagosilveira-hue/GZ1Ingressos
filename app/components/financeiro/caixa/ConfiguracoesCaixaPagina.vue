@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { toast } from 'vue3-toastify'
-import { PencilSquareIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import { CameraIcon, PencilSquareIcon, PlusIcon } from '@heroicons/vue/24/outline'
 
 import AppButton from '~/components/AppButton.vue'
 import BaseInput from '~/components/BaseInput.vue'
@@ -14,12 +14,15 @@ import SaldoInicialModal from '~/components/financeiro/caixa/SaldoInicialModal.v
 import { useCaixaBase } from '~/composables/useCaixaBase'
 import {
   definirSaldoInicialConta,
+  enviarComprovante,
+  lerVencimentoComIa,
   salvarCategoriaCaixa,
   salvarContaCaixa
 } from '~/services/admin/caixa'
 import type { CategoriaCaixa, ContaCaixa, TipoCategoria, TipoConta } from '~/types/caixa'
 import type { SelectOption } from '~/types/ui'
-import { TIPOS_CONTA, mensagemErroCaixa, rotuloTipoConta } from '~/utils/caixa'
+import { TIPOS_CONTA, lerDiaVencimento, mensagemErroCaixa, mensagemErroLeituraIa, rotuloTipoConta } from '~/utils/caixa'
+import { podeComprimir } from '~/utils/comprimirImagem'
 import { formatDataHora, formatMoeda } from '~/utils/format'
 
 const { contas, categorias, erroBase, carregarBase, carregarContas, carregarCategorias } = useCaixaBase()
@@ -103,9 +106,46 @@ const formCategoria = reactive({
   nome: '',
   tipo: 'SAIDA' as TipoCategoria,
   ativa: 'true',
-  sistema: false
+  sistema: false,
+  diaVencimento: ''
 })
 const erroCategoria = ref('')
+const erroDia = ref('')
+
+// Foto da conta (boleto/fatura): a IA le o vencimento e preenche o dia.
+const inputFotoConta = ref<HTMLInputElement | null>(null)
+const lendoFotoConta = ref(false)
+const avisoFotoConta = ref('')
+
+async function aoEscolherFotoConta(evento: Event) {
+  const alvo = evento.target as HTMLInputElement
+  const arquivo = alvo.files?.[0]
+  alvo.value = ''
+  if (!arquivo) return
+  const limite = podeComprimir(arquivo.type, arquivo.size) ? 40 * 1024 * 1024 : 10 * 1024 * 1024
+  avisoFotoConta.value = ''
+  if (arquivo.size > limite) {
+    erroDia.value = 'O arquivo é grande demais (máximo 10 MB para PDF, 40 MB para foto).'
+    return
+  }
+  erroDia.value = ''
+  lendoFotoConta.value = true
+  try {
+    const caminho = await enviarComprovante(arquivo)
+    const r = await lerVencimentoComIa(caminho)
+    formCategoria.diaVencimento = String(r.dia)
+    const detalhes = [
+      r.vencimento ? `vencimento ${r.vencimento.slice(8, 10)}/${r.vencimento.slice(5, 7)}/${r.vencimento.slice(0, 4)}` : '',
+      r.valor !== null ? formatMoeda(r.valor) : '',
+      r.empresa ?? ''
+    ].filter(Boolean)
+    avisoFotoConta.value = `A IA leu dia ${r.dia}${detalhes.length ? ` (${detalhes.join(' · ')})` : ''}. Confira e salve.`
+  } catch (e) {
+    erroDia.value = mensagemErroLeituraIa(e).replace('comprovante', 'conta')
+  } finally {
+    lendoFotoConta.value = false
+  }
+}
 const salvandoCategoria = ref(false)
 
 function abrirCategoria(categoria: CategoriaCaixa | null, tipo: TipoCategoria = 'SAIDA') {
@@ -114,7 +154,10 @@ function abrirCategoria(categoria: CategoriaCaixa | null, tipo: TipoCategoria = 
   formCategoria.tipo = categoria?.tipo ?? tipo
   formCategoria.ativa = categoria && !categoria.ativa ? 'false' : 'true'
   formCategoria.sistema = !!categoria?.chaveSistema
+  formCategoria.diaVencimento = categoria?.diaVencimento ? String(categoria.diaVencimento) : ''
   erroCategoria.value = ''
+  erroDia.value = ''
+  avisoFotoConta.value = ''
   modalCategoria.value = true
 }
 
@@ -123,13 +166,20 @@ async function salvarCategoria() {
     erroCategoria.value = 'Informe o nome.'
     return
   }
+  const diaVencimento = formCategoria.tipo === 'SAIDA' ? lerDiaVencimento(formCategoria.diaVencimento) : null
+  if (diaVencimento === undefined) {
+    erroDia.value = 'Use um dia de 1 a 31, ou deixe vazio.'
+    return
+  }
+  erroDia.value = ''
   salvandoCategoria.value = true
   try {
     await salvarCategoriaCaixa({
       id: formCategoria.id,
       nome: formCategoria.nome,
       tipo: formCategoria.tipo,
-      ativa: formCategoria.ativa === 'true'
+      ativa: formCategoria.ativa === 'true',
+      diaVencimento
     })
     toast.success('Categoria salva.')
     modalCategoria.value = false
@@ -205,6 +255,7 @@ async function salvarCategoria() {
               {{ cat.nome }}
               <span v-if="cat.chaveSistema === 'INGRESSOS' || cat.chaveSistema === 'REEMBOLSO_INGRESSO'" class="ml-1 text-xs text-zinc-500">(automática)</span>
               <span v-if="!cat.ativa" class="ml-1 text-xs text-zinc-500">(inativa)</span>
+              <span v-if="cat.diaVencimento" class="ml-1 text-xs text-amber-400/80">· vence dia {{ cat.diaVencimento }}</span>
             </p>
             <button
               type="button"
@@ -255,6 +306,23 @@ async function salvarCategoria() {
           </FormField>
         </template>
         <p v-else class="text-xs text-zinc-500">Esta categoria é usada pelo sistema: só o nome pode mudar.</p>
+        <FormField
+          v-if="formCategoria.tipo === 'SAIDA'"
+          label="Conta fixa: vence todo dia"
+          hint="Opcional. Ex.: 10 para o aluguel que vence dia 10. O sistema avisa no celular 3 dias antes se ainda não estiver lançada."
+          :error="erroDia"
+        >
+          <div class="flex gap-2">
+            <div class="w-28 shrink-0">
+              <BaseInput v-model="formCategoria.diaVencimento" placeholder="Ex.: 10" :invalid="!!erroDia" />
+            </div>
+            <input ref="inputFotoConta" type="file" accept="image/*,application/pdf" class="hidden" @change="aoEscolherFotoConta" />
+            <AppButton variant="ghost" :disabled="lendoFotoConta" @click="inputFotoConta?.click()">
+              <CameraIcon class="h-4 w-4" /> {{ lendoFotoConta ? 'Lendo a conta...' : 'Ler da foto da conta' }}
+            </AppButton>
+          </div>
+          <p v-if="avisoFotoConta" class="mt-1.5 text-xs text-amber-400">{{ avisoFotoConta }}</p>
+        </FormField>
       </div>
       <template #footer>
         <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
