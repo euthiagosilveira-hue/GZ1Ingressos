@@ -13,7 +13,9 @@ import AppButton from '~/components/AppButton.vue'
 import BaseInput from '~/components/BaseInput.vue'
 import BaseModal from '~/components/BaseModal.vue'
 import ConfirmDialog from '~/components/ConfirmDialog.vue'
+import BaseSelect from '~/components/BaseSelect.vue'
 import FormField from '~/components/FormField.vue'
+import SegmentedControl from '~/components/SegmentedControl.vue'
 import { listarHistoricoItens } from '~/services/admin/caixa'
 import {
   excluirProdutoReposicao,
@@ -23,6 +25,7 @@ import {
   salvarProdutoReposicao
 } from '~/services/admin/reposicao'
 import type { ConsumoBar, ProdutoReposicao } from '~/types/reposicao'
+import type { SelectOption } from '~/types/ui'
 import { lerValorReais } from '~/utils/caixa'
 import { formatMoeda } from '~/utils/format'
 import {
@@ -33,6 +36,7 @@ import {
   lerQuantidade,
   mensagemErroReposicao,
   mesmoNome,
+  nomeEmbalagem,
   quantidadeParaTexto,
   unidadeComPlural,
   unidadesComEmbalagens
@@ -114,14 +118,27 @@ const fornecedores = computed(() =>
     a.localeCompare(b, 'pt-BR')
   )
 )
-const EMBALAGENS = ['unidade', 'fardo', 'caixa', 'pacote', 'saco', 'galão', 'kg', 'litro']
+// Comprado por unidade (1 por vez) ou em embalagem com varias unidades dentro.
+const EMBALAGENS = ['fardo', 'caixa', 'pacote', 'engradado']
+const UNIDADES_AVULSAS = ['unidade', 'saco', 'garrafa', 'kg', 'litro', 'galão', 'pacote']
 const AVULSAS = ['unidade', 'lata', 'garrafa', 'long neck', 'sachê', 'pacote']
+const tipoCompraOptions: SelectOption[] = [
+  { value: 'UNIDADE', label: 'Por unidade' },
+  { value: 'EMBALAGEM', label: 'Em embalagem (fardo, caixa...)' }
+]
+const embalagemOptions = computed<SelectOption[]>(() => {
+  const lista = [...EMBALAGENS]
+  const atual = form.unidade.trim()
+  if (atual && !/^unidades?$/i.test(atual) && !lista.includes(atual)) lista.push(atual)
+  return lista.map((u) => ({ value: u, label: u.charAt(0).toUpperCase() + u.slice(1) }))
+})
 
 // --- Produto ---------------------------------------------------------------
 const modal = ref(false)
 const form = reactive({
   id: null as string | null,
   nome: '',
+  tipoCompra: 'UNIDADE' as 'UNIDADE' | 'EMBALAGEM',
   unidade: 'unidade',
   porEmbalagem: '1',
   avulsa: 'unidade',
@@ -134,6 +151,7 @@ const erros = reactive({ nome: '', preco: '', ideal: '', porEmbalagem: '' })
 
 // Numero de unidades por embalagem digitado (1 se vazio/invalido).
 const porEmbalagemForm = computed(() => {
+  if (form.tipoCompra === 'UNIDADE') return 1
   const n = lerQuantidade(form.porEmbalagem)
   return n !== null && !Number.isNaN(n) && n > 0 ? n : 1
 })
@@ -146,7 +164,7 @@ const formEmbalagem = computed(() => ({
 const embalagemDoNome = computed(() => {
   const d = detectarEmbalagemPeloNome(form.nome)
   if (!d) return null
-  if (d.unidadesPorEmbalagem === porEmbalagemForm.value && d.unidade === form.unidade.trim()) return null
+  if (form.tipoCompra === 'EMBALAGEM' && d.unidadesPorEmbalagem === porEmbalagemForm.value && d.unidade === form.unidade.trim()) return null
   return d
 })
 const idealFormEquivale = computed(() => {
@@ -155,17 +173,38 @@ const idealFormEquivale = computed(() => {
   return unidadesComEmbalagens(n, formEmbalagem.value)
 })
 
-// Consumo do bar vem em embalagens: converte para unidades soltas.
-function consumoUnidades(id: string | null, por: number): number | null {
+// Consumo do bar ja vem em unidades soltas (latas, garrafas).
+function consumoUnidades(id: string | null, _por?: number): number | null {
   const c = consumoDe(id)
-  return c ? Math.round(c.mediaSemanal * por * 10) / 10 : null
+  return c ? Math.round(c.mediaSemanal * 10) / 10 : null
 }
 const salvando = ref(false)
+
+function aoTrocarTipoCompra(tipo: string) {
+  if (tipo === 'EMBALAGEM') {
+    if (!EMBALAGENS.includes(form.unidade.trim()) && !embalagemOptions.value.some((o) => o.value === form.unidade.trim())) {
+      form.unidade = 'fardo'
+    }
+    if ((lerQuantidade(form.porEmbalagem) ?? 1) <= 1) form.porEmbalagem = ''
+  } else if (!form.unidade.trim() || EMBALAGENS.includes(form.unidade.trim())) {
+    form.unidade = 'unidade'
+  }
+}
+
+function usarEmbalagemDoNome() {
+  if (!embalagemDoNome.value) return
+  form.tipoCompra = 'EMBALAGEM'
+  form.unidade = embalagemDoNome.value.unidade
+  form.porEmbalagem = String(embalagemDoNome.value.unidadesPorEmbalagem)
+}
 
 function abrir(p: ProdutoReposicao | null) {
   form.id = p?.id ?? null
   form.nome = p?.nome ?? ''
+  form.tipoCompra = (p?.unidadesPorEmbalagem ?? 1) > 1 ? 'EMBALAGEM' : 'UNIDADE'
   form.unidade = p?.unidade ?? 'unidade'
+  // Antes dava para ter "unidade" com 12 dentro: vira fardo para conferir.
+  if (form.tipoCompra === 'EMBALAGEM' && /^unidades?$/i.test(form.unidade.trim())) form.unidade = 'fardo'
   form.porEmbalagem = quantidadeParaTexto(p?.unidadesPorEmbalagem ?? 1)
   form.avulsa = p?.unidadeAvulsa ?? 'unidade'
   form.fornecedor = p?.fornecedor ?? ''
@@ -182,8 +221,11 @@ async function salvar() {
   erros.preco = form.preco.trim() && (preco === null || preco < 0) ? 'Preço inválido.' : ''
   const ideal = lerQuantidade(form.ideal)
   erros.ideal = ideal !== null && Number.isNaN(ideal) ? 'Quantidade inválida.' : ''
-  const por = lerQuantidade(form.porEmbalagem)
-  erros.porEmbalagem = por !== null && (Number.isNaN(por) || por <= 0) ? 'Informe um número maior que zero.' : ''
+  const por = form.tipoCompra === 'UNIDADE' ? 1 : lerQuantidade(form.porEmbalagem)
+  erros.porEmbalagem =
+    form.tipoCompra === 'EMBALAGEM' && (por === null || Number.isNaN(por) || por <= 1)
+      ? 'Quantas unidades vêm na embalagem? (2 ou mais)'
+      : ''
   if (erros.nome || erros.preco || erros.ideal || erros.porEmbalagem) return
 
   salvando.value = true
@@ -191,7 +233,7 @@ async function salvar() {
     await salvarProdutoReposicao({
       id: form.id,
       nome: form.nome,
-      unidade: form.unidade,
+      unidade: form.tipoCompra === 'EMBALAGEM' ? form.unidade.trim() || 'fardo' : form.unidade.trim() || 'unidade',
       fornecedor: form.fornecedor,
       ultimoPreco: preco,
       quantidadeIdeal: ideal ?? 0,
@@ -334,7 +376,7 @@ async function importar() {
             </p>
             <p class="text-xs text-zinc-500">
               <span class="text-zinc-400">{{ descreverEmbalagem(p) }}</span>
-              <template v-if="p.ultimoPreco !== null"> · {{ formatMoeda(p.ultimoPreco) }} / {{ p.unidade }}</template>
+              <template v-if="p.ultimoPreco !== null"> · {{ formatMoeda(p.ultimoPreco) }} / {{ nomeEmbalagem(p) }}</template>
             </p>
             <p class="text-xs text-zinc-500">
               Ideal na semana: <span class="text-zinc-300">{{ unidadesComEmbalagens(p.quantidadeIdeal, p) }}</span>
@@ -367,28 +409,34 @@ async function importar() {
             v-if="embalagemDoNome"
             type="button"
             class="block cursor-pointer text-left text-xs text-amber-400 hover:underline"
-            @click="form.unidade = embalagemDoNome.unidade; form.porEmbalagem = String(embalagemDoNome.unidadesPorEmbalagem)"
+            @click="usarEmbalagemDoNome"
           >
             O nome diz que vem {{ embalagemDoNome.unidadesPorEmbalagem }}: usar {{ embalagemDoNome.unidade }} com
             {{ embalagemDoNome.unidadesPorEmbalagem }}
           </button>
-          <div class="grid grid-cols-2 gap-3">
-            <FormField label="Compra em" hint="unidade, fardo, caixa, pacote...">
-              <input v-model="form.unidade" list="reposicao-embalagens" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30" />
-              <datalist id="reposicao-embalagens">
-                <option v-for="u in EMBALAGENS" :key="u" :value="u" />
-              </datalist>
-            </FormField>
-            <FormField label="Unidades por embalagem" :error="erros.porEmbalagem" hint="Comprado avulso: 1">
-              <input v-model="form.porEmbalagem" inputmode="decimal" placeholder="1" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30" :class="erros.porEmbalagem ? 'border-red-500/60' : ''" />
-            </FormField>
-          </div>
-          <FormField v-if="porEmbalagemForm > 1" label="Cada unidade solta é uma" hint="Para contar as soltas: lata, garrafa...">
-            <input v-model="form.avulsa" list="reposicao-avulsas" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30" />
-            <datalist id="reposicao-avulsas">
-              <option v-for="u in AVULSAS" :key="u" :value="u" />
+          <SegmentedControl v-model="form.tipoCompra" :options="tipoCompraOptions" @update:model-value="aoTrocarTipoCompra" />
+          <FormField v-if="form.tipoCompra === 'UNIDADE'" label="Unidade" hint="unidade, saco, kg, garrafa...">
+            <input v-model="form.unidade" list="reposicao-unidades" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30" />
+            <datalist id="reposicao-unidades">
+              <option v-for="u in UNIDADES_AVULSAS" :key="u" :value="u" />
             </datalist>
           </FormField>
+          <template v-else>
+            <div class="grid grid-cols-2 gap-3">
+              <FormField label="Embalagem">
+                <BaseSelect v-model="form.unidade" :options="embalagemOptions" />
+              </FormField>
+              <FormField label="Quantas unidades vêm" :error="erros.porEmbalagem">
+                <input v-model="form.porEmbalagem" inputmode="decimal" placeholder="Ex.: 12" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30" :class="erros.porEmbalagem ? 'border-red-500/60' : ''" />
+              </FormField>
+            </div>
+            <FormField label="Cada unidade é uma" hint="Para contar as soltas: lata, garrafa...">
+              <input v-model="form.avulsa" list="reposicao-avulsas" class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/30" />
+              <datalist id="reposicao-avulsas">
+                <option v-for="u in AVULSAS" :key="u" :value="u" />
+              </datalist>
+            </FormField>
+          </template>
         </div>
         <FormField
           :label="porEmbalagemForm > 1 ? `Quantidade ideal na semana (em ${unidadeComPlural(formEmbalagem.unidadeAvulsa, 2)})` : 'Quantidade ideal na semana'"
@@ -412,7 +460,7 @@ async function importar() {
             <option v-for="f in fornecedores" :key="f" :value="f" />
           </datalist>
         </FormField>
-        <FormField :label="`Último preço (de 1 ${formEmbalagem.unidade})`" :error="erros.preco">
+        <FormField :label="`Último preço (de 1 ${nomeEmbalagem(formEmbalagem)})`" :error="erros.preco">
           <BaseInput v-model="form.preco" prefix="R$" placeholder="0,00" :invalid="!!erros.preco" />
         </FormField>
         <label class="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">

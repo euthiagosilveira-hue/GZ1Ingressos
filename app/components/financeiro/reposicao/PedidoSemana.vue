@@ -27,6 +27,7 @@ import {
   quantidadeParaTexto,
   descreverEmbalagem,
   estoqueTotal,
+  nomeEmbalagem,
   sugerirQuantidade,
   unidadeComPlural,
   unidadesComEmbalagens,
@@ -461,7 +462,7 @@ const campo =
               </p>
               <p class="text-xs text-zinc-500">
                 {{ descreverEmbalagem(item) }} · ideal {{ unidadesComEmbalagens(item.quantidadeIdeal, item) }}
-                <template v-if="item.preco !== null"> · {{ formatMoeda(item.preco) }}/{{ item.unidade }}</template>
+                <template v-if="item.preco !== null"> · {{ formatMoeda(item.preco) }}/{{ nomeEmbalagem(item) }}</template>
               </p>
               <p v-if="item.unidadesPorEmbalagem > 1 && item.estoqueAtual !== null" class="text-xs text-zinc-500">
                 Tem {{ quantidadeParaTexto(item.estoqueAtual) }} {{ unidadeComPlural(item.unidadeAvulsa, item.estoqueAtual) }}
@@ -471,7 +472,7 @@ const campo =
                 </template>
               </p>
               <p v-if="consumoDe(item.produtoId)" class="text-xs text-amber-300/90">
-                Saiu no bar: ~{{ unidadesComEmbalagens(Math.round(consumoDe(item.produtoId)!.mediaSemanal * item.unidadesPorEmbalagem * 10) / 10, item) }} por semana
+                Saiu no bar: ~{{ unidadesComEmbalagens(consumoDe(item.produtoId)!.mediaSemanal, item) }} por semana
               </p>
             </div>
 
@@ -489,12 +490,12 @@ const campo =
             <div class="col-span-2 grid grid-cols-[1.7fr_1fr_1fr] items-end gap-2 sm:contents">
               <div v-if="item.unidadesPorEmbalagem > 1" class="grid grid-cols-2 gap-1.5 sm:self-center">
                 <label class="block">
-                  <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500">{{ unidadeComPlural(item.unidade, 2) }}</span>
+                  <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500">{{ unidadeComPlural(nomeEmbalagem(item), 2) }}</span>
                   <input
                     :value="textoFechados[item.id]"
                     inputmode="decimal"
                     placeholder="—"
-                    :aria-label="`${unidadeComPlural(item.unidade, 2)} fechados de ${item.nome}`"
+                    :aria-label="`${unidadeComPlural(nomeEmbalagem(item), 2)} fechados de ${item.nome}`"
                     :class="[campo, invalidos[`f-${item.id}`] ? 'border-red-500/60' : 'border-zinc-700']"
                     @input="aoDigitarEstoque(item, ($event.target as HTMLInputElement).value, 'fechados')"
                   />
@@ -523,7 +524,7 @@ const campo =
                 />
               </label>
               <label class="block">
-                <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500 sm:hidden">Pedir ({{ unidadeComPlural(item.unidade, 2) }})</span>
+                <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500 sm:hidden">Pedir ({{ unidadeComPlural(nomeEmbalagem(item), 2) }})</span>
                 <input
                   :value="textoQuantidade[item.id]"
                   inputmode="decimal"
