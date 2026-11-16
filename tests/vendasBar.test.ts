@@ -84,7 +84,7 @@ test('so aceita link de relatorio do sistema do bar', () => {
 })
 
 function produto(id: string, nome: string, unidade = 'fardo', ativo = true): ProdutoReposicao {
-  return { id, nome, unidade, fornecedor: null, ultimoPreco: null, quantidadeIdeal: 0, ativo }
+  return { id, nome, unidade, unidadesPorEmbalagem: 1, unidadeAvulsa: 'unidade', fornecedor: null, ultimoPreco: null, quantidadeIdeal: 0, ativo }
 }
 
 const produtos = [
@@ -113,6 +113,8 @@ test('sugere quantas vendas dao 1 unidade do pedido', () => {
   assert.equal(sugerirVendasPorUnidade({ nome: 'LONG NECK AMSTEL ULTRA 330ML FD 24 UNID.', unidade: 'fardo' }), 24)
   assert.equal(sugerirVendasPorUnidade({ nome: 'KETCH PRED 7G C/144', unidade: 'caixa' }), 144)
   assert.equal(sugerirVendasPorUnidade({ nome: 'HEINEKEN 350ML FD/ 12UNID.', unidade: 'unidade' }), 1)
+  // Embalagem cadastrada no produto tem prioridade
+  assert.equal(sugerirVendasPorUnidade({ nome: 'Skol', unidade: 'fardo', unidadesPorEmbalagem: 12 }), 12)
   assert.equal(sugerirVendasPorUnidade({ nome: 'GELO', unidade: 'pacote' }), 1)
 })
 

@@ -23,11 +23,18 @@ function textoOuNull(v: unknown): string | null {
   return s ? s : null
 }
 
+function porEmbalagem(v: unknown): number {
+  const n = numOuNull(v)
+  return n !== null && n > 0 ? n : 1
+}
+
 export function mapearProdutoReposicao(r: Bruto): ProdutoReposicao {
   return {
     id: String(r.id),
     nome: String(r.nome ?? ''),
     unidade: String(r.unidade ?? 'unidade'),
+    unidadesPorEmbalagem: porEmbalagem(r.unidades_por_embalagem),
+    unidadeAvulsa: textoOuNull(r.unidade_avulsa) ?? 'unidade',
     fornecedor: textoOuNull(r.fornecedor),
     ultimoPreco: numOuNull(r.ultimo_preco),
     quantidadeIdeal: numOuNull(r.quantidade_ideal) ?? 0,
@@ -41,10 +48,14 @@ export function mapearItemPedidoReposicao(r: Bruto): ItemPedidoReposicao {
     produtoId: r.produto_id ? String(r.produto_id) : null,
     nome: String(r.nome ?? ''),
     unidade: String(r.unidade ?? 'unidade'),
+    unidadesPorEmbalagem: porEmbalagem(r.unidades_por_embalagem),
+    unidadeAvulsa: textoOuNull(r.unidade_avulsa) ?? 'unidade',
     fornecedor: textoOuNull(r.fornecedor),
     preco: numOuNull(r.preco),
     quantidadeIdeal: numOuNull(r.quantidade_ideal) ?? 0,
     estoqueAtual: numOuNull(r.estoque_atual),
+    estoqueFechados: numOuNull(r.estoque_fechados),
+    estoqueSoltos: numOuNull(r.estoque_soltos),
     quantidade: numOuNull(r.quantidade) ?? 0,
     pedidoFeito: r.pedido_feito === true,
     pedidoFeitoEm: r.pedido_feito_em ? String(r.pedido_feito_em) : null
@@ -82,11 +93,48 @@ export function idealPeloConsumo(mediaSemanal: number): number {
   return Math.ceil(Math.round(mediaSemanal * 1.2 * 1000) / 1000)
 }
 
-/** Quanto pedir: o ideal da semana menos o que tem hoje, arredondado para cima, nunca negativo. */
-export function sugerirQuantidade(ideal: number, estoqueAtual: number | null): number {
+/**
+ * Quantas EMBALAGENS pedir: (ideal - o que tem hoje), ambos em unidades soltas,
+ * dividido pelas unidades da embalagem e arredondado para cima. Nunca negativo.
+ */
+export function sugerirQuantidade(ideal: number, estoqueAtual: number | null, unidadesPorEmbalagem = 1): number {
   if (estoqueAtual === null) return 0
   const falta = ideal - estoqueAtual
-  return falta > 0 ? Math.ceil(Math.round(falta * 1000) / 1000) : 0
+  if (falta <= 0) return 0
+  const por = unidadesPorEmbalagem > 0 ? unidadesPorEmbalagem : 1
+  return Math.ceil(Math.round((falta / por) * 1000) / 1000)
+}
+
+/** Total em unidades soltas a partir de embalagens fechadas + soltas (null se nada foi digitado). */
+export function estoqueTotal(fechados: number | null, soltos: number | null, unidadesPorEmbalagem = 1): number | null {
+  if (fechados === null && soltos === null) return null
+  return Math.round(((fechados ?? 0) * unidadesPorEmbalagem + (soltos ?? 0)) * 1000) / 1000
+}
+
+/** "fardo c/ 12 latas", ou so "unidade" quando compra avulsa. */
+export function descreverEmbalagem(p: { unidade: string; unidadesPorEmbalagem: number; unidadeAvulsa: string }): string {
+  if (p.unidadesPorEmbalagem <= 1) return p.unidade
+  return `${p.unidade} c/ ${quantidadeParaTexto(p.unidadesPorEmbalagem)} ${unidadeComPlural(p.unidadeAvulsa, p.unidadesPorEmbalagem)}`
+}
+
+/** Quantidade em unidades soltas com o equivalente em embalagens: "120 latas (10 fardos)". */
+export function unidadesComEmbalagens(
+  quantidade: number,
+  p: { unidade: string; unidadesPorEmbalagem: number; unidadeAvulsa: string }
+): string {
+  if (p.unidadesPorEmbalagem <= 1) return `${quantidadeParaTexto(quantidade)} ${unidadeComPlural(p.unidade, quantidade)}`
+  const emb = Math.round((quantidade / p.unidadesPorEmbalagem) * 10) / 10
+  return `${quantidadeParaTexto(quantidade)} ${unidadeComPlural(p.unidadeAvulsa, quantidade)} (${quantidadeParaTexto(emb)} ${unidadeComPlural(p.unidade, emb)})`
+}
+
+/** Le "FD/12", "FD 24 UNID", "C/144" do nome: embalagem e quantas unidades vem. */
+export function detectarEmbalagemPeloNome(nome: string): { unidade: string; unidadesPorEmbalagem: number } | null {
+  const m =
+    /(?:fd|cx|c)\s*\/\s*(\d{1,4})/i.exec(nome) ?? /(\d{1,4})\s*unid/i.exec(nome) ?? /fd\s+(\d{1,4})/i.exec(nome)
+  const n = m ? Number(m[1]) : 0
+  if (!(n > 1)) return null
+  const caixa = /(^|[^a-z])c\s*\/\s*\d/i.test(nome) || /(^|[^a-z])cx/i.test(nome)
+  return { unidade: caixa ? 'caixa' : 'fardo', unidadesPorEmbalagem: n }
 }
 
 /** Valor estimado de um item (null quando nao tem preco). */
@@ -159,7 +207,8 @@ export function mensagemPedido(
       linhas.push(`*${g.fornecedor ?? 'Sem fornecedor'}*`)
     }
     for (const i of g.itens) {
-      linhas.push(`• ${quantidadeParaTexto(i.quantidade)} ${unidadeComPlural(i.unidade, i.quantidade)} - ${i.nome}`)
+      const tamanho = i.unidadesPorEmbalagem > 1 ? ` (${quantidadeParaTexto(i.unidadesPorEmbalagem)} un.)` : ''
+      linhas.push(`• ${quantidadeParaTexto(i.quantidade)} ${unidadeComPlural(i.unidade, i.quantidade)}${tamanho} - ${i.nome}`)
     }
   })
   linhas.push('')
@@ -178,6 +227,7 @@ export function mensagemErroReposicao(erro: unknown, padrao = 'Não foi possíve
   if (/Ja existe um produto/i.test(msg)) return 'Já existe um produto com esse nome.'
   if (/Cadastre os produtos/i.test(msg)) return 'Cadastre os produtos antes de montar o pedido.'
   if (/ja foi finalizado/i.test(msg)) return 'Este pedido já foi finalizado. Atualize a página.'
+  if (/Unidades por embalagem/i.test(msg)) return 'Unidades por embalagem deve ser maior que zero.'
   if (/Informe o nome/i.test(msg)) return 'Informe o nome do produto.'
   if (/schema cache|Could not find the function/i.test(msg)) return 'A reposição ainda não foi ativada no banco (falta rodar o SQL).'
   return padrao
@@ -314,7 +364,10 @@ export function sugerirProdutoReposicao(descricaoBar: string, produtos: ProdutoR
  * fardo/caixa/pacote e o nome diz quantas vem (FD/12, C/144, 24 UNID), usa
  * esse numero; senao 1.
  */
-export function sugerirVendasPorUnidade(produto: Pick<ProdutoReposicao, 'nome' | 'unidade'>): number {
+export function sugerirVendasPorUnidade(
+  produto: Pick<ProdutoReposicao, 'nome' | 'unidade'> & { unidadesPorEmbalagem?: number }
+): number {
+  if (produto.unidadesPorEmbalagem && produto.unidadesPorEmbalagem > 1) return produto.unidadesPorEmbalagem
   if (!/fardo|caixa|pacote|cx|pct/i.test(produto.unidade)) return 1
   const m =
     /(?:fd|c|cx)\s*\/\s*(\d{1,4})/i.exec(produto.nome) ??

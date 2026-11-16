@@ -34,6 +34,8 @@ export async function salvarProdutoReposicao(input: {
   ultimoPreco: number | null
   quantidadeIdeal: number
   ativo: boolean
+  unidadesPorEmbalagem: number
+  unidadeAvulsa: string
 }): Promise<ProdutoReposicao> {
   const { data, error } = await useSupabaseClient().rpc('salvar_reposicao_produto_admin', {
     p_id: input.id,
@@ -42,7 +44,9 @@ export async function salvarProdutoReposicao(input: {
     p_fornecedor: input.fornecedor.trim() || null,
     p_ultimo_preco: input.ultimoPreco,
     p_quantidade_ideal: input.quantidadeIdeal,
-    p_ativo: input.ativo
+    p_ativo: input.ativo,
+    p_unidades_por_embalagem: input.unidadesPorEmbalagem,
+    p_unidade_avulsa: input.unidadeAvulsa.trim() || 'unidade'
   })
   if (error) throw error
   return mapearProdutoReposicao(data as Bruto)
@@ -78,6 +82,8 @@ export async function iniciarPedidoReposicao(): Promise<PedidoReposicao> {
 export async function salvarItemPedidoReposicao(input: {
   id: string
   estoqueAtual: number | null
+  estoqueFechados: number | null
+  estoqueSoltos: number | null
   quantidade: number
   pedidoFeito: boolean
 }): Promise<void> {
@@ -85,7 +91,9 @@ export async function salvarItemPedidoReposicao(input: {
     p_item_id: input.id,
     p_estoque_atual: input.estoqueAtual,
     p_quantidade: input.quantidade,
-    p_pedido_feito: input.pedidoFeito
+    p_pedido_feito: input.pedidoFeito,
+    p_estoque_fechados: input.estoqueFechados,
+    p_estoque_soltos: input.estoqueSoltos
   })
   if (error) throw error
 }

@@ -3,6 +3,10 @@ import assert from 'node:assert/strict'
 
 import {
   agruparPorFornecedor,
+  descreverEmbalagem,
+  detectarEmbalagemPeloNome,
+  estoqueTotal,
+  unidadesComEmbalagens,
   faltaPedir,
   lerQuantidade,
   mapearPedidoReposicao,
@@ -22,10 +26,14 @@ function item(p: Partial<ItemPedidoReposicao>): ItemPedidoReposicao {
     produtoId: null,
     nome: 'x',
     unidade: 'unidade',
+    unidadesPorEmbalagem: 1,
+    unidadeAvulsa: 'unidade',
     fornecedor: null,
     preco: null,
     quantidadeIdeal: 0,
     estoqueAtual: null,
+    estoqueFechados: null,
+    estoqueSoltos: null,
     quantidade: 0,
     pedidoFeito: false,
     pedidoFeitoEm: null,
@@ -103,4 +111,36 @@ test('mapearPedidoReposicao converte numeros e erros amigaveis', () => {
   assert.equal(p.itens[0]!.estoqueAtual, null)
   assert.equal(p.itens[0]!.pedidoFeito, true)
   assert.equal(mensagemErroReposicao({ message: 'Ja existe um produto com esse nome' }), 'Já existe um produto com esse nome.')
+})
+
+test('embalagem: sugere em embalagens fechadas a partir de unidades', () => {
+  // Ideal 120 latas, tem 30, fardo de 12 -> faltam 90 = 7,5 -> 8 fardos
+  assert.equal(sugerirQuantidade(120, 30, 12), 8)
+  assert.equal(sugerirQuantidade(120, 120, 12), 0)
+  assert.equal(sugerirQuantidade(120, 108, 12), 1)
+  assert.equal(sugerirQuantidade(10, 3), 7)
+  // 2 fardos fechados + 6 soltas = 30 latas
+  assert.equal(estoqueTotal(2, 6, 12), 30)
+  assert.equal(estoqueTotal(null, 6, 12), 6)
+  assert.equal(estoqueTotal(2, null, 12), 24)
+  assert.equal(estoqueTotal(null, null, 12), null)
+})
+
+test('embalagem: textos e mensagem para o fornecedor', () => {
+  const skol = { unidade: 'fardo', unidadesPorEmbalagem: 12, unidadeAvulsa: 'lata' }
+  assert.equal(descreverEmbalagem(skol), 'fardo c/ 12 latas')
+  assert.equal(descreverEmbalagem({ unidade: 'unidade', unidadesPorEmbalagem: 1, unidadeAvulsa: 'unidade' }), 'unidade')
+  assert.equal(unidadesComEmbalagens(120, skol), '120 latas (10 fardos)')
+  assert.equal(unidadesComEmbalagens(30, skol), '30 latas (2,5 fardos)')
+  const msg = mensagemPedido([item({ nome: 'Skol lata', fornecedor: 'Ambev', ...skol, quantidade: 8 })], { fornecedor: 'Ambev' })
+  assert.match(msg, /• 8 fardos \(12 un\.\) - Skol lata/)
+  assert.equal(totalEstimado([item({ ...skol, preco: 38.5, quantidade: 8 })]), 308)
+})
+
+test('detectarEmbalagemPeloNome le FD/12, FD 24 UNID e C/144', () => {
+  assert.deepEqual(detectarEmbalagemPeloNome('AGUA CRYSTAL S/ GAS 500ML FD/12UNID.'), { unidade: 'fardo', unidadesPorEmbalagem: 12 })
+  assert.deepEqual(detectarEmbalagemPeloNome('LONG NECK AMSTEL ULTRA 330ML FD 24 UNID.'), { unidade: 'fardo', unidadesPorEmbalagem: 24 })
+  assert.deepEqual(detectarEmbalagemPeloNome('KETCHUP 7G C/144'), { unidade: 'caixa', unidadesPorEmbalagem: 144 })
+  assert.equal(detectarEmbalagemPeloNome('AGUA CRYSTAL C/G 500'), null)
+  assert.equal(detectarEmbalagemPeloNome('BACON SEARA PORCIONA'), null)
 })
