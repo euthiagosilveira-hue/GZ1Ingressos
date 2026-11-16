@@ -494,3 +494,80 @@ export function linhasPlanilhaFluxo(fluxo: FluxoCaixa): (string | number)[][] {
     p.saldo ?? ''
   ])
 }
+
+// -----------------------------------------------------------------------------
+// Fechar bar: leitura do comprovante de fechamento da maquininha
+// -----------------------------------------------------------------------------
+export type LeituraFechamentoBar = {
+  data: string | null
+  dinheiro: number | null
+  credito: number | null
+  debito: number | null
+  pix: number | null
+  outros: number | null
+  total: number | null
+}
+
+export type DistribuicaoFechamentoBar = {
+  /** Valor sugerido por conta (id da conta -> valor em reais). */
+  valores: Record<string, number>
+  /** Como o valor de cada conta foi formado (ex.: "Crédito R$ 10,00 · Pix R$ 5,00"). */
+  detalhes: Record<string, string>
+  /** Soma das formas de pagamento lidas. */
+  soma: number
+  /** Diferenca entre o total impresso e a soma das formas (0 = bate ou sem total). */
+  diferenca: number
+}
+
+function normalizarNome(texto: string): string {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
+function reais(valor: number): string {
+  return 'R$ ' + valor.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+/**
+ * Conta onde entra o cartao/Pix do bar: o banco Itau (a maquininha do bar e
+ * do Itau); sem ele, o primeiro banco ou a primeira maquininha.
+ */
+export function contaCartaoBar(contas: ContaCaixa[]): ContaCaixa | null {
+  const ativas = contas.filter((c) => c.ativa && c.tipo !== 'ONLINE')
+  return (
+    ativas.find((c) => c.tipo === 'BANCO' && normalizarNome(c.nome).includes('itau')) ??
+    ativas.find((c) => c.tipo === 'BANCO') ??
+    ativas.find((c) => c.tipo === 'MAQUININHA') ??
+    null
+  )
+}
+
+/** Divide o que a IA leu entre as contas: dinheiro no caixa fisico, o resto no Itau. */
+export function distribuirFechamentoBar(leitura: LeituraFechamentoBar, contas: ContaCaixa[]): DistribuicaoFechamentoBar {
+  const valores: Record<string, number> = {}
+  const detalhes: Record<string, string> = {}
+  const centavos = (v: number) => Math.round(v * 100) / 100
+
+  const cartao = contaCartaoBar(contas)
+  const dinheiro = contas.find((c) => c.ativa && c.tipo === 'DINHEIRO') ?? null
+
+  const partesCartao: [string, number | null][] = [
+    ['Crédito', leitura.credito],
+    ['Débito', leitura.debito],
+    ['Pix', leitura.pix],
+    ['Outros', leitura.outros]
+  ]
+  const lidasCartao = partesCartao.filter((p): p is [string, number] => p[1] !== null && p[1] > 0)
+  const somaCartao = centavos(lidasCartao.reduce((s, [, v]) => s + v, 0))
+  if (cartao && somaCartao > 0) {
+    valores[cartao.id] = somaCartao
+    detalhes[cartao.id] = lidasCartao.map(([n, v]) => `${n} ${reais(v)}`).join(' · ')
+  }
+  if (dinheiro && leitura.dinheiro !== null && leitura.dinheiro > 0) {
+    valores[dinheiro.id] = centavos(leitura.dinheiro)
+    detalhes[dinheiro.id] = `Dinheiro ${reais(leitura.dinheiro)}`
+  }
+
+  const soma = centavos(somaCartao + (leitura.dinheiro ?? 0))
+  const diferenca = leitura.total !== null && soma > 0 ? centavos(leitura.total - soma) : 0
+  return { valores, detalhes, soma, diferenca: Math.abs(diferenca) < 0.01 ? 0 : diferenca }
+}
