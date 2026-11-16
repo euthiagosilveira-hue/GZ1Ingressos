@@ -444,7 +444,7 @@ const campo =
           </div>
         </header>
 
-        <div class="hidden grid-cols-[minmax(0,1fr)_13rem_6.5rem_6.5rem_5rem] gap-3 px-4 pt-3 text-[11px] uppercase tracking-wide text-zinc-500 lg:grid">
+        <div class="hidden grid-cols-[minmax(0,1fr)_13rem_7.5rem_6.5rem_5rem] gap-3 px-4 pt-3 text-[11px] uppercase tracking-wide text-zinc-500 lg:grid">
           <span>Produto</span>
           <span class="text-right">Tem hoje</span>
           <span class="text-right">Pedir</span>
@@ -456,7 +456,7 @@ const campo =
           <li
             v-for="item in g.itens"
             :key="item.id"
-            class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_13rem_6.5rem_6.5rem_5rem]"
+            class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_13rem_7.5rem_6.5rem_5rem]"
             :class="item.pedidoFeito ? 'bg-emerald-500/5' : ''"
           >
             <div class="min-w-0">
@@ -530,20 +530,24 @@ const campo =
                   />
                 </label>
               </div>
+              <!-- "Pedir" e contado na embalagem de compra do produto (fardo, caixa... ou unidade) -->
               <label class="block">
-                <span class="mb-1 block truncate text-[10px] uppercase tracking-wide text-zinc-500 lg:hidden">Pedir ({{ unidadeComPlural(nomeEmbalagem(item), 2) }})</span>
-                <input
-                  :value="textoQuantidade[item.id]"
-                  inputmode="decimal"
-                  placeholder="0"
-                  :aria-label="`Quanto pedir de ${item.nome}`"
-                  :class="[
-                    campo,
-                    'font-semibold',
-                    invalidos[`q-${item.id}`] ? 'border-red-500/60' : item.quantidade > 0 ? 'border-amber-400/50' : 'border-zinc-700'
-                  ]"
-                  @input="aoDigitarQuantidade(item, ($event.target as HTMLInputElement).value)"
-                />
+                <span class="mb-1 block text-[10px] uppercase tracking-wide text-zinc-500 lg:hidden">Pedir</span>
+                <span class="relative block">
+                  <span :class="rotuloCampo">{{ unidadeComPlural(nomeEmbalagem(item), 2) }}</span>
+                  <input
+                    :value="textoQuantidade[item.id]"
+                    inputmode="decimal"
+                    placeholder="0"
+                    :aria-label="`Quanto pedir de ${item.nome}`"
+                    :class="[
+                      campo,
+                      'pl-[4.5rem] font-semibold',
+                      invalidos[`q-${item.id}`] ? 'border-red-500/60' : item.quantidade > 0 ? 'border-amber-400/50' : 'border-zinc-700'
+                    ]"
+                    @input="aoDigitarQuantidade(item, ($event.target as HTMLInputElement).value)"
+                  />
+                </span>
               </label>
               <p class="text-right text-sm lg:self-center">
                 <span class="mb-1 block text-[10px] uppercase tracking-wide text-zinc-500 lg:hidden">Estimado</span>
