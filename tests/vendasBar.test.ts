@@ -108,13 +108,8 @@ test('sugere o produto da reposicao pelo nome', () => {
   assert.equal(sugerirProdutoReposicao('CORONA LONG NECK', produtos), null)
 })
 
-test('sugere quantas vendas dao 1 unidade do pedido', () => {
-  assert.equal(sugerirVendasPorUnidade({ nome: 'HEINEKEN 350ML FD/ 12UNID.', unidade: 'fardo' }), 12)
-  assert.equal(sugerirVendasPorUnidade({ nome: 'LONG NECK AMSTEL ULTRA 330ML FD 24 UNID.', unidade: 'fardo' }), 24)
-  assert.equal(sugerirVendasPorUnidade({ nome: 'KETCH PRED 7G C/144', unidade: 'caixa' }), 144)
-  assert.equal(sugerirVendasPorUnidade({ nome: 'HEINEKEN 350ML FD/ 12UNID.', unidade: 'unidade' }), 1)
-  // Embalagem cadastrada no produto tem prioridade
-  assert.equal(sugerirVendasPorUnidade({ nome: 'Skol', unidade: 'fardo', unidadesPorEmbalagem: 12 }), 12)
+test('vendas por unidade solta: sempre sugere 1 (fardo vem da embalagem do produto)', () => {
+  assert.equal(sugerirVendasPorUnidade({ nome: 'HEINEKEN 350ML FD/ 12UNID.', unidade: 'fardo' }), 1)
   assert.equal(sugerirVendasPorUnidade({ nome: 'GELO', unidade: 'pacote' }), 1)
 })
 

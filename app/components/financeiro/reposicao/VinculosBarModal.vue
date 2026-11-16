@@ -16,7 +16,8 @@ import {
 } from '~/utils/reposicao'
 
 // Liga cada produto do bar a um produto da Reposicao e diz quantas vendas
-// gastam 1 unidade do pedido (ex.: fardo com 12 latas = 12).
+// gastam 1 unidade solta (1 lata = 1; dose: 1 garrafa = 16). A conversao para
+// fardo/caixa vem da embalagem cadastrada no produto.
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: []; salvou: [] }>()
@@ -141,7 +142,7 @@ async function salvar() {
     <template v-else>
       <p v-if="sugeridas" class="mb-3 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3 text-xs text-amber-200">
         Já deixei {{ sugeridas }} {{ sugeridas === 1 ? 'sugestão marcada' : 'sugestões marcadas' }} pelo nome. Confira
-        antes de salvar, principalmente o número de vendas por unidade.
+        antes de salvar, principalmente o produto escolhido.
       </p>
       <ul class="divide-y divide-zinc-800 rounded-lg border border-zinc-800">
         <li
@@ -178,7 +179,7 @@ async function salvar() {
                 @input="l.sugerido = false"
               />
               <span class="text-xs leading-tight text-zinc-400">
-                vendas = 1 {{ porId.get(l.produtoId)?.unidade ?? 'unidade' }}
+                vendas = 1 {{ porId.get(l.produtoId)?.unidadesPorEmbalagem! > 1 ? porId.get(l.produtoId)?.unidadeAvulsa : porId.get(l.produtoId)?.unidade ?? 'unidade' }}
               </span>
             </div>
             <p v-if="l.erro" class="mt-1 text-xs text-red-400">{{ l.erro }}</p>
@@ -187,8 +188,8 @@ async function salvar() {
         </li>
       </ul>
       <p class="mt-3 text-xs text-zinc-500">
-        Exemplo: se a Heineken lata é pedida em fardo de 12, coloque 12 (12 vendas no bar = 1 fardo). Se o produto é
-        pedido por unidade, deixe 1.
+        Quase sempre é 1 (cada venda no bar = 1 lata ou 1 garrafa). O fardo/caixa é calculado pela embalagem do
+        produto. Só mude para dose: ex.: 1 garrafa de whisky = 16 doses, coloque 16.
       </p>
     </template>
 

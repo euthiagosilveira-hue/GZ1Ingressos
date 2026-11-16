@@ -111,10 +111,16 @@ export function estoqueTotal(fechados: number | null, soltos: number | null, uni
   return Math.round(((fechados ?? 0) * unidadesPorEmbalagem + (soltos ?? 0)) * 1000) / 1000
 }
 
+/** Nome da embalagem; "unidade" com mais de 1 dentro vira "embalagem". */
+export function nomeEmbalagem(p: { unidade: string; unidadesPorEmbalagem: number }): string {
+  const u = p.unidade.trim() || 'unidade'
+  return p.unidadesPorEmbalagem > 1 && /^unidades?$/i.test(u) ? 'embalagem' : u
+}
+
 /** "fardo c/ 12 latas", ou so "unidade" quando compra avulsa. */
 export function descreverEmbalagem(p: { unidade: string; unidadesPorEmbalagem: number; unidadeAvulsa: string }): string {
   if (p.unidadesPorEmbalagem <= 1) return p.unidade
-  return `${p.unidade} c/ ${quantidadeParaTexto(p.unidadesPorEmbalagem)} ${unidadeComPlural(p.unidadeAvulsa, p.unidadesPorEmbalagem)}`
+  return `${nomeEmbalagem(p)} c/ ${quantidadeParaTexto(p.unidadesPorEmbalagem)} ${unidadeComPlural(p.unidadeAvulsa, p.unidadesPorEmbalagem)}`
 }
 
 /** Quantidade em unidades soltas com o equivalente em embalagens: "120 latas (10 fardos)". */
@@ -124,7 +130,7 @@ export function unidadesComEmbalagens(
 ): string {
   if (p.unidadesPorEmbalagem <= 1) return `${quantidadeParaTexto(quantidade)} ${unidadeComPlural(p.unidade, quantidade)}`
   const emb = Math.round((quantidade / p.unidadesPorEmbalagem) * 10) / 10
-  return `${quantidadeParaTexto(quantidade)} ${unidadeComPlural(p.unidadeAvulsa, quantidade)} (${quantidadeParaTexto(emb)} ${unidadeComPlural(p.unidade, emb)})`
+  return `${quantidadeParaTexto(quantidade)} ${unidadeComPlural(p.unidadeAvulsa, quantidade)} (${quantidadeParaTexto(emb)} ${unidadeComPlural(nomeEmbalagem(p), emb)})`
 }
 
 /** Le "FD/12", "FD 24 UNID", "C/144" do nome: embalagem e quantas unidades vem. */
@@ -208,7 +214,7 @@ export function mensagemPedido(
     }
     for (const i of g.itens) {
       const tamanho = i.unidadesPorEmbalagem > 1 ? ` (${quantidadeParaTexto(i.unidadesPorEmbalagem)} un.)` : ''
-      linhas.push(`• ${quantidadeParaTexto(i.quantidade)} ${unidadeComPlural(i.unidade, i.quantidade)}${tamanho} - ${i.nome}`)
+      linhas.push(`• ${quantidadeParaTexto(i.quantidade)} ${unidadeComPlural(nomeEmbalagem(i), i.quantidade)}${tamanho} - ${i.nome}`)
     }
   })
   linhas.push('')
@@ -360,21 +366,12 @@ export function sugerirProdutoReposicao(descricaoBar: string, produtos: ProdutoR
 }
 
 /**
- * Quantas vendas gastam 1 unidade do pedido. Se o produto e pedido em
- * fardo/caixa/pacote e o nome diz quantas vem (FD/12, C/144, 24 UNID), usa
- * esse numero; senao 1.
+ * Quantas vendas no bar gastam 1 UNIDADE SOLTA do produto (1 lata, 1 garrafa).
+ * Quase sempre 1; so muda para dose (ex.: 1 garrafa = 16 doses). A conversao
+ * para fardo/caixa usa a embalagem cadastrada no produto.
  */
-export function sugerirVendasPorUnidade(
-  produto: Pick<ProdutoReposicao, 'nome' | 'unidade'> & { unidadesPorEmbalagem?: number }
-): number {
-  if (produto.unidadesPorEmbalagem && produto.unidadesPorEmbalagem > 1) return produto.unidadesPorEmbalagem
-  if (!/fardo|caixa|pacote|cx|pct/i.test(produto.unidade)) return 1
-  const m =
-    /(?:fd|c|cx)\s*\/\s*(\d{1,4})/i.exec(produto.nome) ??
-    /(\d{1,4})\s*unid/i.exec(produto.nome) ??
-    /fd\s+(\d{1,4})/i.exec(produto.nome)
-  const n = m ? Number(m[1]) : 1
-  return n > 0 ? n : 1
+export function sugerirVendasPorUnidade(_produto?: unknown): number {
+  return 1
 }
 
 export function mensagemErroVendasBar(erro: unknown, padrao = 'Não foi possível concluir. Tente novamente.'): string {
