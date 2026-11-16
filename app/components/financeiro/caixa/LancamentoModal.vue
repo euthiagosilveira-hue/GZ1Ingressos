@@ -36,6 +36,7 @@ import {
   validarLancamento
 } from '~/utils/caixa'
 import { formatMoeda } from '~/utils/format'
+import { abrirLinkEmNovaAba } from '~/utils/abrirLink'
 
 const props = defineProps<{
   open: boolean
@@ -267,7 +268,7 @@ async function lerComIa(sobrescrever: boolean) {
 async function verComprovante() {
   if (!comprovante.value) return
   try {
-    window.open(await linkComprovante(comprovante.value), '_blank', 'noopener')
+    await abrirLinkEmNovaAba(() => linkComprovante(comprovante.value!))
   } catch {
     erroArquivo.value = 'Não foi possível abrir o comprovante.'
   }

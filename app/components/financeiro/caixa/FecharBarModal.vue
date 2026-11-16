@@ -14,6 +14,7 @@ import { enviarComprovante, lerFechamentoBarComIa, linkComprovante } from '~/ser
 import { podeComprimir } from '~/utils/comprimirImagem'
 import { distribuirFechamentoBar, hojeIso, lerValorReais, mensagemErroLeituraIa } from '~/utils/caixa'
 import { formatMoeda } from '~/utils/format'
+import { abrirLinkEmNovaAba } from '~/utils/abrirLink'
 
 const props = defineProps<{
   open: boolean
@@ -174,7 +175,7 @@ function removerComprovante() {
 async function verComprovante() {
   if (!comprovante.value) return
   try {
-    window.open(await linkComprovante(comprovante.value), '_blank', 'noopener')
+    await abrirLinkEmNovaAba(() => linkComprovante(comprovante.value!))
   } catch {
     erroArquivo.value = 'Não foi possível abrir a foto.'
   }
