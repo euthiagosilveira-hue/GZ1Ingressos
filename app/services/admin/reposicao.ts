@@ -67,6 +67,25 @@ export async function importarProdutosReposicao(
   return Number((data as Bruto)?.importados ?? 0)
 }
 
+/** Nomes das notas ja ligados a um produto (ou ignorados: produtoId nulo). */
+export async function listarNomesCompraReposicao(): Promise<{ nome: string; produtoId: string | null }[]> {
+  const { data, error } = await useSupabaseClient().rpc('listar_reposicao_nomes_compra_admin')
+  if (error) throw error
+  return ((data as Bruto[] | null) ?? []).map((n) => ({
+    nome: String(n.nome ?? ''),
+    produtoId: n.produto_id ? String(n.produto_id) : null
+  }))
+}
+
+/** Liga um nome da nota a um produto ja cadastrado; produtoId nulo = nao e de reposicao. */
+export async function vincularNomeCompraReposicao(nome: string, produtoId: string | null): Promise<void> {
+  const { error } = await useSupabaseClient().rpc('vincular_reposicao_nome_compra_admin', {
+    p_nome: nome,
+    p_produto_id: produtoId
+  })
+  if (error) throw error
+}
+
 export async function obterPedidoAbertoReposicao(): Promise<PedidoReposicao | null> {
   const { data, error } = await useSupabaseClient().rpc('obter_reposicao_pedido_aberto_admin')
   if (error) throw error
