@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  areaPropriaPerfil,
   codigoErroPerfil,
   decidirAcessoOperador,
   mensagemLoginErro,
@@ -170,4 +171,24 @@ test('paginaInicialPerfil leva cada perfil para a sua area', () => {
   assert.equal(paginaInicialPerfil('PORTARIA'), '/portaria')
   assert.equal(paginaInicialPerfil('PRODUTOR'), '/produtor')
   assert.equal(paginaInicialPerfil(null), '/')
+})
+
+test('ACOMPANHAMENTO pode fazer login, vai para /acompanhamento e nao e equipe', () => {
+  assert.equal(perfilPermitido('ACOMPANHAMENTO'), false)
+  assert.equal(perfilPodeEntrar('ACOMPANHAMENTO'), true)
+  assert.equal(codigoErroPerfil({ ativo: true, perfil: 'ACOMPANHAMENTO' }), null)
+  assert.equal(codigoErroPerfil({ ativo: false, perfil: 'ACOMPANHAMENTO' }), 'INATIVO')
+  assert.equal(paginaInicialPerfil('ACOMPANHAMENTO'), '/acompanhamento')
+  assert.equal(
+    decidirAcessoOperador({ temSessao: true, perfil: 'ACOMPANHAMENTO', ativo: true }),
+    'NEGAR'
+  )
+})
+
+test('areaPropriaPerfil: so produtor e acompanhamento tem area propria', () => {
+  assert.equal(areaPropriaPerfil('PRODUTOR'), '/produtor')
+  assert.equal(areaPropriaPerfil('ACOMPANHAMENTO'), '/acompanhamento')
+  assert.equal(areaPropriaPerfil('ADMINISTRADOR'), null)
+  assert.equal(areaPropriaPerfil('PORTARIA'), null)
+  assert.equal(areaPropriaPerfil(null), null)
 })

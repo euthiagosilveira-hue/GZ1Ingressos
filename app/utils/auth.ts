@@ -41,15 +41,26 @@ export function perfilPermitido(perfil: string | null | undefined): boolean {
   return perfil === 'ADMINISTRADOR' || perfil === 'PORTARIA'
 }
 
-/** Perfis que podem fazer login: equipe + PRODUTOR (area /produtor). */
+/**
+ * Perfis que podem fazer login: equipe + PRODUTOR (area /produtor)
+ * + ACOMPANHAMENTO (area /acompanhamento, somente leitura).
+ */
 export function perfilPodeEntrar(perfil: string | null | undefined): boolean {
-  return perfilPermitido(perfil) || perfil === 'PRODUTOR'
+  return perfilPermitido(perfil) || perfil === 'PRODUTOR' || perfil === 'ACOMPANHAMENTO'
+}
+
+/** Perfis com area propria (fora do painel da equipe) e a pagina de cada um. */
+export function areaPropriaPerfil(perfil: string | null | undefined): string | null {
+  if (perfil === 'PRODUTOR') return '/produtor'
+  if (perfil === 'ACOMPANHAMENTO') return '/acompanhamento'
+  return null
 }
 
 /** Pagina inicial de cada perfil apos o login. */
 export function paginaInicialPerfil(perfil: string | null | undefined): string {
   if (perfil === 'PORTARIA') return '/portaria'
   if (perfil === 'PRODUTOR') return '/produtor'
+  if (perfil === 'ACOMPANHAMENTO') return '/acompanhamento'
   return '/'
 }
 

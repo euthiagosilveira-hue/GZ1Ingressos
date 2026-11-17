@@ -56,7 +56,9 @@ async function entrar() {
     const destinoPermitido =
       perfil.perfil === 'PRODUTOR'
         ? destino?.startsWith('/produtor')
-        : perfil.perfil === 'ADMINISTRADOR' || destino?.startsWith('/portaria')
+        : perfil.perfil === 'ACOMPANHAMENTO'
+          ? destino?.startsWith('/acompanhamento')
+          : perfil.perfil === 'ADMINISTRADOR' || destino?.startsWith('/portaria')
     if (destino && destinoPermitido) {
       await navigateTo(destino)
       return

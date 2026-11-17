@@ -39,7 +39,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   if (perfil?.ativo && perfil.perfil === 'PRODUTOR') return
 
-  if (perfil?.ativo && (perfil.perfil === 'ADMINISTRADOR' || perfil.perfil === 'PORTARIA')) {
+  if (
+    perfil?.ativo &&
+    (perfil.perfil === 'ADMINISTRADOR' || perfil.perfil === 'PORTARIA' || perfil.perfil === 'ACOMPANHAMENTO')
+  ) {
     return navigateTo(paginaInicialPerfil(perfil.perfil))
   }
 

@@ -42,6 +42,8 @@ const statusOptions = [
 const ultimoAdmin = computed(() => props.usuario?.ehUltimoAdminAtivo === true)
 // Produtor: perfil fixo (o acesso e controlado pela sociedade do evento).
 const ehProdutor = computed(() => props.usuario?.perfil === 'PRODUTOR')
+// Acompanhamento: perfil fixo (os eventos sao escolhidos na tela do evento).
+const ehAcompanhamento = computed(() => props.usuario?.perfil === 'ACOMPANHAMENTO')
 
 watch(
   () => props.open,
@@ -85,10 +87,16 @@ function enviar() {
 
       <FormField label="Perfil" required :error="erros.perfil">
         <p
-          v-if="ultimoAdmin || ehProdutor"
+          v-if="ultimoAdmin || ehProdutor || ehAcompanhamento"
           class="rounded-lg border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 text-sm text-zinc-300"
         >
-          {{ ehProdutor ? 'Produtor (vê só os eventos em sociedade dele)' : 'Administrador' }}
+          {{
+            ehProdutor
+              ? 'Produtor (vê só os eventos em sociedade dele)'
+              : ehAcompanhamento
+                ? 'Acompanhamento (só vê as vendas dos eventos em que foi adicionado)'
+                : 'Administrador'
+          }}
         </p>
         <BaseSelect v-else v-model="form.perfil" :options="perfilOptions" />
       </FormField>
