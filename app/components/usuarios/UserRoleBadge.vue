@@ -14,6 +14,9 @@ const info = computed(() => {
   if (props.perfil === 'PRODUTOR') {
     return { label: 'Produtor', classes: 'border-green-500/30 bg-green-500/10 text-green-300' }
   }
+  if (props.perfil === 'ACOMPANHAMENTO') {
+    return { label: 'Acompanhamento', classes: 'border-sky-500/30 bg-sky-500/10 text-sky-300' }
+  }
   return { label: 'Portaria', classes: 'border-zinc-600/40 bg-zinc-800/80 text-zinc-300' }
 })
 </script>

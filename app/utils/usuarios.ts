@@ -13,12 +13,13 @@ export const PERFIS_USUARIO: PerfilUsuario[] = ['ADMINISTRADOR', 'PORTARIA']
  * PRODUTOR e criado pelo bloco "Sociedade" do evento (ligado ao produtor),
  * nao pela tela de Usuarios; la ele so pode ter nome/status alterados.
  */
-export const PERFIS_VALIDOS: PerfilUsuario[] = ['ADMINISTRADOR', 'PORTARIA', 'PRODUTOR']
+export const PERFIS_VALIDOS: PerfilUsuario[] = ['ADMINISTRADOR', 'PORTARIA', 'PRODUTOR', 'ACOMPANHAMENTO']
 
 const PERFIL_LABEL: Record<PerfilUsuario, string> = {
   ADMINISTRADOR: 'Administrador',
   PORTARIA: 'Portaria',
-  PRODUTOR: 'Produtor'
+  PRODUTOR: 'Produtor',
+  ACOMPANHAMENTO: 'Acompanhamento'
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

@@ -1,4 +1,4 @@
-import { decidirAcessoOperador, resolverUid, uidDoUsuario } from '~/utils/auth'
+import { areaPropriaPerfil, decidirAcessoOperador, resolverUid, uidDoUsuario } from '~/utils/auth'
 
 /**
  * Protege a area da portaria.
@@ -48,8 +48,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
     ativo: perfil?.ativo ?? null
   })
 
-  if (perfil?.ativo && perfil.perfil === 'PRODUTOR') {
-    return navigateTo('/produtor')
+  const areaPropria = perfil?.ativo ? areaPropriaPerfil(perfil.perfil) : null
+  if (areaPropria) {
+    return navigateTo(areaPropria)
   }
 
   if (decisao !== 'PERMITIR') {

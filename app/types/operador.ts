@@ -1,6 +1,6 @@
 import type { PerfilOperador } from '~/types/operador'
 
-export type PerfilOperador = 'ADMINISTRADOR' | 'PORTARIA' | 'PRODUTOR'
+export type PerfilOperador = 'ADMINISTRADOR' | 'PORTARIA' | 'PRODUTOR' | 'ACOMPANHAMENTO'
 
 /** Linha real de public.usuarios (somente os campos usados). */
 export interface OperadorProfile {

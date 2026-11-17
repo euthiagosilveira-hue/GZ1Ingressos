@@ -1,4 +1,4 @@
-import { resolverUid, uidDoUsuario } from '~/utils/auth'
+import { areaPropriaPerfil, resolverUid, uidDoUsuario } from '~/utils/auth'
 
 /**
  * Protege a area administrativa (/eventos etc.).
@@ -39,9 +39,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return
   }
 
-  // Produtor logado tentando abrir o painel: leva para a area dele (sem deslogar).
-  if (perfil?.ativo && perfil.perfil === 'PRODUTOR') {
-    return navigateTo('/produtor')
+  // Produtor/acompanhamento tentando abrir o painel: leva para a area dele (sem deslogar).
+  const areaPropria = perfil?.ativo ? areaPropriaPerfil(perfil.perfil) : null
+  if (areaPropria) {
+    return navigateTo(areaPropria)
   }
 
   if (!perfil || !perfil.ativo || perfil.perfil !== 'ADMINISTRADOR') {

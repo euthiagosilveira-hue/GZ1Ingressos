@@ -1,4 +1,4 @@
-export type PerfilUsuario = 'ADMINISTRADOR' | 'PORTARIA' | 'PRODUTOR'
+export type PerfilUsuario = 'ADMINISTRADOR' | 'PORTARIA' | 'PRODUTOR' | 'ACOMPANHAMENTO'
 
 export interface AdminUsuarioRow {
   id: string
